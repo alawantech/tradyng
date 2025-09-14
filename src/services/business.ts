@@ -103,6 +103,11 @@ export class BusinessService {
     }
   }
 
+  // Get business by store name (alias for subdomain)
+  static async getBusinessByStoreName(storeName: string): Promise<Business | null> {
+    return this.getBusinessBySubdomain(storeName);
+  }
+
   // Get businesses by owner ID
   static async getBusinessesByOwnerId(ownerId: string): Promise<Business[]> {
     try {

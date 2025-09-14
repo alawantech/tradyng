@@ -1,20 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Filter, Grid, List, ShoppingCart, Star } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { mockProducts } from '../../data/mockData';
+import { useStore } from './StorefrontLayout';
+import { ProductService, Product } from '../../services/product';
 
 export const ProductListing: React.FC = () => {
+  const { business, isLoading: storeLoading } = useStore();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
-  const filteredProducts = mockProducts.filter(product =>
+  useEffect(() => {
+    const loadProducts = async () => {
+      if (!business?.id) return;
+      
+      try {
+        setIsLoadingProducts(true);
+        const fetchedProducts = await ProductService.getProductsByBusinessId(business.id);
+        setProducts(fetchedProducts);
+      } catch (error) {
+        console.error('Error loading products:', error);
+        setProducts([]);
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+
+    loadProducts();
+  }, [business?.id]);
+
+  const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (storeLoading || isLoadingProducts) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, index) => (
+              <div key={index} className="bg-gray-200 h-80 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -90,7 +128,31 @@ export const ProductListing: React.FC = () => {
 
         {/* Products Grid/List */}
         <div className="flex-1">
-          {viewMode === 'grid' ? (
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <ShoppingCart className="h-16 w-16 mx-auto" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {searchTerm ? 'No Products Found' : 'No Products Available'}
+              </h3>
+              <p className="text-gray-600">
+                {searchTerm 
+                  ? `No products match "${searchTerm}". Try a different search term.`
+                  : 'This store hasn\'t added any products yet. Check back later!'
+                }
+              </p>
+              {searchTerm && (
+                <Button 
+                  className="mt-4" 
+                  variant="outline" 
+                  onClick={() => setSearchTerm('')}
+                >
+                  Clear Search
+                </Button>
+              )}
+            </div>
+          ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product, index) => (
                 <motion.div
@@ -102,9 +164,12 @@ export const ProductListing: React.FC = () => {
                   <Card className="group hover:shadow-xl transition-shadow duration-300">
                     <div className="aspect-w-1 aspect-h-1 relative overflow-hidden rounded-t-lg">
                       <img
-                        src={product.images[0]}
+                        src={product.images?.[0] || '/api/placeholder/400/300'}
                         alt={product.name}
                         className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
+                        }}
                       />
                       <div className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
                         <ShoppingCart className="h-4 w-4 text-blue-600" />
@@ -123,13 +188,13 @@ export const ProductListing: React.FC = () => {
                             <Star key={i} className="h-4 w-4 fill-current" />
                           ))}
                         </div>
-                        <span className="text-sm text-gray-500 ml-2">(4.9)</span>
+                        <span className="text-sm text-gray-500 ml-2">(5.0)</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xl font-bold text-blue-600">
                           ${product.price}
                         </span>
-                        <Link to={`/store/product/${product.id}`}>
+                        <Link to={`/product/${product.id}`}>
                           <Button size="sm">View Details</Button>
                         </Link>
                       </div>
@@ -150,9 +215,12 @@ export const ProductListing: React.FC = () => {
                   <Card className="p-6">
                     <div className="flex flex-col md:flex-row gap-6">
                       <img
-                        src={product.images[0]}
+                        src={product.images?.[0] || '/api/placeholder/400/300'}
                         alt={product.name}
                         className="w-full md:w-48 h-48 object-cover rounded-lg"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
+                        }}
                       />
                       <div className="flex-1">
                         <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -167,13 +235,13 @@ export const ProductListing: React.FC = () => {
                               <Star key={i} className="h-4 w-4 fill-current" />
                             ))}
                           </div>
-                          <span className="text-sm text-gray-500 ml-2">(4.9)</span>
+                          <span className="text-sm text-gray-500 ml-2">(5.0)</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-2xl font-bold text-blue-600">
                             ${product.price}
                           </span>
-                          <Link to={`/store/product/${product.id}`}>
+                          <Link to={`/product/${product.id}`}>
                             <Button>View Details</Button>
                           </Link>
                         </div>
