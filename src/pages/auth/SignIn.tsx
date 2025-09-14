@@ -6,22 +6,39 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import toast from 'react-hot-toast';
+import { AuthService } from '../../services/auth';
+import { UserService } from '../../services/user';
 
 export const SignIn: React.FC = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
-    // Simulate API call
-    toast.success('Welcome back!');
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 1000);
+    try {
+      // Sign in with Firebase Auth
+      const authUser = await AuthService.signIn(formData.email, formData.password);
+      
+      // Update last login
+      await UserService.updateLastLogin(authUser.uid);
+      
+      toast.success('Welcome back!');
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('Signin error:', error);
+      toast.error(error.message || 'Failed to sign in');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,8 +107,8 @@ export const SignIn: React.FC = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full">
-              Sign In
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Signing In...' : 'Sign In'}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 

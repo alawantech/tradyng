@@ -6,9 +6,14 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import toast from 'react-hot-toast';
+import { AuthService } from '../../services/auth';
+import { UserService } from '../../services/user';
+import { BusinessService } from '../../services/business';
+import { Timestamp } from 'firebase/firestore';
 
 export const SignUp: React.FC = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -17,14 +22,59 @@ export const SignUp: React.FC = () => {
     subdomain: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
-    // Simulate API call
-    toast.success('Account created successfully!');
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 1000);
+    try {
+      // 1. Create Firebase Auth user
+      const authUser = await AuthService.signUp(formData.email, formData.password);
+      
+      // 2. Create user document in Firestore
+      await UserService.createUser({
+        uid: authUser.uid,
+        email: formData.email,
+        displayName: formData.name,
+        role: 'business_owner'
+      });
+      
+      // 3. Check if subdomain is available
+      const existingBusiness = await BusinessService.getBusinessBySubdomain(formData.subdomain.toLowerCase());
+      if (existingBusiness) {
+        throw new Error('Subdomain already taken. Please choose a different one.');
+      }
+      
+      // 4. Create business document
+      await BusinessService.createBusiness({
+        name: formData.businessName,
+        subdomain: formData.subdomain.toLowerCase(),
+        ownerId: authUser.uid,
+        email: formData.email,
+        plan: 'free',
+        status: 'active',
+        settings: {
+          currency: 'USD',
+          primaryColor: '#3B82F6',
+          secondaryColor: '#10B981',
+          accentColor: '#F59E0B',
+          enableNotifications: true
+        },
+        revenue: 0,
+        totalOrders: 0,
+        totalProducts: 0
+      });
+      
+      toast.success('Account and store created successfully!');
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      toast.error(error.message || 'Failed to create account');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,8 +157,8 @@ export const SignUp: React.FC = () => {
               Your store will be available at: {formData.subdomain || 'yourstore'}.trady.ng
             </p>
 
-            <Button type="submit" className="w-full">
-              Create Account
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Creating Account...' : 'Create Account'}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 
