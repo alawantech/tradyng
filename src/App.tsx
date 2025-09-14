@@ -27,6 +27,7 @@ import { Businesses } from './pages/admin/Businesses';
 import { Subscriptions } from './pages/admin/Subscriptions';
 import { AdminAnalytics } from './pages/admin/AdminAnalytics';
 import { AdminSettings } from './pages/admin/AdminSettings';
+import { AdminOrders } from './pages/admin/Orders';
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Businesses />} />
               <Route path="businesses" element={<Businesses />} />
+              <Route path="orders" element={<AdminOrders />} />
               <Route path="subscriptions" element={<Subscriptions />} />
               <Route path="analytics" element={<AdminAnalytics />} />
               <Route path="settings" element={<AdminSettings />} />
