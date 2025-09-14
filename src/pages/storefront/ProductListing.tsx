@@ -1,0 +1,191 @@
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Search, Filter, Grid, List, ShoppingCart, Star } from 'lucide-react';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { mockProducts } from '../../data/mockData';
+
+export const ProductListing: React.FC = () => {
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredProducts = mockProducts.filter(product =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">All Products</h1>
+          <p className="text-gray-600 mt-1">
+            {filteredProducts.length} products available
+          </p>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          <div className="flex border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              <Grid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Filters Sidebar */}
+        <div className="lg:w-64 space-y-6">
+          <Card className="p-4">
+            <h3 className="font-semibold text-gray-900 mb-4">Search</h3>
+            <Input
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="font-semibold text-gray-900 mb-4">Categories</h3>
+            <div className="space-y-2">
+              {['Electronics', 'Wearables', 'Home & Office', 'Fashion', 'Food & Beverage'].map((category) => (
+                <label key={category} className="flex items-center">
+                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  <span className="ml-2 text-sm text-gray-700">{category}</span>
+                </label>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="font-semibold text-gray-900 mb-4">Price Range</h3>
+            <div className="space-y-4">
+              <div>
+                <input
+                  type="range"
+                  min="0"
+                  max="500"
+                  defaultValue="250"
+                  className="w-full"
+                />
+                <div className="flex justify-between text-sm text-gray-600 mt-1">
+                  <span>$0</span>
+                  <span>$500+</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Products Grid/List */}
+        <div className="flex-1">
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProducts.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                >
+                  <Card className="group hover:shadow-xl transition-shadow duration-300">
+                    <div className="aspect-w-1 aspect-h-1 relative overflow-hidden rounded-t-lg">
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ShoppingCart className="h-4 w-4 text-blue-600" />
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {product.name}
+                      </h3>
+                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                        {product.description}
+                      </p>
+                      <div className="flex items-center mb-3">
+                        <div className="flex text-yellow-400">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="h-4 w-4 fill-current" />
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-500 ml-2">(4.9)</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xl font-bold text-blue-600">
+                          ${product.price}
+                        </span>
+                        <Link to={`/store/product/${product.id}`}>
+                          <Button size="sm">View Details</Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filteredProducts.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                >
+                  <Card className="p-6">
+                    <div className="flex flex-col md:flex-row gap-6">
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full md:w-48 h-48 object-cover rounded-lg"
+                      />
+                      <div className="flex-1">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                          {product.name}
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                          {product.description}
+                        </p>
+                        <div className="flex items-center mb-4">
+                          <div className="flex text-yellow-400">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className="h-4 w-4 fill-current" />
+                            ))}
+                          </div>
+                          <span className="text-sm text-gray-500 ml-2">(4.9)</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-2xl font-bold text-blue-600">
+                            ${product.price}
+                          </span>
+                          <Link to={`/store/product/${product.id}`}>
+                            <Button>View Details</Button>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
