@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
-import { Eye, CheckCircle, XCircle, Clock, Package } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, CheckCircle, XCircle, Clock, Package, ShoppingCart, Plus } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { mockOrders, mockProducts } from '../../data/mockData';
+import { OrderService, Order } from '../../services/order';
+import { ProductService, Product } from '../../services/product';
+import { useAuth } from '../../hooks/useAuth';
 import { OrderReceipt } from '../../components/ui/OrderReceipt';
 import toast from 'react-hot-toast';
 
 export const Orders: React.FC = () => {
+  const { business } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showReceipt, setShowReceipt] = useState<string | null>(null);
   const [orderData, setOrderData] = useState({
     customerName: '',
     customerEmail: '',
@@ -15,19 +21,73 @@ export const Orders: React.FC = () => {
     quantity: 1
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  useEffect(() => {
+    if (business?.id) {
+      loadData();
+    }
+  }, [business]);
+
+  const loadData = async () => {
+    if (!business?.id) return;
+
+    try {
+      const [ordersData, productsData] = await Promise.all([
+        OrderService.getOrdersByBusinessId(business.id),
+        ProductService.getProductsByBusinessId(business.id)
+      ]);
+      setOrders(ordersData);
+      setProducts(productsData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Failed to load data');
+    }
+  };  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setOrderData({
       ...orderData,
       [e.target.name]: e.target.value
     });
   };
 
-  const handleCreateOrder = (e: React.FormEvent) => {
+  const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowModal(false);
-    // Here you would add logic to save the order to backend or state
-    toast.success('Order created successfully!');
-    setOrderData({ customerName: '', customerEmail: '', productId: '', quantity: 1 });
+    if (!business?.id) return;
+
+    try {
+      const selectedProduct = products.find(p => p.id === orderData.productId);
+      if (!selectedProduct) {
+        toast.error('Please select a product');
+        return;
+      }
+
+      const total = selectedProduct.price * orderData.quantity;
+      
+      await OrderService.createOrder(business.id, {
+        customerName: orderData.customerName,
+        customerEmail: orderData.customerEmail,
+        items: [{
+          productId: orderData.productId,
+          productName: selectedProduct.name,
+          quantity: orderData.quantity,
+          price: selectedProduct.price,
+          total: total
+        }],
+        subtotal: total,
+        tax: 0,
+        shipping: 0,
+        total: total,
+        status: 'pending',
+        paymentMethod: 'manual',
+        paymentStatus: 'pending'
+      });
+
+      setShowModal(false);
+      toast.success('Order created successfully!');
+      setOrderData({ customerName: '', customerEmail: '', productId: '', quantity: 1 });
+      loadData(); // Reload orders
+    } catch (error) {
+      console.error('Error creating order:', error);
+      toast.error('Failed to create order');
+    }
   };
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -59,17 +119,22 @@ export const Orders: React.FC = () => {
     }
   };
 
-  const [showReceipt, setShowReceipt] = useState<string | null>(null);
-
   const handleViewOrder = (orderId: string) => {
     setShowReceipt(orderId);
   };
 
-  const handleApproveOrder = (orderId: string) => {
-    toast.success(`Order ${orderId} approved successfully`);
+  const handleApproveOrder = async (orderId: string) => {
+    if (!business?.id) return;
+    
+    try {
+      await OrderService.updateOrderStatus(business.id, orderId, 'processing');
+      toast.success(`Order ${orderId} approved successfully`);
+      loadData(); // Reload orders
+    } catch (error) {
+      console.error('Error approving order:', error);
+      toast.error('Failed to approve order');
+    }
   };
-
-  const getOrderById = (id: string) => mockOrders.find(o => o.id === id);
 
   return (
     <div className="p-6">
@@ -121,7 +186,7 @@ export const Orders: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Select a product</option>
-                  {mockProducts.map((product) => (
+                  {products.map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.name} (${product.price})
                     </option>
@@ -152,7 +217,25 @@ export const Orders: React.FC = () => {
       )}
 
       <div className="space-y-4">
-        {mockOrders.map((order) => (
+        {orders.length === 0 ? (
+          <Card className="p-12 text-center">
+            <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <ShoppingCart className="w-12 h-12 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
+            <p className="text-gray-600 mb-6">
+              Your customers haven't placed any orders yet. Create a manual order or wait for customers to make purchases.
+            </p>
+            <Button
+              onClick={() => setShowModal(true)}
+              className="inline-flex items-center"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create First Order
+            </Button>
+          </Card>
+        ) : (
+          orders.map((order) => (
           <Card key={order.id} className="p-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
               <div className="flex-1">
@@ -192,15 +275,15 @@ export const Orders: React.FC = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleViewOrder(order.id)}
+                  onClick={() => order.id && handleViewOrder(order.id)}
                 >
                   <Eye className="h-4 w-4 mr-1" />
                   View Receipt
                 </Button>
-                {order.status === 'Pending' && (
+                {order.status === 'pending' && (
                   <Button
                     size="sm"
-                    onClick={() => handleApproveOrder(order.id)}
+                    onClick={() => order.id && handleApproveOrder(order.id)}
                   >
                     <CheckCircle className="h-4 w-4 mr-1" />
                     Approve
@@ -219,7 +302,7 @@ export const Orders: React.FC = () => {
                     items={order.items}
                     total={order.total}
                     paymentMethod={order.paymentMethod}
-                    createdAt={order.createdAt}
+                    createdAt={order.createdAt?.toDate().toLocaleDateString() || 'N/A'}
                   />
                   <Button variant="outline" className="absolute top-4 right-4" onClick={() => setShowReceipt(null)}>
                     Close
@@ -228,7 +311,8 @@ export const Orders: React.FC = () => {
               </div>
             )}
           </Card>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

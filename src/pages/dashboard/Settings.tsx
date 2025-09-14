@@ -9,6 +9,7 @@ export const Settings: React.FC = () => {
   const [storeData, setStoreData] = useState({
     storeName: 'My Awesome Store',
     subdomain: 'mystore',
+    customDomain: '',
     description: 'Premium products for modern lifestyle',
     contactEmail: 'contact@mystore.com',
     phone: '+1 (555) 123-4567',
@@ -61,6 +62,16 @@ export const Settings: React.FC = () => {
             />
             
             <Input
+              label="Custom Domain (Optional)"
+              name="customDomain"
+              value={storeData.customDomain}
+              onChange={handleChange}
+              placeholder="www.mystore.com"
+            />
+            
+            <div></div> {/* Empty div for grid spacing */}
+            
+            <Input
               label="Contact Email"
               name="contactEmail"
               type="email"
@@ -74,6 +85,16 @@ export const Settings: React.FC = () => {
               value={storeData.phone}
               onChange={handleChange}
             />
+          </div>
+          
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h3 className="text-sm font-medium text-blue-900 mb-2">Store URLs:</h3>
+            <div className="space-y-1 text-sm text-blue-700">
+              <div>Default: <code className="bg-blue-100 px-2 py-1 rounded">{storeData.subdomain || 'yourstore'}.trady.ng</code></div>
+              {storeData.customDomain && (
+                <div>Custom: <code className="bg-blue-100 px-2 py-1 rounded">{storeData.customDomain}</code></div>
+              )}
+            </div>
           </div>
           
           <div className="mt-6">

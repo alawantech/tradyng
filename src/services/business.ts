@@ -108,8 +108,8 @@ export class BusinessService {
     try {
       const q = query(
         collection(db, 'businesses'), 
-        where('ownerId', '==', ownerId),
-        orderBy('createdAt', 'desc')
+        where('ownerId', '==', ownerId)
+        // Removed orderBy to avoid index requirement
       );
       const querySnapshot = await getDocs(q);
       
