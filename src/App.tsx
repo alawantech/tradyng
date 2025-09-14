@@ -21,6 +21,13 @@ import { StorefrontHome } from './pages/storefront/StorefrontHome';
 import { ProductListing } from './pages/storefront/ProductListing';
 import { ProductDetails } from './pages/storefront/ProductDetails';
 
+// Admin
+import { AdminLayout } from './pages/admin/AdminLayout';
+import { Businesses } from './pages/admin/Businesses';
+import { Subscriptions } from './pages/admin/Subscriptions';
+import { AdminAnalytics } from './pages/admin/AdminAnalytics';
+import { AdminSettings } from './pages/admin/AdminSettings';
+
 function App() {
   return (
     <Router>
@@ -49,6 +56,14 @@ function App() {
             <Route path="products" element={<ProductListing />} />
             <Route path="product/:id" element={<ProductDetails />} />
           </Route>
+            {/* Admin */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Businesses />} />
+              <Route path="businesses" element={<Businesses />} />
+              <Route path="subscriptions" element={<Subscriptions />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
         </Routes>
         
         <Toaster
