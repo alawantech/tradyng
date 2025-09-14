@@ -24,6 +24,7 @@ import { StorefrontHome } from './pages/storefront/StorefrontHome';
 import { ProductListing } from './pages/storefront/ProductListing';
 import { ProductDetails } from './pages/storefront/ProductDetails';
 import { Cart } from './pages/storefront/Cart';
+import { Checkout } from './pages/storefront/Checkout';
 
 // Admin
 import { AdminLayout } from './pages/admin/AdminLayout';
@@ -78,6 +79,7 @@ function App() {
                   <Route path="products" element={<ProductListing />} />
                   <Route path="product/:id" element={<ProductDetails />} />
                   <Route path="cart" element={<Cart />} />
+                  <Route path="checkout" element={<Checkout />} />
                 </Route>
                 {/* Redirect any other routes to the store home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
