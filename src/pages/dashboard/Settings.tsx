@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Upload, Globe, Palette, Bell, Store } from 'lucide-react';
+import { Save, Upload, Globe, Palette, Bell, Store, ExternalLink, Check, AlertCircle, Loader } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -10,6 +10,9 @@ import toast from 'react-hot-toast';
 export const Settings: React.FC = () => {
   const { user, business, loading: authLoading } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [checkingSubdomain, setCheckingSubdomain] = useState(false);
+  const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null);
+  const [originalSubdomain, setOriginalSubdomain] = useState('');
   const [storeData, setStoreData] = useState({
     storeName: '',
     subdomain: '',
@@ -27,6 +30,44 @@ export const Settings: React.FC = () => {
     accentColor: '#F59E0B',
     logo: ''
   });
+
+  // Check subdomain availability
+  const checkSubdomainAvailability = async (subdomain: string) => {
+    if (!subdomain || subdomain === originalSubdomain) {
+      setSubdomainAvailable(null);
+      return;
+    }
+
+    if (!validateSubdomain(subdomain).isValid) {
+      setSubdomainAvailable(false);
+      return;
+    }
+
+    setCheckingSubdomain(true);
+    setSubdomainAvailable(null);
+
+    try {
+      const existingBusiness = await BusinessService.getBusinessBySubdomain(subdomain);
+      const isAvailable = !existingBusiness || existingBusiness.id === business?.id;
+      setSubdomainAvailable(isAvailable);
+    } catch (error) {
+      console.error('Error checking subdomain availability:', error);
+      setSubdomainAvailable(false);
+    } finally {
+      setCheckingSubdomain(false);
+    }
+  };
+
+  // Debounced subdomain checking
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (storeData.subdomain && storeData.subdomain !== originalSubdomain) {
+        checkSubdomainAvailability(storeData.subdomain);
+      }
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [storeData.subdomain, originalSubdomain]);
 
   // Nigerian states list (same as signup)
   const nigerianStates = [
@@ -97,6 +138,7 @@ export const Settings: React.FC = () => {
       
       console.log('📝 Setting store data:', newStoreData);
       setStoreData(newStoreData);
+      setOriginalSubdomain(business.subdomain || ''); // Store original subdomain
 
       // Load branding settings
       const newBrandingSettings = {
@@ -241,15 +283,20 @@ export const Settings: React.FC = () => {
     try {
       setSaving(true);
       
-      // Check if subdomain is available (only if changed)
-      if (storeData.subdomain !== business.subdomain) {
-        console.log('🔍 Checking subdomain availability:', storeData.subdomain);
+      // Check subdomain availability if it changed
+      if (storeData.subdomain !== originalSubdomain) {
+        console.log('🔍 Verifying subdomain availability before saving:', storeData.subdomain);
+        
+        // Double-check availability before saving
         const existingBusiness = await BusinessService.getBusinessBySubdomain(storeData.subdomain);
         if (existingBusiness && existingBusiness.id !== business.id) {
           toast.error('This subdomain is already taken. Please choose a different one.');
+          setSubdomainAvailable(false);
           return;
         }
-        console.log('✅ Subdomain is available');
+        
+        console.log('✅ Subdomain confirmed available');
+        toast.success('Subdomain updated successfully!');
       }
       
       console.log('💾 Saving business data:', {
@@ -278,6 +325,10 @@ export const Settings: React.FC = () => {
         }
       });
 
+      // Update the original subdomain to prevent unnecessary checks
+      setOriginalSubdomain(storeData.subdomain);
+      setSubdomainAvailable(null);
+      
       toast.success('Settings saved successfully!');
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -460,33 +511,94 @@ export const Settings: React.FC = () => {
                 className={`${
                   storeData.subdomain && !subdomainValidation.isValid
                     ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                    : storeData.subdomain && subdomainAvailable === true
+                    ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
+                    : storeData.subdomain && subdomainAvailable === false
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
                     : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                 }`}
               />
-              {storeData.subdomain && !subdomainValidation.isValid ? (
-                <p className="text-red-500 text-xs mt-1">
-                  ❌ {subdomainValidation.error}
-                </p>
-              ) : (
-                <p className="text-gray-500 text-xs mt-1">
-                  Use lowercase letters, numbers, and hyphens only
-                </p>
-              )}
-              {storeData.subdomain && subdomainValidation.isValid && (
-                <p className="text-green-600 text-xs mt-1">
-                  ✅ Subdomain format looks good!
-                </p>
-              )}
-              <div className="mt-2 p-3 bg-blue-50 rounded-md">
-                <p className="text-sm text-blue-700">
-                  <span className="font-medium">Your Store URL:</span>{' '}
-                  <code className="bg-blue-100 px-2 py-1 rounded text-blue-800">
-                    {storeData.subdomain ? `${storeData.subdomain}.trady.ng` : 'Please set your subdomain'}
-                  </code>
-                </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  💡 You can change your subdomain anytime
-                </p>
+              
+              {/* Subdomain Status */}
+              <div className="mt-2 space-y-2">
+                {/* Format Validation */}
+                {storeData.subdomain && !subdomainValidation.isValid && (
+                  <div className="flex items-center space-x-2 text-red-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <p className="text-sm">{subdomainValidation.error}</p>
+                  </div>
+                )}
+                
+                {/* Availability Check */}
+                {storeData.subdomain && subdomainValidation.isValid && storeData.subdomain !== originalSubdomain && (
+                  <div className="flex items-center space-x-2">
+                    {checkingSubdomain ? (
+                      <>
+                        <Loader className="h-4 w-4 animate-spin text-blue-600" />
+                        <p className="text-sm text-blue-600">Checking availability...</p>
+                      </>
+                    ) : subdomainAvailable === true ? (
+                      <>
+                        <Check className="h-4 w-4 text-green-600" />
+                        <p className="text-sm text-green-600">✅ Available! This subdomain is ready to use.</p>
+                      </>
+                    ) : subdomainAvailable === false ? (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <p className="text-sm text-red-600">❌ Already taken. Please choose a different subdomain.</p>
+                      </>
+                    ) : null}
+                  </div>
+                )}
+                
+                {/* Current subdomain message */}
+                {storeData.subdomain === originalSubdomain && originalSubdomain && (
+                  <div className="flex items-center space-x-2 text-blue-600">
+                    <Check className="h-4 w-4" />
+                    <p className="text-sm">This is your current subdomain</p>
+                  </div>
+                )}
+                
+                {/* Format Help */}
+                {(!storeData.subdomain || subdomainValidation.isValid) && (
+                  <p className="text-gray-500 text-xs">
+                    Use lowercase letters, numbers, and hyphens only (3-30 characters)
+                  </p>
+                )}
+              </div>
+              
+              {/* Store URL Preview */}
+              <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 mb-1">Your Store URL</p>
+                    <div className="flex items-center space-x-2">
+                      <code className="text-lg font-mono px-3 py-2 bg-white border border-gray-200 rounded-md text-blue-700">
+                        {storeData.subdomain ? `${storeData.subdomain}.trady.ng` : 'your-subdomain.trady.ng'}
+                      </code>
+                      {storeData.subdomain && subdomainAvailable !== false && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(`https://${storeData.subdomain}.trady.ng`, '_blank')}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <Globe className="h-8 w-8 text-blue-500" />
+                </div>
+                
+                {storeData.subdomain !== originalSubdomain && storeData.subdomain && subdomainAvailable === true && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm text-green-700 font-medium">🎉 New URL Ready!</p>
+                    <p className="text-xs text-green-600 mt-1">
+                      Save your settings to activate this new subdomain
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
             
