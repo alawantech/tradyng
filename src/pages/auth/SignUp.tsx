@@ -61,7 +61,7 @@ export const SignUp: React.FC = () => {
         const countriesList = await CountryService.getAllCountries();
         setCountries(countriesList);
         
-        // Set Nigeria states as default
+        // Set Nigerian states as default since Nigeria is pre-selected
         const nigerianStates = CountryService.getStatesByCountryCode('NG');
         setStates(nigerianStates);
       } catch (error) {
@@ -77,18 +77,18 @@ export const SignUp: React.FC = () => {
 
   // Update states when country changes
   useEffect(() => {
-    if (formData.country) {
-      const countryCode = countries.find(c => c.name === formData.country)?.code;
-      if (countryCode) {
-        const countryStates = CountryService.getStatesByCountryCode(countryCode);
-        setStates(countryStates);
-        // Reset state selection when country changes
-        if (formData.state && !countryStates.find(s => s.name === formData.state)) {
-          setFormData(prev => ({ ...prev, state: '' }));
-        }
+    if (formData.country === 'Nigeria') {
+      const nigerianStates = CountryService.getStatesByCountryCode('NG');
+      setStates(nigerianStates);
+    } else {
+      // Clear states for non-Nigerian countries since they'll use manual input
+      setStates([]);
+      // Clear the current state value when switching away from Nigeria
+      if (formData.state) {
+        setFormData(prev => ({ ...prev, state: '' }));
       }
     }
-  }, [formData.country, countries]);
+  }, [formData.country]);
 
   const generateSubdomain = (storeName: string): string => {
     return storeName
@@ -329,6 +329,8 @@ export const SignUp: React.FC = () => {
         );
 
       case 4:
+        const isNigeria = formData.country === 'Nigeria';
+        
         return (
           <div className="space-y-4">
             <Select
@@ -343,16 +345,26 @@ export const SignUp: React.FC = () => {
               disabled={loadingCountries}
             />
             
-            <Select
-              options={states.map(state => ({
-                value: state.name,
-                label: state.name
-              }))}
-              value={formData.state}
-              onChange={(value) => handleInputChange('state', value)}
-              placeholder={states.length > 0 ? 'Select your state/province' : 'Please select a country first'}
-              disabled={states.length === 0}
-            />
+            {isNigeria ? (
+              <Select
+                options={states.map(state => ({
+                  value: state.name,
+                  label: state.name
+                }))}
+                value={formData.state}
+                onChange={(value) => handleInputChange('state', value)}
+                placeholder="Select your state"
+                disabled={states.length === 0}
+              />
+            ) : (
+              <Input
+                type="text"
+                placeholder="Enter your state/province"
+                value={formData.state}
+                onChange={(e) => handleInputChange('state', e.target.value)}
+                className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            )}
           </div>
         );
 
