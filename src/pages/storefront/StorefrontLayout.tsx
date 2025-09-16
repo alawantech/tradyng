@@ -227,9 +227,27 @@ export const StorefrontLayout: React.FC = () => {
                 <p className="text-gray-400 mb-6">
                   {business.description || `Welcome to ${storeName}. We deliver quality products to your doorstep.`}
                 </p>
-                {business.address && (
-                  <p className="text-gray-400 text-sm">{business.address}</p>
-                )}
+                
+                {/* Location Information */}
+                <div className="space-y-2">
+                  {business.address && (
+                    <p className="text-gray-400 text-sm flex items-start">
+                      <span className="font-medium text-gray-300 mr-2">📍</span>
+                      <span>{business.address}</span>
+                    </p>
+                  )}
+                  {(business.state || business.country) && (
+                    <p className="text-gray-400 text-sm flex items-start">
+                      <span className="font-medium text-gray-300 mr-2">🌍</span>
+                      <span>
+                        {business.state && business.country 
+                          ? `${business.state}, ${business.country}`
+                          : business.state || business.country
+                        }
+                      </span>
+                    </p>
+                  )}
+                </div>
               </div>
               
               <div>
@@ -242,13 +260,34 @@ export const StorefrontLayout: React.FC = () => {
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold mb-4">Contact</h3>
-                <ul className="space-y-2 text-gray-400">
+                <h3 className="text-lg font-semibold mb-4">Contact Info</h3>
+                <ul className="space-y-3 text-gray-400">
                   {business.email && (
-                    <li><a href={`mailto:${business.email}`} className="hover:text-white">{business.email}</a></li>
+                    <li>
+                      <span className="font-medium text-gray-300 block text-xs mb-1">EMAIL</span>
+                      <a href={`mailto:${business.email}`} className="hover:text-white text-sm break-all">
+                        {business.email}
+                      </a>
+                    </li>
                   )}
                   {business.phone && (
-                    <li><a href={`tel:${business.phone}`} className="hover:text-white">{business.phone}</a></li>
+                    <li>
+                      <span className="font-medium text-gray-300 block text-xs mb-1">WHATSAPP</span>
+                      <a href={`https://wa.me/${business.phone.replace(/\D/g, '')}`} className="hover:text-white text-sm">
+                        {business.phone}
+                      </a>
+                    </li>
+                  )}
+                  {(business.country || business.state) && (
+                    <li>
+                      <span className="font-medium text-gray-300 block text-xs mb-1">LOCATION</span>
+                      <span className="text-sm">
+                        {business.state && business.country 
+                          ? `${business.state}, ${business.country}`
+                          : business.state || business.country
+                        }
+                      </span>
+                    </li>
                   )}
                 </ul>
               </div>
@@ -256,6 +295,14 @@ export const StorefrontLayout: React.FC = () => {
             
             <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
               <p>&copy; {new Date().getFullYear()} {storeName}. All rights reserved.</p>
+              {(business.state || business.country) && (
+                <p className="text-sm mt-1">
+                  Proudly serving customers from {business.state && business.country 
+                    ? `${business.state}, ${business.country}` 
+                    : business.state || business.country
+                  }
+                </p>
+              )}
             </div>
           </div>
         </footer>
