@@ -22,6 +22,8 @@ export interface Business {
   email: string;
   phone?: string;
   address?: string;
+  country?: string;
+  state?: string;
   description?: string;
   logo?: string;
   plan: 'free' | 'basic' | 'pro';
@@ -122,18 +124,53 @@ export class BusinessService {
   // Get businesses by owner ID
   static async getBusinessesByOwnerId(ownerId: string): Promise<Business[]> {
     try {
+      console.log('🔍 Querying businesses for ownerId:', ownerId);
+      console.log('🔍 ownerId type:', typeof ownerId);
+      
       const q = query(
         collection(db, 'businesses'), 
         where('ownerId', '==', ownerId)
         // Removed orderBy to avoid index requirement
       );
+      
+      console.log('📡 Executing Firebase query...');
       const querySnapshot = await getDocs(q);
+      console.log('📊 Query executed, found', querySnapshot.docs.length, 'documents');
+      
+      if (querySnapshot.docs.length > 0) {
+        querySnapshot.docs.forEach((doc, index) => {
+          const data = doc.data();
+          console.log(`📄 Document ${index + 1}:`, {
+            id: doc.id,
+            ownerId: data.ownerId,
+            name: data.name,
+            subdomain: data.subdomain
+          });
+        });
+      } else {
+        console.log('⚠️ No documents found. Let me check all businesses...');
+        // Debug: Get all businesses to see what's there
+        const allBusinessesQuery = query(collection(db, 'businesses'));
+        const allSnapshot = await getDocs(allBusinessesQuery);
+        console.log('📊 Total businesses in database:', allSnapshot.docs.length);
+        allSnapshot.docs.forEach((doc, index) => {
+          const data = doc.data();
+          console.log(`🏪 Business ${index + 1}:`, {
+            id: doc.id,
+            ownerId: data.ownerId,
+            name: data.name,
+            subdomain: data.subdomain,
+            ownerIdMatches: data.ownerId === ownerId
+          });
+        });
+      }
       
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Business[];
     } catch (error) {
+      console.error('❌ Error in getBusinessesByOwnerId:', error);
       throw error;
     }
   }
@@ -157,6 +194,17 @@ export class BusinessService {
       const docRef = doc(db, 'businesses', businessId);
       await deleteDoc(docRef);
     } catch (error) {
+      throw error;
+    }
+  }
+
+  // Check subdomain availability
+  static async checkSubdomainAvailability(subdomain: string): Promise<boolean> {
+    try {
+      const business = await this.getBusinessBySubdomain(subdomain);
+      return business === null; // Available if no business found
+    } catch (error) {
+      console.error('Error checking subdomain availability:', error);
       throw error;
     }
   }
