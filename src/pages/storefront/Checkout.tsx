@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CreditCard, Truck, Shield } from 'lucide-react';
+import { ArrowLeft, CreditCard, Truck, Shield, User, AlertCircle } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -8,6 +8,7 @@ import { useCart } from '../../contexts/CartContext';
 import { useStore } from './StorefrontLayout';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
 import toast from 'react-hot-toast';
 
 interface CheckoutFormData {
@@ -43,6 +44,7 @@ export const Checkout: React.FC = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   if (!business) {
     return (
@@ -87,7 +89,7 @@ export const Checkout: React.FC = () => {
     e.preventDefault();
     
     if (!user) {
-      toast.error('Please sign in to complete your order');
+      setShowAuthModal(true);
       return;
     }
 
@@ -163,17 +165,61 @@ export const Checkout: React.FC = () => {
           </Link>
         </div>
 
+        {/* Authentication Prompt */}
+        {!user && (
+          <Card className="p-6 bg-blue-50 border-blue-200">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="h-6 w-6 text-blue-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">Sign in to continue</h3>
+                <p className="text-blue-700 mb-4">
+                  You need to sign in or create an account to place an order. Your information will be saved and you can track your orders.
+                </p>
+                <div className="flex space-x-4">
+                  <Button
+                    type="button"
+                    onClick={() => setShowAuthModal(true)}
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Sign In
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowAuthModal(true)}
+                    size="sm"
+                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                  >
+                    Create Account
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Checkout Form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Customer Information */}
-            <Card className="p-6">
+            <Card className={`p-6 ${!user ? 'opacity-50 bg-gray-50' : ''}`}>
               <h2 className="text-xl font-bold text-gray-900 mb-6">Customer Information</h2>
+              {!user && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-700">
+                    <AlertCircle className="h-4 w-4 inline mr-1" />
+                    Please sign in to enter your information
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="First Name"
                   name="firstName"
                   required
+                  disabled={!user}
                   value={formData.firstName}
                   onChange={handleInputChange}
                   placeholder="John"
@@ -182,6 +228,7 @@ export const Checkout: React.FC = () => {
                   label="Last Name"
                   name="lastName"
                   required
+                  disabled={!user}
                   value={formData.lastName}
                   onChange={handleInputChange}
                   placeholder="Doe"
@@ -191,6 +238,7 @@ export const Checkout: React.FC = () => {
                   name="email"
                   type="email"
                   required
+                  disabled={!user}
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="john@example.com"
@@ -201,6 +249,7 @@ export const Checkout: React.FC = () => {
                   name="phone"
                   type="tel"
                   required
+                  disabled={!user}
                   value={formData.phone}
                   onChange={handleInputChange}
                   placeholder="+1 (555) 123-4567"
@@ -209,13 +258,14 @@ export const Checkout: React.FC = () => {
             </Card>
 
             {/* Shipping Address */}
-            <Card className="p-6">
+            <Card className={`p-6 ${!user ? 'opacity-50 bg-gray-50' : ''}`}>
               <h2 className="text-xl font-bold text-gray-900 mb-6">Shipping Address</h2>
               <div className="space-y-4">
                 <Input
                   label="Street Address"
                   name="address"
                   required
+                  disabled={!user}
                   value={formData.address}
                   onChange={handleInputChange}
                   placeholder="123 Main Street"
@@ -225,6 +275,7 @@ export const Checkout: React.FC = () => {
                     label="City"
                     name="city"
                     required
+                    disabled={!user}
                     value={formData.city}
                     onChange={handleInputChange}
                     placeholder="New York"
@@ -233,6 +284,7 @@ export const Checkout: React.FC = () => {
                     label="State"
                     name="state"
                     required
+                    disabled={!user}
                     value={formData.state}
                     onChange={handleInputChange}
                     placeholder="NY"
@@ -241,6 +293,7 @@ export const Checkout: React.FC = () => {
                     label="ZIP Code"
                     name="zipCode"
                     required
+                    disabled={!user}
                     value={formData.zipCode}
                     onChange={handleInputChange}
                     placeholder="10001"
@@ -250,16 +303,17 @@ export const Checkout: React.FC = () => {
             </Card>
 
             {/* Payment Method */}
-            <Card className="p-6">
+            <Card className={`p-6 ${!user ? 'opacity-50 bg-gray-50' : ''}`}>
               <h2 className="text-xl font-bold text-gray-900 mb-6">Payment Method</h2>
               <div className="space-y-4">
-                <label className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <label className={`flex items-center space-x-3 p-4 border rounded-lg ${!user ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}>
                   <input
                     type="radio"
                     name="paymentMethod"
                     value="manual"
                     checked={formData.paymentMethod === 'manual'}
                     onChange={handleInputChange}
+                    disabled={!user}
                     className="text-blue-600"
                   />
                   <div className="flex items-center space-x-3">
@@ -292,15 +346,16 @@ export const Checkout: React.FC = () => {
             </Card>
 
             {/* Order Notes */}
-            <Card className="p-6">
+            <Card className={`p-6 ${!user ? 'opacity-50 bg-gray-50' : ''}`}>
               <h2 className="text-xl font-bold text-gray-900 mb-6">Order Notes (Optional)</h2>
               <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleInputChange}
+                disabled={!user}
                 placeholder="Any special instructions for your order..."
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </Card>
           </div>
@@ -347,9 +402,12 @@ export const Checkout: React.FC = () => {
                 type="submit" 
                 size="lg" 
                 className="w-full mb-4"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !user}
               >
-                {isSubmitting ? 'Creating Order...' : 'Place Order'}
+                {!user 
+                  ? 'Sign In to Place Order'
+                  : (isSubmitting ? 'Creating Order...' : 'Place Order')
+                }
               </Button>
 
               {/* Security Features */}
@@ -376,6 +434,13 @@ export const Checkout: React.FC = () => {
           </div>
         </form>
       </motion.div>
+
+      {/* Customer Authentication Modal */}
+      <CustomerAuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode="signin"
+      />
     </div>
   );
 };
