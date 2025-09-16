@@ -166,6 +166,8 @@ export const SignUp: React.FC = () => {
         subdomain: subdomain,
         ownerId: authUser.uid,
         email: formData.email,
+        country: formData.country,
+        state: formData.state,
         plan: 'free',
         status: 'active',
         settings: {
