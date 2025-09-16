@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { SubdomainService, SubdomainInfo } from './services/subdomain';
@@ -25,6 +25,7 @@ import { ProductListing } from './pages/storefront/ProductListing';
 import { ProductDetails } from './pages/storefront/ProductDetails';
 import { Cart } from './pages/storefront/Cart';
 import { Checkout } from './pages/storefront/Checkout';
+import { Payment } from './pages/storefront/Payment';
 
 // Admin
 import { AdminLayout } from './pages/admin/AdminLayout';
@@ -80,6 +81,7 @@ function App() {
                   <Route path="product/:id" element={<ProductDetails />} />
                   <Route path="cart" element={<Cart />} />
                   <Route path="checkout" element={<Checkout />} />
+                  <Route path="payment" element={<Payment />} />
                 </Route>
                 {/* Redirect any other routes to the store home */}
                 <Route path="*" element={<Navigate to="/" replace />} />

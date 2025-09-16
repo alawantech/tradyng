@@ -35,6 +35,17 @@ export interface Business {
     accentColor: string;
     enableNotifications: boolean;
   };
+  bankDetails?: {
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    routingNumber: string;
+    instructions?: string;
+  };
+  paymentMethods?: {
+    manualPayment: boolean;
+    cardPayment: boolean;
+  };
   revenue: number;
   totalOrders: number;
   totalProducts: number;
