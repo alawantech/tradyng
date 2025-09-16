@@ -178,12 +178,24 @@ export class BusinessService {
   // Update business
   static async updateBusiness(businessId: string, updates: Partial<Business>): Promise<void> {
     try {
+      console.log('🔄 Updating business:', businessId);
+      console.log('📝 Update data:', {
+        ...updates,
+        logo: updates.logo ? `Logo present (${updates.logo.length} chars)` : 'No logo',
+        settings: updates.settings
+      });
+      
       const docRef = doc(db, 'businesses', businessId);
       await updateDoc(docRef, {
         ...updates,
         updatedAt: Timestamp.now()
       });
-    } catch (error) {
+      
+      console.log('✅ Business updated successfully');
+    } catch (error: any) {
+      console.error('❌ Error updating business:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       throw error;
     }
   }

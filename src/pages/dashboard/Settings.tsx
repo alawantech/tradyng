@@ -302,8 +302,21 @@ export const Settings: React.FC = () => {
       console.log('💾 Saving business data:', {
         subdomain: storeData.subdomain,
         storeName: storeData.storeName,
-        whatsappNumber: storeData.whatsappNumber
+        whatsappNumber: storeData.whatsappNumber,
+        logo: brandingSettings.logo ? 'Logo present' : 'No logo',
+        logoSize: brandingSettings.logo ? brandingSettings.logo.length : 0,
+        colors: {
+          primary: brandingSettings.primaryColor,
+          secondary: brandingSettings.secondaryColor,
+          accent: brandingSettings.accentColor
+        }
       });
+      
+      // Check logo size (Firebase has document size limits)
+      if (brandingSettings.logo && brandingSettings.logo.length > 1048576) { // 1MB limit
+        toast.error('Logo file is too large. Please use an image smaller than 1MB.');
+        return;
+      }
       
       // Update the business with new data (including subdomain and branding)
       await BusinessService.updateBusiness(business.id, {
@@ -315,7 +328,7 @@ export const Settings: React.FC = () => {
         address: storeData.address,
         country: storeData.country,
         state: storeData.state,
-        logo: brandingSettings.logo,
+        logo: brandingSettings.logo || undefined,
         settings: {
           currency: business.settings?.currency || 'USD',
           enableNotifications: business.settings?.enableNotifications || true,
@@ -330,9 +343,21 @@ export const Settings: React.FC = () => {
       setSubdomainAvailable(null);
       
       toast.success('Settings saved successfully!');
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast.error('Failed to save settings. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Error saving settings:', error);
+      
+      // Provide specific error messages based on error type
+      if (error.code === 'permission-denied') {
+        toast.error('Permission denied. Please sign in again and try.');
+      } else if (error.code === 'invalid-argument') {
+        toast.error('Invalid data format. Please check your logo file size and try again.');
+      } else if (error.message?.includes('document too large')) {
+        toast.error('Document too large. Please use a smaller logo file.');
+      } else if (error.message?.includes('logo') || error.message?.includes('Logo')) {
+        toast.error('Logo upload failed. Please try with a smaller image (under 500KB).');
+      } else {
+        toast.error(`Failed to save settings: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setSaving(false);
     }
@@ -346,21 +371,71 @@ export const Settings: React.FC = () => {
     fileInput.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        // Check file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error('Image size should be less than 5MB');
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+          toast.error('Please select an image file (PNG, JPG, GIF, etc.)');
           return;
         }
         
-        // Create preview URL
+        // Check file size (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+          toast.error('Image size should be less than 2MB. Please compress your image.');
+          return;
+        }
+        
+        // Create preview URL and compress
         const reader = new FileReader();
         reader.onload = (e) => {
-          const imageUrl = e.target?.result as string;
-          setBrandingSettings({
-            ...brandingSettings,
-            logo: imageUrl
-          });
-          toast.success('Logo uploaded successfully! Don\'t forget to save your settings.');
+          const img = new Image();
+          img.onload = () => {
+            // Create canvas for compression
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set max dimensions
+            const MAX_WIDTH = 512;
+            const MAX_HEIGHT = 512;
+            
+            let { width, height } = img;
+            
+            // Calculate new dimensions
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height = (height * MAX_WIDTH) / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width = (width * MAX_HEIGHT) / height;
+                height = MAX_HEIGHT;
+              }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Draw and compress
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              
+              // Convert to base64 with compression
+              const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+              
+              // Check final size (Firebase limit is ~1MB per field)
+              if (compressedDataUrl.length > 800000) { // 800KB limit
+                toast.error('Image is still too large after compression. Please use a smaller image.');
+                return;
+              }
+              
+              setBrandingSettings({
+                ...brandingSettings,
+                logo: compressedDataUrl
+              });
+              
+              toast.success('Logo uploaded and optimized successfully! Don\'t forget to save your settings.');
+            }
+          };
+          img.src = e.target?.result as string;
         };
         reader.readAsDataURL(file);
       }
