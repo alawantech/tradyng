@@ -26,10 +26,11 @@ export const Settings: React.FC = () => {
 
   const [brandingSettings, setBrandingSettings] = useState({
     primaryColor: '#3B82F6',
-    secondaryColor: '#10B981',
+    secondaryColor: '#1E40AF',
     accentColor: '#F59E0B',
     logo: ''
   });
+  const [logoUpdated, setLogoUpdated] = useState(false); // Track if logo has been explicitly updated
 
   // Check subdomain availability
   const checkSubdomainAvailability = async (subdomain: string) => {
@@ -318,8 +319,8 @@ export const Settings: React.FC = () => {
         return;
       }
       
-      // Update the business with new data (including subdomain and branding)
-      await BusinessService.updateBusiness(business.id, {
+      // Prepare update data
+      const updateData: any = {
         name: storeData.storeName,
         subdomain: storeData.subdomain,
         customDomain: storeData.customDomain || undefined,
@@ -328,7 +329,6 @@ export const Settings: React.FC = () => {
         address: storeData.address,
         country: storeData.country,
         state: storeData.state,
-        logo: brandingSettings.logo || undefined,
         settings: {
           currency: business.settings?.currency || 'USD',
           enableNotifications: business.settings?.enableNotifications || true,
@@ -336,11 +336,29 @@ export const Settings: React.FC = () => {
           secondaryColor: brandingSettings.secondaryColor,
           accentColor: brandingSettings.accentColor
         }
-      });
+      };
+
+      // Only include logo if it's been explicitly updated
+      if (logoUpdated && brandingSettings.logo) {
+        // Validate logo data
+        if (typeof brandingSettings.logo === 'string' && brandingSettings.logo.startsWith('data:image/')) {
+          // Check size - Firebase has ~1MB per field limit
+          if (brandingSettings.logo.length > 900000) {
+            throw new Error('Logo file is too large. Please compress the image further.');
+          }
+          updateData.logo = brandingSettings.logo;
+        } else if (brandingSettings.logo) {
+          console.warn('Invalid logo format, skipping logo update');
+        }
+      }
+
+      // Update the business with new data
+      await BusinessService.updateBusiness(business.id, updateData);
 
       // Update the original subdomain to prevent unnecessary checks
       setOriginalSubdomain(storeData.subdomain);
       setSubdomainAvailable(null);
+      setLogoUpdated(false); // Reset logo updated flag
       
       toast.success('Settings saved successfully!');
     } catch (error: any) {
@@ -350,11 +368,15 @@ export const Settings: React.FC = () => {
       if (error.code === 'permission-denied') {
         toast.error('Permission denied. Please sign in again and try.');
       } else if (error.code === 'invalid-argument') {
-        toast.error('Invalid data format. Please check your logo file size and try again.');
+        toast.error('Invalid data format. Please check all fields and try again.');
       } else if (error.message?.includes('document too large')) {
-        toast.error('Document too large. Please use a smaller logo file.');
+        toast.error('Settings data is too large. Please use a smaller logo file.');
+      } else if (error.message?.includes('Logo file is too large')) {
+        toast.error('Logo file is too large. Please compress the image further.');
       } else if (error.message?.includes('logo') || error.message?.includes('Logo')) {
         toast.error('Logo upload failed. Please try with a smaller image (under 500KB).');
+      } else if (error.message?.includes('subdomain')) {
+        toast.error('Subdomain error. Please check the subdomain format and try again.');
       } else {
         toast.error(`Failed to save settings: ${error.message || 'Unknown error'}`);
       }
@@ -431,6 +453,7 @@ export const Settings: React.FC = () => {
                 ...brandingSettings,
                 logo: compressedDataUrl
               });
+              setLogoUpdated(true); // Mark logo as explicitly updated
               
               toast.success('Logo uploaded and optimized successfully! Don\'t forget to save your settings.');
             }
