@@ -4,10 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Store, ArrowRight, ArrowLeft, Check } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import toast from 'react-hot-toast';
 import { AuthService } from '../../services/auth';
 import { UserService } from '../../services/user';
 import { BusinessService } from '../../services/business';
+import { CountryService, type Country, type State } from '../../data/countries';
 
 interface FormData {
   storeName: string;
@@ -34,11 +36,14 @@ export const SignUp: React.FC = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [states, setStates] = useState<State[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(true);
   const [formData, setFormData] = useState<FormData>({
     storeName: '',
     email: '',
     password: '',
-    country: '',
+    country: 'Nigeria', // Default to Nigeria
     state: ''
   });
 
@@ -47,6 +52,43 @@ export const SignUp: React.FC = () => {
     available: null,
     message: ''
   });
+
+  // Load countries on component mount
+  useEffect(() => {
+    const loadCountries = async () => {
+      try {
+        setLoadingCountries(true);
+        const countriesList = await CountryService.getAllCountries();
+        setCountries(countriesList);
+        
+        // Set Nigeria states as default
+        const nigerianStates = CountryService.getStatesByCountryCode('NG');
+        setStates(nigerianStates);
+      } catch (error) {
+        console.error('Error loading countries:', error);
+        toast.error('Failed to load countries');
+      } finally {
+        setLoadingCountries(false);
+      }
+    };
+
+    loadCountries();
+  }, []);
+
+  // Update states when country changes
+  useEffect(() => {
+    if (formData.country) {
+      const countryCode = countries.find(c => c.name === formData.country)?.code;
+      if (countryCode) {
+        const countryStates = CountryService.getStatesByCountryCode(countryCode);
+        setStates(countryStates);
+        // Reset state selection when country changes
+        if (formData.state && !countryStates.find(s => s.name === formData.state)) {
+          setFormData(prev => ({ ...prev, state: '' }));
+        }
+      }
+    }
+  }, [formData.country, countries]);
 
   const generateSubdomain = (storeName: string): string => {
     return storeName
@@ -289,19 +331,27 @@ export const SignUp: React.FC = () => {
       case 4:
         return (
           <div className="space-y-4">
-            <Input
-              type="text"
-              placeholder="Country"
+            <Select
+              options={countries.map(country => ({
+                value: country.name,
+                label: country.name,
+                flag: country.flag
+              }))}
               value={formData.country}
-              onChange={(e) => handleInputChange('country', e.target.value)}
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              onChange={(value) => handleInputChange('country', value)}
+              placeholder={loadingCountries ? 'Loading countries...' : 'Select your country'}
+              disabled={loadingCountries}
             />
-            <Input
-              type="text"
-              placeholder="State/Province"
+            
+            <Select
+              options={states.map(state => ({
+                value: state.name,
+                label: state.name
+              }))}
               value={formData.state}
-              onChange={(e) => handleInputChange('state', e.target.value)}
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              onChange={(value) => handleInputChange('state', value)}
+              placeholder={states.length > 0 ? 'Select your state/province' : 'Please select a country first'}
+              disabled={states.length === 0}
             />
           </div>
         );
