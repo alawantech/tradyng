@@ -306,10 +306,14 @@ export const Settings: React.FC = () => {
         whatsappNumber: storeData.whatsappNumber,
         logo: brandingSettings.logo ? 'Logo present' : 'No logo',
         logoSize: brandingSettings.logo ? brandingSettings.logo.length : 0,
+        logoUpdated: logoUpdated,
         colors: {
           primary: brandingSettings.primaryColor,
           secondary: brandingSettings.secondaryColor,
-          accent: brandingSettings.accentColor
+          accent: brandingSettings.accentColor,
+          primaryValid: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.primaryColor),
+          secondaryValid: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.secondaryColor),
+          accentValid: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.accentColor)
         }
       });
       
@@ -332,24 +336,50 @@ export const Settings: React.FC = () => {
         settings: {
           currency: business.settings?.currency || 'USD',
           enableNotifications: business.settings?.enableNotifications || true,
-          primaryColor: brandingSettings.primaryColor,
-          secondaryColor: brandingSettings.secondaryColor,
-          accentColor: brandingSettings.accentColor
+          // Validate colors before including them
+          primaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.primaryColor) ? 
+                       brandingSettings.primaryColor : '#3B82F6',
+          secondaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.secondaryColor) ? 
+                         brandingSettings.secondaryColor : '#1E40AF',
+          accentColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.accentColor) ? 
+                      brandingSettings.accentColor : '#F59E0B'
         }
       };
 
-      // Only include logo if it's been explicitly updated
+      // Only include logo if it's been explicitly updated and valid
       if (logoUpdated && brandingSettings.logo) {
-        // Validate logo data
-        if (typeof brandingSettings.logo === 'string' && brandingSettings.logo.startsWith('data:image/')) {
-          // Check size - Firebase has ~1MB per field limit
-          if (brandingSettings.logo.length > 900000) {
+        // Strict validation for logo data
+        if (typeof brandingSettings.logo === 'string' && 
+            brandingSettings.logo.startsWith('data:image/') &&
+            brandingSettings.logo.length > 100) { // Must have actual data
+          
+          // Check size - Firebase has strict limits
+          if (brandingSettings.logo.length > 800000) { // 800KB limit for safety
             throw new Error('Logo file is too large. Please compress the image further.');
           }
+          
+          console.log('✅ Valid logo detected, including in update');
           updateData.logo = brandingSettings.logo;
-        } else if (brandingSettings.logo) {
-          console.warn('Invalid logo format, skipping logo update');
+        } else {
+          console.warn('❌ Invalid logo format detected, skipping logo update');
+          // Don't include invalid logo data
         }
+      } else {
+        console.log('ℹ️ No logo update needed (logoUpdated:', logoUpdated, ', hasLogo:', !!brandingSettings.logo, ')');
+      }
+
+      console.log('🚀 Final update data to be sent:', {
+        businessId: business.id,
+        dataKeys: Object.keys(updateData),
+        hasLogo: !!updateData.logo,
+        logoSize: updateData.logo ? Math.round(updateData.logo.length / 1024) + 'KB' : 'None',
+        settingsKeys: updateData.settings ? Object.keys(updateData.settings) : []
+      });
+
+      // Final safety check - ensure no undefined or invalid values
+      if (updateData.logo && (!updateData.logo.startsWith('data:image/') || updateData.logo.length < 100)) {
+        console.error('❌ Invalid logo detected at final check, removing');
+        delete updateData.logo;
       }
 
       // Update the business with new data
