@@ -1,3 +1,163 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Brand color CSS custom properties */
+:root {
+  --color-primary: #3B82F6;
+  --color-primary-hover: #2563EB;
+  --color-primary-light: #DBEAFE;
+  --color-primary-dark: #1E40AF;
+  --color-secondary: #1E40AF;
+  --color-secondary-hover: #1E3A8A;
+  --color-accent: #F59E0B;
+  --color-accent-hover: #D97706;
+}
+
+/* Generate lighter and darker shades from primary color */
+.theme-primary {
+  background-color: var(--color-primary);
+}
+
+.theme-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.theme-primary-text {
+  color: var(--color-primary);
+}
+
+.theme-primary-text:hover {
+  color: var(--color-primary-hover);
+}
+
+.theme-primary-border {
+  border-color: var(--color-primary);
+}
+
+.theme-primary-bg-light {
+  background-color: var(--color-primary-light);
+}
+
+.theme-primary-ring {
+  --tw-ring-color: var(--color-primary);
+}
+
+/* Focus styles using primary color */
+.theme-focus {
+  --tw-ring-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.theme-focus:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  --tw-ring-opacity: 1;
+  --tw-ring-color: var(--color-primary);
+  box-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+}
+
+/* Button theme classes */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.btn-primary:focus {
+  --tw-ring-color: var(--color-primary);
+}
+
+/* Secondary colors */
+.theme-secondary {
+  background-color: var(--color-secondary);
+}
+
+.theme-secondary:hover {
+  background-color: var(--color-secondary-hover);
+}
+
+.theme-secondary-text {
+  color: var(--color-secondary);
+}
+
+.theme-secondary-text:hover {
+  color: var(--color-secondary-hover);
+}
+
+.theme-secondary-border {
+  border-color: var(--color-secondary);
+}
+
+/* Accent colors */
+.theme-accent {
+  background-color: var(--color-accent);
+}
+
+.theme-accent:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.theme-accent-text {
+  color: var(--color-accent);
+}
+
+.theme-accent-text:hover {
+  color: var(--color-accent-hover);
+}
+
+.theme-accent-border {
+  border-color: var(--color-accent);
+}
+
+/* Button variants */
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: white;
+  border-color: var(--color-secondary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-secondary-hover);
+  border-color: var(--color-secondary-hover);
+}
+
+.btn-accent {
+  background-color: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
+.btn-accent:hover {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+/* Hero section and gradient backgrounds */
+.theme-hero-gradient {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 50%, var(--color-primary-dark) 100%);
+}
+
+.theme-storefront-hero-gradient {
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-accent) 100%);
+}
+
+.theme-primary-light-text {
+  color: var(--color-primary-light);
+}
+
+/* Hero button variants */
+.hero-btn-primary {
+  background-color: white;
+  color: var(--color-primary);
+}
+
+.hero-btn-primary:hover {
+  background-color: #f9fafb;
+  color: var(--color-primary-hover);
+}

@@ -103,7 +103,7 @@ export const LandingPage: React.FC = () => {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
+      <section className="relative theme-hero-gradient text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <motion.div
@@ -113,16 +113,16 @@ export const LandingPage: React.FC = () => {
             >
               <h1 className="text-4xl lg:text-6xl font-bold leading-tight mb-6">
                 Build Your
-                <span className="text-blue-300"> Dream Store </span>
+                <span className="theme-primary-light-text"> Dream Store </span>
                 in Minutes
               </h1>
-              <p className="text-xl text-blue-100 mb-8 leading-relaxed">
+              <p className="text-xl theme-primary-light-text mb-8 leading-relaxed">
                 Create a professional online store with your own custom domain. 
                 Start selling today with our powerful e-commerce platform.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link to="/auth/signup">
-                  <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg">
+                  <Button size="lg" className="hero-btn-primary px-8 py-4 text-lg">
                     Start Your Store Free
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -130,7 +130,7 @@ export const LandingPage: React.FC = () => {
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 text-lg"
+                  className="border-white text-white hover:bg-white hover:theme-primary-text px-8 py-4 text-lg"
                 >
                   Watch Demo
                 </Button>

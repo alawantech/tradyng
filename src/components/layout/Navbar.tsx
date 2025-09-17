@@ -12,20 +12,20 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center space-x-2">
-            <Store className="h-8 w-8 text-blue-600" />
+            <Store className="h-8 w-8 theme-primary-text" />
             <span className="text-xl font-bold text-gray-900">trady.ng</span>
           </Link>
           
           {isHomePage && (
             <>
               <div className="hidden md:flex items-center space-x-8">
-                <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors">
+                <Link to="/" className="text-gray-700 hover:theme-primary-text transition-colors">
                   Home
                 </Link>
-                <Link to="#features" className="text-gray-700 hover:text-blue-600 transition-colors">
+                <Link to="#features" className="text-gray-700 hover:theme-primary-text transition-colors">
                   Features
                 </Link>
-                <Link to="#pricing" className="text-gray-700 hover:text-blue-600 transition-colors">
+                <Link to="#pricing" className="text-gray-700 hover:theme-primary-text transition-colors">
                   Pricing
                 </Link>
               </div>

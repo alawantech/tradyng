@@ -23,7 +23,7 @@ export const Input: React.FC<InputProps> = ({ label, error, icon, className = ''
           </div>
         )}
         <input
-          className={`w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+          className={`w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none theme-focus ${
             error ? 'border-red-500' : ''
           } ${className}`}
           {...props}

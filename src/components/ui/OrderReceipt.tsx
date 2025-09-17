@@ -58,7 +58,7 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
       </div>
       <div className="text-center mt-8">
         <button
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700"
+          className="btn-primary px-6 py-2 rounded-lg font-medium"
           onClick={() => window.print()}
         >
           Download / Print Receipt

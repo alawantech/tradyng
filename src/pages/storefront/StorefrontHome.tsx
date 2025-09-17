@@ -54,7 +54,7 @@ export const StorefrontHome: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-r from-blue-600 to-purple-700 text-white">
+      <section className="relative theme-storefront-hero-gradient text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -65,11 +65,11 @@ export const StorefrontHome: React.FC = () => {
             <h1 className="text-4xl lg:text-6xl font-bold mb-6">
               Welcome to {business.name}
             </h1>
-            <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+            <p className="text-xl theme-primary-light-text mb-8 max-w-2xl mx-auto">
               {business.description || `Discover amazing products from ${business.name}. Quality guaranteed, fast shipping.`}
             </p>
             <Link to="/products">
-              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
+              <Button size="lg" className="hero-btn-primary">
                 Shop Now
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

@@ -54,7 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business' }) => {
     <div className="w-64 bg-white shadow-lg h-screen flex flex-col">
       <div className="p-6">
         <Link to="/" className="flex items-center space-x-2">
-          <Store className="h-8 w-8 text-blue-600" />
+          <Store className="h-8 w-8 theme-primary-text" />
           <span className="text-xl font-bold text-gray-900">trady.ng</span>
         </Link>
       </div>
@@ -70,8 +70,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business' }) => {
               to={item.path}
               className={`flex items-center px-6 py-3 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'text-blue-600 bg-blue-50 border-r-2 border-blue-600'
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  ? 'theme-primary-text theme-primary-bg-light border-r-2 theme-primary-border'
+                  : 'text-gray-700 hover:theme-primary-text hover:bg-gray-50'
               }`}
             >
               <Icon className="h-5 w-5 mr-3" />
@@ -85,7 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business' }) => {
       {type === 'business' && (
         <div className="border-t border-gray-200 mt-auto">
           <div className="px-6 py-4">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            <h3 className="text-xs font-semibold theme-secondary-text uppercase tracking-wide mb-3">
               Store Actions
             </h3>
             <button

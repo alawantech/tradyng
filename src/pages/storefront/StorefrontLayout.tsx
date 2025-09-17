@@ -1,5 +1,5 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { Store, ShoppingCart, User, Search, ChevronDown } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -25,6 +25,7 @@ const StoreContext = createContext<StoreContextType>({
 export const useStore = () => useContext(StoreContext);
 
 export const StorefrontLayout: React.FC = () => {
+  const location = useLocation();
   const { itemCount } = useCart();
   const { user, signOut } = useCustomerAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -191,15 +192,34 @@ export const StorefrontLayout: React.FC = () => {
           <div className="border-t">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <nav className="flex space-x-8 py-4">
-                <Link to="/" className="text-gray-700 font-medium" style={{ 
-                  color: window.location.pathname === '/' ? primaryColor : undefined 
-                }}>
+                <Link 
+                  to="/" 
+                  className={`font-medium transition-colors ${
+                    location.pathname === '/' 
+                      ? 'theme-primary-text' 
+                      : 'text-gray-700 hover:theme-primary-text'
+                  }`}
+                >
                   Home
                 </Link>
-                <Link to="/products" className="text-gray-700 hover:text-blue-600 font-medium">
+                <Link 
+                  to="/products" 
+                  className={`font-medium transition-colors ${
+                    location.pathname === '/products' 
+                      ? 'theme-primary-text' 
+                      : 'text-gray-700 hover:theme-primary-text'
+                  }`}
+                >
                   All Products
                 </Link>
-                <Link to="/contact" className="text-gray-700 hover:text-blue-600 font-medium">
+                <Link 
+                  to="/contact" 
+                  className={`font-medium transition-colors ${
+                    location.pathname === '/contact' 
+                      ? 'theme-primary-text' 
+                      : 'text-gray-700 hover:theme-primary-text'
+                  }`}
+                >
                   Contact
                 </Link>
               </nav>

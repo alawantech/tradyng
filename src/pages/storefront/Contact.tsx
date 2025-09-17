@@ -1,0 +1,241 @@
+import React, { useState } from 'react';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useStore } from './StorefrontLayout';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Card } from '../../components/ui/Card';
+import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+export const Contact: React.FC = () => {
+  const { primaryColor } = useTheme();
+  const { business } = useStore();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    // Simulate form submission
+    setTimeout(() => {
+      toast.success('Message sent successfully! We\'ll get back to you soon.');
+      setFormData({ name: '', email: '', subject: '', message: '' });
+      setIsSubmitting(false);
+    }, 1000);
+  };
+
+  const storeName = business?.name || 'Our Store';
+  const storeEmail = business?.email || 'contact@example.com';
+  const storePhone = business?.phone || '+1 (555) 123-4567';
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section */}
+      <div 
+        className="relative py-16 theme-hero-gradient"
+        style={{
+          background: `linear-gradient(135deg, ${primaryColor}15, ${primaryColor}05)`
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-4xl font-bold mb-4" style={{ color: primaryColor }}>
+            Contact Us
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Contact Form */}
+          <Card className="p-8">
+            <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>
+              Send us a Message
+            </h2>
+            
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </label>
+                  <Input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="Your full name"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <Input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="your.email@example.com"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject
+                </label>
+                <Input
+                  type="text"
+                  id="subject"
+                  name="subject"
+                  value={formData.subject}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="What is this regarding?"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                  Message
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  rows={6}
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="Tell us how we can help you..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:border-transparent resize-none"
+                  style={{
+                    '--tw-ring-color': primaryColor,
+                  } as React.CSSProperties}
+                />
+              </div>
+              
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Sending...
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Message
+                  </div>
+                )}
+              </Button>
+            </form>
+          </Card>
+
+          {/* Contact Information */}
+          <div className="space-y-8">
+            <Card className="p-8">
+              <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>
+                Get in Touch
+              </h2>
+              
+              <div className="space-y-6">
+                {business?.address && (
+                  <div className="flex items-start">
+                    <MapPin className="h-5 w-5 mt-1 mr-4" style={{ color: primaryColor }} />
+                    <div>
+                      <h3 className="font-medium text-gray-900">Address</h3>
+                      <p className="text-gray-600 mt-1">
+                        {business.address}
+                        {business.city && `, ${business.city}`}
+                        {business.state && `, ${business.state}`}
+                        {business.country && `, ${business.country}`}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-start">
+                  <Phone className="h-5 w-5 mt-1 mr-4" style={{ color: primaryColor }} />
+                  <div>
+                    <h3 className="font-medium text-gray-900">Phone</h3>
+                    <p className="text-gray-600 mt-1">{storePhone}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <Mail className="h-5 w-5 mt-1 mr-4" style={{ color: primaryColor }} />
+                  <div>
+                    <h3 className="font-medium text-gray-900">Email</h3>
+                    <p className="text-gray-600 mt-1">{storeEmail}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <Clock className="h-5 w-5 mt-1 mr-4" style={{ color: primaryColor }} />
+                  <div>
+                    <h3 className="font-medium text-gray-900">Business Hours</h3>
+                    <div className="text-gray-600 mt-1 space-y-1">
+                      <p>Monday - Friday: 9:00 AM - 6:00 PM</p>
+                      <p>Saturday: 10:00 AM - 4:00 PM</p>
+                      <p>Sunday: Closed</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Quick Info Card */}
+            <Card className="p-6 bg-gradient-to-br from-gray-50 to-gray-100">
+              <h3 className="font-bold text-lg mb-3" style={{ color: primaryColor }}>
+                Why Choose {storeName}?
+              </h3>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li className="flex items-center">
+                  <span className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: primaryColor }}></span>
+                  Fast and reliable customer service
+                </li>
+                <li className="flex items-center">
+                  <span className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: primaryColor }}></span>
+                  Quality products with warranty
+                </li>
+                <li className="flex items-center">
+                  <span className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: primaryColor }}></span>
+                  Free shipping on orders over $50
+                </li>
+                <li className="flex items-center">
+                  <span className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: primaryColor }}></span>
+                  30-day return policy
+                </li>
+              </ul>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -213,11 +213,11 @@ export const ProductDetails: React.FC = () => {
           </div>
 
           <div className="flex space-x-6">
-            <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600">
+            <button className="flex items-center space-x-2 text-gray-600 hover:theme-primary-text">
               <Heart className="h-5 w-5" />
               <span>Add to Wishlist</span>
             </button>
-            <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600">
+            <button className="flex items-center space-x-2 text-gray-600 hover:theme-primary-text">
               <Share2 className="h-5 w-5" />
               <span>Share</span>
             </button>

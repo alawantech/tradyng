@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { SubdomainService, SubdomainInfo } from './services/subdomain';
 import { CartProvider } from './contexts/CartContext';
 import { CustomerAuthProvider } from './contexts/CustomerAuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Pages
 import { LandingPage } from './pages/LandingPage';
@@ -26,6 +27,7 @@ import { ProductDetails } from './pages/storefront/ProductDetails';
 import { Cart } from './pages/storefront/Cart';
 import { Checkout } from './pages/storefront/Checkout';
 import { Payment } from './pages/storefront/Payment';
+import { Contact } from './pages/storefront/Contact';
 
 // Admin
 import { AdminLayout } from './pages/admin/AdminLayout';
@@ -68,71 +70,74 @@ function App() {
   }
 
   return (
-    <Router>
-      <div className="App">
-        {subdomainInfo?.isSubdomain ? (
-          // Store routes - only show storefront for subdomains
-          <CustomerAuthProvider>
-            <CartProvider>
-              <Routes>
-                <Route path="/" element={<StorefrontLayout />}>
-                  <Route index element={<StorefrontHome />} />
-                  <Route path="products" element={<ProductListing />} />
-                  <Route path="product/:id" element={<ProductDetails />} />
-                  <Route path="cart" element={<Cart />} />
-                  <Route path="checkout" element={<Checkout />} />
-                  <Route path="payment" element={<Payment />} />
-                </Route>
-                {/* Redirect any other routes to the store home */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </CartProvider>
-          </CustomerAuthProvider>
-        ) : (
-          // Main site routes - dashboard and landing page
-          <Routes>
-            {/* Landing Page */}
-            <Route path="/" element={<LandingPage />} />
-            
-            {/* Authentication */}
-            <Route path="/auth/signup" element={<SignUp />} />
-            <Route path="/auth/signin" element={<SignIn />} />
-            
-            {/* Dashboard */}
-            <Route path="/dashboard" element={<DashboardLayout />}>
-              <Route index element={<Products />} />
-              <Route path="products" element={<Products />} />
-              <Route path="orders" element={<Orders />} />
-              <Route path="customers" element={<Customers />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-            
-            {/* Admin */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<Businesses />} />
-              <Route path="businesses" element={<Businesses />} />
-              <Route path="orders" element={<AdminOrders />} />
-              <Route path="subscriptions" element={<Subscriptions />} />
-              <Route path="analytics" element={<AdminAnalytics />} />
-              <Route path="settings" element={<AdminSettings />} />
-            </Route>
-          </Routes>
-        )}
-        
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#fff',
-              color: '#374151',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-            },
-          }}
-        />
-      </div>
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <div className="App">
+          {subdomainInfo?.isSubdomain ? (
+            // Store routes - only show storefront for subdomains
+            <CustomerAuthProvider>
+              <CartProvider>
+                <Routes>
+                  <Route path="/" element={<StorefrontLayout />}>
+                    <Route index element={<StorefrontHome />} />
+                    <Route path="products" element={<ProductListing />} />
+                    <Route path="product/:id" element={<ProductDetails />} />
+                    <Route path="contact" element={<Contact />} />
+                    <Route path="cart" element={<Cart />} />
+                    <Route path="checkout" element={<Checkout />} />
+                    <Route path="payment" element={<Payment />} />
+                  </Route>
+                  {/* Redirect any other routes to the store home */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </CartProvider>
+            </CustomerAuthProvider>
+          ) : (
+            // Main site routes - dashboard and landing page
+            <Routes>
+              {/* Landing Page */}
+              <Route path="/" element={<LandingPage />} />
+              
+              {/* Authentication */}
+              <Route path="/auth/signup" element={<SignUp />} />
+              <Route path="/auth/signin" element={<SignIn />} />
+              
+              {/* Dashboard */}
+              <Route path="/dashboard" element={<DashboardLayout />}>
+                <Route index element={<Products />} />
+                <Route path="products" element={<Products />} />
+                <Route path="orders" element={<Orders />} />
+                <Route path="customers" element={<Customers />} />
+                <Route path="analytics" element={<Analytics />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+              
+              {/* Admin */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Businesses />} />
+                <Route path="orders" element={<AdminOrders />} />
+                <Route path="businesses" element={<Businesses />} />
+                <Route path="subscriptions" element={<Subscriptions />} />
+                <Route path="analytics" element={<AdminAnalytics />} />
+                <Route path="settings" element={<AdminSettings />} />
+              </Route>
+            </Routes>
+          )}
+          
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#fff',
+                color: '#374151',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+              },
+            }}
+          />
+        </div>
+      </Router>
+    </ThemeProvider>
   );
 }
 

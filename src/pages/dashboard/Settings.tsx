@@ -4,11 +4,13 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../contexts/ThemeContext';
 import { BusinessService } from '../../services/business';
 import toast from 'react-hot-toast';
 
 export const Settings: React.FC = () => {
   const { user, business, loading: authLoading } = useAuth();
+  const { updateTheme, primaryColor, secondaryColor, accentColor } = useTheme();
   const [saving, setSaving] = useState(false);
   const [checkingSubdomain, setCheckingSubdomain] = useState(false);
   const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null);
@@ -323,16 +325,18 @@ export const Settings: React.FC = () => {
         return;
       }
       
-      // Prepare update data
+      // Prepare update data with proper validation
       const updateData: any = {
         name: storeData.storeName,
         subdomain: storeData.subdomain,
-        customDomain: storeData.customDomain || undefined,
-        description: storeData.description,
-        phone: storeData.whatsappNumber, // Store WhatsApp number in phone field
-        address: storeData.address,
-        country: storeData.country,
-        state: storeData.state,
+        // Only include customDomain if it has a value
+        ...(storeData.customDomain && storeData.customDomain.trim() && { customDomain: storeData.customDomain }),
+        description: storeData.description || '',
+        // Only include phone if whatsappNumber has a value
+        ...(storeData.whatsappNumber && storeData.whatsappNumber.trim() && { phone: storeData.whatsappNumber }),
+        address: storeData.address || '',
+        country: storeData.country || '',
+        state: storeData.state || '',
         settings: {
           currency: business.settings?.currency || 'USD',
           enableNotifications: business.settings?.enableNotifications || true,
@@ -376,19 +380,80 @@ export const Settings: React.FC = () => {
         settingsKeys: updateData.settings ? Object.keys(updateData.settings) : []
       });
 
+      // Log complete data structure for debugging
+      console.log('📋 Complete update data structure:', JSON.stringify(updateData, null, 2));
+
+      // Check each field for potential issues
+      Object.entries(updateData).forEach(([key, value]) => {
+        console.log(`🔍 Field "${key}":`, {
+          type: typeof value,
+          value: key === 'logo' ? `[${(value as string)?.length || 0} chars]` : value,
+          isUndefined: value === undefined,
+          isNull: value === null,
+          isEmpty: value === ''
+        });
+      });
+
       // Final safety check - ensure no undefined or invalid values
       if (updateData.logo && (!updateData.logo.startsWith('data:image/') || updateData.logo.length < 100)) {
         console.error('❌ Invalid logo detected at final check, removing');
         delete updateData.logo;
       }
 
+      // Remove any undefined values that might cause Firebase issues
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === undefined) {
+          console.warn(`⚠️ Removing undefined field: ${key}`);
+          delete updateData[key];
+        }
+      });
+
+      console.log('🧪 Testing with color-only update first...');
+      
+      // First try a minimal color-only update to isolate the issue
+      try {
+        const colorOnlyUpdate = {
+          settings: {
+            ...business.settings,
+            primaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.primaryColor) ? 
+                         brandingSettings.primaryColor : '#3B82F6',
+            secondaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.secondaryColor) ? 
+                           brandingSettings.secondaryColor : '#1E40AF',
+            accentColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.accentColor) ? 
+                        brandingSettings.accentColor : '#F59E0B'
+          }
+        };
+        
+        console.log('🎨 Color-only update data:', JSON.stringify(colorOnlyUpdate, null, 2));
+        await BusinessService.updateBusiness(business.id, colorOnlyUpdate);
+        console.log('✅ Color-only update successful! Now trying full update...');
+        
+        // If color-only works, try the full update
+        await BusinessService.updateBusiness(business.id, updateData);
+      } catch (colorError: any) {
+        console.error('❌ Color-only update failed:', colorError);
+        // If even color-only fails, the issue is with the color data itself
+        throw new Error(`Color update failed: ${colorError?.message || 'Unknown error'}`);
+      }
+
       // Update the business with new data
-      await BusinessService.updateBusiness(business.id, updateData);
+      // await BusinessService.updateBusiness(business.id, updateData);
 
       // Update the original subdomain to prevent unnecessary checks
       setOriginalSubdomain(storeData.subdomain);
       setSubdomainAvailable(null);
       setLogoUpdated(false); // Reset logo updated flag
+      
+      // Update theme with new colors immediately
+      console.log('🎨 Updating theme with new brand colors...');
+      updateTheme({
+        primaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.primaryColor) ? 
+                     brandingSettings.primaryColor : '#3B82F6',
+        secondaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.secondaryColor) ? 
+                       brandingSettings.secondaryColor : '#1E40AF',
+        accentColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.accentColor) ? 
+                    brandingSettings.accentColor : '#F59E0B'
+      });
       
       toast.success('Settings saved successfully!');
     } catch (error: any) {
@@ -530,7 +595,7 @@ export const Settings: React.FC = () => {
       <div className="p-6 max-w-4xl">
         <div className="text-center">
           <div className="mb-6">
-            <Store className="h-16 w-16 text-blue-600 mx-auto mb-4" />
+            <Store className="h-16 w-16 theme-primary-text mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h1>
             <p className="text-gray-600 mb-6">Please sign in to access your store settings</p>
           </div>
@@ -544,7 +609,7 @@ export const Settings: React.FC = () => {
             <div className="space-y-3">
               <Button 
                 onClick={() => window.location.href = '/auth/signin'}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                className="w-full btn-primary"
               >
                 🔐 Sign In
               </Button>
@@ -558,7 +623,7 @@ export const Settings: React.FC = () => {
               </Button>
             </div>
             
-            <div className="mt-4 text-sm text-blue-600">
+            <div className="mt-4 text-sm theme-primary-text">
               <p className="font-medium">Have an account but can't access it?</p>
               <p>Use the email: <code className="bg-blue-100 px-1 rounded">nn@gmail.com</code></p>
               <p>with the password you created during signup.</p>
@@ -604,7 +669,7 @@ export const Settings: React.FC = () => {
                 </Button>
                 <Button 
                   onClick={createMissingBusiness} 
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="btn-primary"
                 >
                   🏪 Create Business Account
                 </Button>
@@ -672,13 +737,13 @@ export const Settings: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     {checkingSubdomain ? (
                       <>
-                        <Loader className="h-4 w-4 animate-spin text-blue-600" />
-                        <p className="text-sm text-blue-600">Checking availability...</p>
+                        <Loader className="h-4 w-4 animate-spin theme-primary-text" />
+                        <p className="text-sm theme-primary-text">Checking availability...</p>
                       </>
                     ) : subdomainAvailable === true ? (
                       <>
-                        <Check className="h-4 w-4 text-green-600" />
-                        <p className="text-sm text-green-600">✅ Available! This subdomain is ready to use.</p>
+                        <Check className="h-4 w-4 theme-accent-text" />
+                        <p className="text-sm theme-accent-text">✅ Available! This subdomain is ready to use.</p>
                       </>
                     ) : subdomainAvailable === false ? (
                       <>
@@ -691,7 +756,7 @@ export const Settings: React.FC = () => {
                 
                 {/* Current subdomain message */}
                 {storeData.subdomain === originalSubdomain && originalSubdomain && (
-                  <div className="flex items-center space-x-2 text-blue-600">
+                  <div className="flex items-center space-x-2 theme-primary-text">
                     <Check className="h-4 w-4" />
                     <p className="text-sm">This is your current subdomain</p>
                   </div>
@@ -719,7 +784,7 @@ export const Settings: React.FC = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => window.open(`https://${storeData.subdomain}.trady.ng`, '_blank')}
-                          className="text-blue-600 hover:text-blue-700"
+                          className="theme-primary-text hover:theme-primary-text"
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>
@@ -937,7 +1002,12 @@ export const Settings: React.FC = () => {
                     value={brandingSettings.primaryColor}
                     onChange={(e) => {
                       console.log('🎨 Primary color changed to:', e.target.value);
-                      setBrandingSettings({...brandingSettings, primaryColor: e.target.value});
+                      const newColor = e.target.value;
+                      setBrandingSettings({...brandingSettings, primaryColor: newColor});
+                      // Live preview - update theme immediately
+                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
+                        updateTheme({ primaryColor: newColor });
+                      }
                     }}
                     className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
                   />
@@ -945,7 +1015,12 @@ export const Settings: React.FC = () => {
                     value={brandingSettings.primaryColor} 
                     onChange={(e) => {
                       console.log('🎨 Primary color text input changed to:', e.target.value);
-                      setBrandingSettings({...brandingSettings, primaryColor: e.target.value});
+                      const newColor = e.target.value;
+                      setBrandingSettings({...brandingSettings, primaryColor: newColor});
+                      // Live preview - update theme immediately if valid hex
+                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
+                        updateTheme({ primaryColor: newColor });
+                      }
                     }}
                     placeholder="#3B82F6"
                     className="font-mono text-sm"
@@ -965,7 +1040,12 @@ export const Settings: React.FC = () => {
                     value={brandingSettings.secondaryColor}
                     onChange={(e) => {
                       console.log('🎨 Secondary color changed to:', e.target.value);
-                      setBrandingSettings({...brandingSettings, secondaryColor: e.target.value});
+                      const newColor = e.target.value;
+                      setBrandingSettings({...brandingSettings, secondaryColor: newColor});
+                      // Live preview - update theme immediately
+                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
+                        updateTheme({ secondaryColor: newColor });
+                      }
                     }}
                     className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
                   />
@@ -973,7 +1053,12 @@ export const Settings: React.FC = () => {
                     value={brandingSettings.secondaryColor}
                     onChange={(e) => {
                       console.log('🎨 Secondary color text input changed to:', e.target.value);
-                      setBrandingSettings({...brandingSettings, secondaryColor: e.target.value});
+                      const newColor = e.target.value;
+                      setBrandingSettings({...brandingSettings, secondaryColor: newColor});
+                      // Live preview - update theme immediately if valid hex
+                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
+                        updateTheme({ secondaryColor: newColor });
+                      }
                     }}
                     placeholder="#10B981"
                     className="font-mono text-sm"
@@ -993,7 +1078,12 @@ export const Settings: React.FC = () => {
                     value={brandingSettings.accentColor}
                     onChange={(e) => {
                       console.log('🎨 Accent color changed to:', e.target.value);
-                      setBrandingSettings({...brandingSettings, accentColor: e.target.value});
+                      const newColor = e.target.value;
+                      setBrandingSettings({...brandingSettings, accentColor: newColor});
+                      // Live preview - update theme immediately
+                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
+                        updateTheme({ accentColor: newColor });
+                      }
                     }}
                     className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
                   />
@@ -1001,7 +1091,12 @@ export const Settings: React.FC = () => {
                     value={brandingSettings.accentColor}
                     onChange={(e) => {
                       console.log('🎨 Accent color text input changed to:', e.target.value);
-                      setBrandingSettings({...brandingSettings, accentColor: e.target.value});
+                      const newColor = e.target.value;
+                      setBrandingSettings({...brandingSettings, accentColor: newColor});
+                      // Live preview - update theme immediately if valid hex
+                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
+                        updateTheme({ accentColor: newColor });
+                      }
                     }}
                     placeholder="#F59E0B"
                     className="font-mono text-sm"
@@ -1014,24 +1109,79 @@ export const Settings: React.FC = () => {
             {/* Color Preview */}
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <h3 className="text-sm font-medium text-gray-900 mb-3">Color Preview</h3>
-              <div className="flex space-x-4">
-                <div 
-                  className="w-16 h-16 rounded-lg shadow-sm border-2 border-white flex items-center justify-center"
-                  style={{ backgroundColor: brandingSettings.primaryColor }}
-                >
-                  <span className="text-white text-xs font-medium">Primary</span>
+              <div className="space-y-4">
+                {/* Color Swatches */}
+                <div className="flex space-x-4">
+                  <div 
+                    className="w-16 h-16 rounded-lg shadow-sm border-2 border-white flex items-center justify-center"
+                    style={{ backgroundColor: brandingSettings.primaryColor }}
+                  >
+                    <span className="text-white text-xs font-medium">Primary</span>
+                  </div>
+                  <div 
+                    className="w-16 h-16 rounded-lg shadow-sm border-2 border-white flex items-center justify-center"
+                    style={{ backgroundColor: brandingSettings.secondaryColor }}
+                  >
+                    <span className="text-white text-xs font-medium">Secondary</span>
+                  </div>
+                  <div 
+                    className="w-16 h-16 rounded-lg shadow-sm border-2 border-white flex items-center justify-center"
+                    style={{ backgroundColor: brandingSettings.accentColor }}
+                  >
+                    <span className="text-white text-xs font-medium">Accent</span>
+                  </div>
                 </div>
-                <div 
-                  className="w-16 h-16 rounded-lg shadow-sm border-2 border-white flex items-center justify-center"
-                  style={{ backgroundColor: brandingSettings.secondaryColor }}
-                >
-                  <span className="text-white text-xs font-medium">Secondary</span>
-                </div>
-                <div 
-                  className="w-16 h-16 rounded-lg shadow-sm border-2 border-white flex items-center justify-center"
-                  style={{ backgroundColor: brandingSettings.accentColor }}
-                >
-                  <span className="text-white text-xs font-medium">Accent</span>
+                
+                {/* Example Usage */}
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-600 font-medium">Example Usage:</p>
+                  <div className="flex space-x-2">
+                    <Button variant="primary" size="sm">Primary Action</Button>
+                    <Button variant="secondary" size="sm">Secondary</Button>
+                    <Button variant="accent" size="sm">Accent</Button>
+                  </div>
+                  <div className="flex items-center space-x-4 text-sm">
+                    <span className="theme-primary-text font-medium">Primary Text</span>
+                    <span className="theme-secondary-text font-medium">Secondary Text</span>
+                    <span className="theme-accent-text font-medium">Accent Text</span>
+                  </div>
+                  
+                  {/* Theme Debug Info */}
+                  <div className="mt-4 p-3 bg-gray-100 rounded text-xs">
+                    <p className="font-medium mb-2">🔍 Current Theme Status:</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <span className="block text-gray-600">Primary:</span>
+                        <div className="flex items-center">
+                          <div 
+                            className="w-4 h-4 rounded mr-2 border" 
+                            style={{ backgroundColor: 'var(--color-primary)' }}
+                          ></div>
+                          <span className="font-mono">{primaryColor}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="block text-gray-600">Secondary:</span>
+                        <div className="flex items-center">
+                          <div 
+                            className="w-4 h-4 rounded mr-2 border" 
+                            style={{ backgroundColor: 'var(--color-secondary)' }}
+                          ></div>
+                          <span className="font-mono">{secondaryColor}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="block text-gray-600">Accent:</span>
+                        <div className="flex items-center">
+                          <div 
+                            className="w-4 h-4 rounded mr-2 border" 
+                            style={{ backgroundColor: 'var(--color-accent)' }}
+                          ></div>
+                          <span className="font-mono">{accentColor}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <p className="text-xs text-gray-600 mt-2">
