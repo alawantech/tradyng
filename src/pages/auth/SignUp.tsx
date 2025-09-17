@@ -195,44 +195,59 @@ export const SignUp: React.FC = () => {
       console.log('✅ Firebase Auth user created:', { uid: authUser.uid, email: authUser.email });
       
       // 2. Create user document in Firestore
+      // Check if email should be admin (for testing purposes)
+      const isAdminEmail = formData.email.includes('admin@') || formData.email.includes('@admin.');
+      const userRole = isAdminEmail ? 'admin' : 'business_owner';
+      
       await UserService.createUser({
         uid: authUser.uid,
         email: formData.email,
         displayName: formData.storeName,
-        role: 'business_owner'
+        role: userRole
       });
-      console.log('✅ User document created in Firestore');
+      console.log('✅ User document created in Firestore with role:', userRole);
       
-      // 3. Generate subdomain from store name
-      const subdomain = generateSubdomain(formData.storeName);
-      console.log('🌐 Generated subdomain:', subdomain);
-      
-      // 4. Create business document
-      await BusinessService.createBusiness({
-        name: formData.storeName,
-        subdomain: subdomain,
-        ownerId: authUser.uid,
-        email: formData.email,
-        country: formData.country,
-        state: formData.state,
-        plan: 'free',
-        status: 'active',
-        settings: {
-          currency: 'USD',
-          primaryColor: '#3B82F6',
-          secondaryColor: '#10B981',
-          accentColor: '#F59E0B',
-          enableNotifications: true
-        },
-        revenue: 0,
-        totalOrders: 0,
-        totalProducts: 0
-      });
-      
-      toast.success('Account and store created successfully!');
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1000);
+      // Only create business for business owners, not admins
+      if (userRole === 'business_owner') {
+        // 3. Generate subdomain from store name
+        const subdomain = generateSubdomain(formData.storeName);
+        console.log('🌐 Generated subdomain:', subdomain);
+        
+        // 4. Create business document
+        await BusinessService.createBusiness({
+          name: formData.storeName,
+          subdomain: subdomain,
+          ownerId: authUser.uid,
+          email: formData.email,
+          country: formData.country,
+          state: formData.state,
+          plan: 'free',
+          status: 'active',
+          settings: {
+            currency: 'USD',
+            primaryColor: '#3B82F6',
+            secondaryColor: '#10B981',
+            accentColor: '#F59E0B',
+            enableNotifications: true
+          },
+          revenue: 0,
+          totalOrders: 0,
+          totalProducts: 0
+        });
+        console.log('✅ Business created successfully');
+        
+        toast.success('Account and store created successfully!');
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1000);
+      } else {
+        // Admin users go to admin panel
+        console.log('ℹ️ Skipping business creation for admin user');
+        toast.success('Admin account created successfully!');
+        setTimeout(() => {
+          navigate('/admin');
+        }, 1000);
+      }
       
     } catch (error: any) {
       console.error('Signup error:', error);

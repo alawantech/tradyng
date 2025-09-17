@@ -8,6 +8,7 @@ import { Card } from '../../components/ui/Card';
 import toast from 'react-hot-toast';
 import { AuthService } from '../../services/auth';
 import { UserService } from '../../services/user';
+import { FirebaseTest } from '../../utils/firebaseTest';
 
 export const SignIn: React.FC = () => {
   const navigate = useNavigate();
@@ -28,12 +29,46 @@ export const SignIn: React.FC = () => {
       const authUser = await AuthService.signIn(formData.email, formData.password);
       console.log('✅ Successfully signed in:', { uid: authUser.uid, email: authUser.email });
       
+      // Get user role from Firestore
+      const userData = await UserService.getUserById(authUser.uid);
+      console.log('👤 User data retrieved:', userData);
+      
+      if (!userData) {
+        throw new Error('User data not found. Please contact support.');
+      }
+      
       // Update last login
       await UserService.updateLastLogin(authUser.uid);
       
-      toast.success('Welcome back!');
+      // Route based on user role
+      let redirectPath = '/dashboard'; // default for business owners
+      let welcomeMessage = 'Welcome back!';
+      
+      switch (userData.role) {
+        case 'admin':
+          redirectPath = '/admin';
+          welcomeMessage = 'Welcome back, Admin!';
+          break;
+        case 'business_owner':
+          redirectPath = '/dashboard';
+          welcomeMessage = 'Welcome back to your store!';
+          break;
+        case 'customer':
+          // Customers should be redirected to their account page or back to store
+          redirectPath = '/';
+          welcomeMessage = 'Welcome back!';
+          break;
+        default:
+          // Default to dashboard for unknown roles
+          redirectPath = '/dashboard';
+          welcomeMessage = 'Welcome back!';
+      }
+      
+      console.log('🚀 Redirecting to:', redirectPath, 'for role:', userData.role);
+      
+      toast.success(welcomeMessage);
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate(redirectPath);
       }, 1000);
       
     } catch (error: any) {
@@ -76,6 +111,31 @@ export const SignIn: React.FC = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  // Test Firebase connection - for debugging
+  const testFirebase = async () => {
+    console.log('🧪 Testing Firebase connection...');
+    await FirebaseTest.testConnection();
+    
+    // Try to create a test user
+    try {
+      const testEmail = 'test-' + Date.now() + '@example.com';
+      const testPassword = 'TestPass123!';
+      console.log('🧪 Creating test user:', testEmail);
+      const user = await FirebaseTest.testCreateUser(testEmail, testPassword);
+      console.log('✅ Test user created:', user.uid);
+      
+      // Now try to login with the test user
+      console.log('🧪 Testing login with test user...');
+      await FirebaseTest.testLogin(testEmail, testPassword);
+      console.log('✅ Test login successful');
+      
+      toast.success('Firebase test completed successfully!');
+    } catch (error: any) {
+      console.error('❌ Firebase test failed:', error);
+      toast.error('Firebase test failed: ' + error.message);
+    }
   };
 
   return (
@@ -161,6 +221,19 @@ export const SignIn: React.FC = () => {
               Sign in with Google
             </Button>
           </form>
+
+          {/* Debug button - remove in production */}
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-sm text-yellow-800 mb-2">Debug Mode:</p>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full text-sm" 
+              onClick={testFirebase}
+            >
+              🧪 Test Firebase Connection
+            </Button>
+          </div>
 
           <p className="text-center text-sm text-gray-600 mt-6">
             Don't have an account?{' '}
