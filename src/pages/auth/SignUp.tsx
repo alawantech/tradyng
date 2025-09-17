@@ -187,9 +187,12 @@ export const SignUp: React.FC = () => {
     
     setLoading(true);
     
+    console.log('🔐 Creating new account with email:', formData.email);
+    
     try {
       // 1. Create Firebase Auth user
       const authUser = await AuthService.signUp(formData.email, formData.password);
+      console.log('✅ Firebase Auth user created:', { uid: authUser.uid, email: authUser.email });
       
       // 2. Create user document in Firestore
       await UserService.createUser({
@@ -198,9 +201,11 @@ export const SignUp: React.FC = () => {
         displayName: formData.storeName,
         role: 'business_owner'
       });
+      console.log('✅ User document created in Firestore');
       
       // 3. Generate subdomain from store name
       const subdomain = generateSubdomain(formData.storeName);
+      console.log('🌐 Generated subdomain:', subdomain);
       
       // 4. Create business document
       await BusinessService.createBusiness({

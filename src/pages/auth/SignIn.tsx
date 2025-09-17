@@ -21,9 +21,12 @@ export const SignIn: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     
+    console.log('🔐 Attempting to sign in with:', { email: formData.email });
+    
     try {
       // Sign in with Firebase Auth
       const authUser = await AuthService.signIn(formData.email, formData.password);
+      console.log('✅ Successfully signed in:', { uid: authUser.uid, email: authUser.email });
       
       // Update last login
       await UserService.updateLastLogin(authUser.uid);
@@ -35,7 +38,34 @@ export const SignIn: React.FC = () => {
       
     } catch (error: any) {
       console.error('Signin error:', error);
-      toast.error(error.message || 'Failed to sign in');
+      
+      // Handle specific Firebase auth errors
+      let errorMessage = 'Failed to sign in';
+      
+      switch (error.code) {
+        case 'auth/invalid-credential':
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+          break;
+        case 'auth/user-not-found':
+          errorMessage = 'No account found with this email address.';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Invalid email address format.';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'This account has been disabled. Please contact support.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many failed attempts. Please try again later.';
+          break;
+        default:
+          errorMessage = error.message || 'Failed to sign in';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
