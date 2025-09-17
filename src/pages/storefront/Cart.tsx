@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useCart } from '../../contexts/CartContext';
 import { useStore } from './StorefrontLayout';
+import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 
 export const Cart: React.FC = () => {
   const { items, total, itemCount, updateQuantity, removeItem, clearCart } = useCart();
@@ -89,7 +90,7 @@ export const Cart: React.FC = () => {
                     
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
-                      <p className="text-gray-600">${item.price.toFixed(2)} each</p>
+                      <p className="text-gray-600">{formatCurrency(item.price, business?.settings?.currency || DEFAULT_CURRENCY)} each</p>
                     </div>
 
                     <div className="flex items-center space-x-3">
@@ -112,7 +113,7 @@ export const Cart: React.FC = () => {
 
                       <div className="text-right">
                         <p className="text-lg font-semibold text-gray-900">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          {formatCurrency(item.price * item.quantity, business?.settings?.currency || DEFAULT_CURRENCY)}
                         </p>
                         <button
                           onClick={() => removeItem(item.id)}
@@ -137,7 +138,7 @@ export const Cart: React.FC = () => {
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal ({itemCount} items)</span>
-                  <span className="font-medium">${total.toFixed(2)}</span>
+                  <span className="font-medium">{formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
@@ -146,7 +147,7 @@ export const Cart: React.FC = () => {
                 <div className="border-t pt-4">
                   <div className="flex justify-between">
                     <span className="text-lg font-bold">Total</span>
-                    <span className="text-lg font-bold text-blue-600">${total.toFixed(2)}</span>
+                    <span className="text-lg font-bold text-blue-600">{formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                   </div>
                 </div>
               </div>

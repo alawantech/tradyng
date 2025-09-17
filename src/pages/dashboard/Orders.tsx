@@ -6,6 +6,7 @@ import { OrderService, Order } from '../../services/order';
 import { ProductService, Product } from '../../services/product';
 import { useAuth } from '../../hooks/useAuth';
 import { OrderReceipt } from '../../components/ui/OrderReceipt';
+import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import toast from 'react-hot-toast';
 
 export const Orders: React.FC = () => {
@@ -188,7 +189,7 @@ export const Orders: React.FC = () => {
                   <option value="">Select a product</option>
                   {products.map((product) => (
                     <option key={product.id} value={product.id}>
-                      {product.name} (${product.price})
+                      {product.name} ({formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)})
                     </option>
                   ))}
                 </select>
@@ -265,7 +266,7 @@ export const Orders: React.FC = () => {
                   <div>
                     <p className="text-gray-500">Total & Payment</p>
                     <p className="text-xl font-bold text-gray-900">
-                      ${order.total.toFixed(2)}
+                      {formatCurrency(order.total, business?.settings?.currency || DEFAULT_CURRENCY)}
                     </p>
                     <p className="text-gray-600">{order.paymentMethod}</p>
                   </div>
@@ -303,6 +304,7 @@ export const Orders: React.FC = () => {
                     total={order.total}
                     paymentMethod={order.paymentMethod}
                     createdAt={order.createdAt?.toDate().toLocaleDateString() || 'N/A'}
+                    currencyCode={business?.settings?.currency}
                   />
                   <Button variant="outline" className="absolute top-4 right-4" onClick={() => setShowReceipt(null)}>
                     Close

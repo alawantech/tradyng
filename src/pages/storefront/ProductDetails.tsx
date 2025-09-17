@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
 import { useCart } from '../../contexts/CartContext';
 import { ProductService, Product } from '../../services/product';
+import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import toast from 'react-hot-toast';
 
 export const ProductDetails: React.FC = () => {
@@ -163,7 +164,7 @@ export const ProductDetails: React.FC = () => {
           </div>
 
           <div className="text-3xl font-bold text-blue-600">
-            ${product.price.toFixed(2)}
+            {formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}
           </div>
 
           <p className="text-gray-700 leading-relaxed">

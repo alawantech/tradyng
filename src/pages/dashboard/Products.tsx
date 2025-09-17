@@ -7,6 +7,7 @@ import { ProductService, Product } from '../../services/product';
 import { BusinessService } from '../../services/business';
 import { ImageUploadService } from '../../services/imageUpload';
 import { useAuth } from '../../hooks/useAuth';
+import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import toast from 'react-hot-toast';
 
 export const Products: React.FC = () => {
@@ -71,7 +72,7 @@ export const Products: React.FC = () => {
         plan: 'free' as const,
         status: 'active' as const,
         settings: {
-          currency: 'USD',
+          currency: DEFAULT_CURRENCY,
           primaryColor: '#3B82F6',
           secondaryColor: '#10B981',
           accentColor: '#F59E0B',
@@ -363,7 +364,7 @@ export const Products: React.FC = () => {
                 </p>
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-xl font-bold text-blue-600">
-                    ${product.price}
+                    {formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}
                   </span>
                   <span className="text-sm text-gray-500">
                     {product.stock} in stock

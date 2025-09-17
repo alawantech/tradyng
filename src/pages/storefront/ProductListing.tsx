@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useStore } from './StorefrontLayout';
 import { ProductService, Product } from '../../services/product';
+import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 
 export const ProductListing: React.FC = () => {
   const { business, isLoading: storeLoading } = useStore();
@@ -118,8 +119,8 @@ export const ProductListing: React.FC = () => {
                   className="w-full"
                 />
                 <div className="flex justify-between text-sm text-gray-600 mt-1">
-                  <span>$0</span>
-                  <span>$500+</span>
+                  <span>{formatCurrency(0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                  <span>{formatCurrency(500, business?.settings?.currency || DEFAULT_CURRENCY)}+</span>
                 </div>
               </div>
             </div>
@@ -192,7 +193,7 @@ export const ProductListing: React.FC = () => {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xl font-bold text-blue-600">
-                          ${product.price}
+                          {formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}
                         </span>
                         <Link to={`/product/${product.id}`}>
                           <Button size="sm">View Details</Button>
@@ -239,7 +240,7 @@ export const ProductListing: React.FC = () => {
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-2xl font-bold text-blue-600">
-                            ${product.price}
+                            {formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}
                           </span>
                           <Link to={`/product/${product.id}`}>
                             <Button>View Details</Button>

@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
 import { ProductService, Product } from '../../services/product';
+import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 
 export const StorefrontHome: React.FC = () => {
   const { business, isLoading: storeLoading } = useStore();
@@ -141,7 +142,7 @@ export const StorefrontHome: React.FC = () => {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xl font-bold text-blue-600">
-                          ${business.settings?.currency === 'USD' ? '$' : '₦'}{product.price}
+                          {formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}
                         </span>
                         <Link to={`/product/${product.id}`}>
                           <Button size="sm">View Details</Button>

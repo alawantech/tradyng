@@ -12,6 +12,7 @@ import {
   orderBy,
   Timestamp
 } from 'firebase/firestore';
+import { DEFAULT_CURRENCY } from '../constants/currencies';
 
 export interface Business {
   id?: string;
@@ -58,8 +59,25 @@ export class BusinessService {
   static async createBusiness(businessData: Omit<Business, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       const now = Timestamp.now();
+      
+      // Ensure default settings with NGN currency
+      const defaultSettings = {
+        currency: DEFAULT_CURRENCY,
+        primaryColor: '#3B82F6',
+        secondaryColor: '#1E40AF',
+        accentColor: '#F59E0B',
+        enableNotifications: true
+      };
+
+      // Merge provided settings with defaults
+      const settings = {
+        ...defaultSettings,
+        ...businessData.settings
+      };
+
       const docRef = await addDoc(collection(db, 'businesses'), {
         ...businessData,
+        settings,
         createdAt: now,
         updatedAt: now
       });

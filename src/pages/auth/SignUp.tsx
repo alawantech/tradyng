@@ -10,6 +10,7 @@ import { AuthService } from '../../services/auth';
 import { UserService } from '../../services/user';
 import { BusinessService } from '../../services/business';
 import { CountryService, type Country, type State } from '../../data/countries';
+import { getDefaultCurrencyForCountry } from '../../constants/currencies';
 
 interface FormData {
   storeName: string;
@@ -213,6 +214,10 @@ export const SignUp: React.FC = () => {
         const subdomain = generateSubdomain(formData.storeName);
         console.log('🌐 Generated subdomain:', subdomain);
         
+        // Determine currency based on selected country
+        const defaultCurrency = getDefaultCurrencyForCountry(formData.country);
+        console.log(`💰 Setting currency based on country "${formData.country}": ${defaultCurrency}`);
+        
         // 4. Create business document
         await BusinessService.createBusiness({
           name: formData.storeName,
@@ -224,7 +229,7 @@ export const SignUp: React.FC = () => {
           plan: 'free',
           status: 'active',
           settings: {
-            currency: 'USD',
+            currency: defaultCurrency,
             primaryColor: '#3B82F6',
             secondaryColor: '#10B981',
             accentColor: '#F59E0B',

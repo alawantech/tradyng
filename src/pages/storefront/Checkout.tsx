@@ -9,6 +9,7 @@ import { useStore } from './StorefrontLayout';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
+import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import toast from 'react-hot-toast';
 
 interface CheckoutFormData {
@@ -155,7 +156,7 @@ export const Checkout: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
-            <p className="text-gray-600 mt-1">{itemCount} items • ${total.toFixed(2)}</p>
+            <p className="text-gray-600 mt-1">{itemCount} items • {formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
           </div>
           <Link to="/cart">
             <Button variant="outline">
@@ -378,7 +379,7 @@ export const Checkout: React.FC = () => {
                       <p className="font-medium text-sm">{item.name}</p>
                       <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
                     </div>
-                    <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="font-medium">{formatCurrency(item.price * item.quantity, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
                   </div>
                 ))}
               </div>
@@ -386,7 +387,7 @@ export const Checkout: React.FC = () => {
               <div className="space-y-3 mb-6 border-t pt-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">${total.toFixed(2)}</span>
+                  <span className="font-medium">{formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
@@ -394,7 +395,7 @@ export const Checkout: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-3">
                   <span>Total</span>
-                  <span className="text-blue-600">${total.toFixed(2)}</span>
+                  <span className="text-blue-600">{formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                 </div>
               </div>
 

@@ -2,13 +2,16 @@ import React from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, DollarSign, ShoppingCart, Users } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
+import { useAuth } from '../../hooks/useAuth';
+import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { salesData } from '../../data/mockData';
 
 export const Analytics: React.FC = () => {
+  const { business } = useAuth();
   const stats = [
     {
       title: 'Total Revenue',
-      value: '$12,426',
+      value: formatCurrency(12426, business?.settings?.currency || DEFAULT_CURRENCY),
       change: '+12.5%',
       changeType: 'positive',
       icon: DollarSign

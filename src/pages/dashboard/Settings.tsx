@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../contexts/ThemeContext';
 import { BusinessService } from '../../services/business';
+import { CURRENCIES, DEFAULT_CURRENCY, getDefaultCurrencyForCountry } from '../../constants/currencies';
 import toast from 'react-hot-toast';
 
 export const Settings: React.FC = () => {
@@ -23,7 +24,8 @@ export const Settings: React.FC = () => {
     whatsappNumber: '',
     address: '',
     country: '',
-    state: ''
+    state: '',
+    currency: DEFAULT_CURRENCY
   });
 
   const [brandingSettings, setBrandingSettings] = useState({
@@ -136,7 +138,8 @@ export const Settings: React.FC = () => {
         whatsappNumber: business.phone || '', // Using phone field for WhatsApp number
         address: business.address || '',
         country: business.country || 'Nigeria',
-        state: business.state || ''
+        state: business.state || '',
+        currency: business.settings?.currency || DEFAULT_CURRENCY
       };
       
       console.log('📝 Setting store data:', newStoreData);
@@ -235,7 +238,7 @@ export const Settings: React.FC = () => {
         plan: 'free',
         status: 'active',
         settings: {
-          currency: 'USD',
+          currency: DEFAULT_CURRENCY,
           primaryColor: '#3B82F6',
           secondaryColor: '#10B981',
           accentColor: '#F59E0B',
@@ -338,7 +341,7 @@ export const Settings: React.FC = () => {
         country: storeData.country || '',
         state: storeData.state || '',
         settings: {
-          currency: business.settings?.currency || 'USD',
+          currency: storeData.currency || DEFAULT_CURRENCY,
           enableNotifications: business.settings?.enableNotifications || true,
           // Validate colors before including them
           primaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.primaryColor) ? 
@@ -572,10 +575,74 @@ export const Settings: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setStoreData({
-      ...storeData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    
+    // Handle country change - suggest appropriate currency
+    if (name === 'country') {
+      const suggestedCurrency = getDefaultCurrencyForCountry(value);
+      const currentCurrency = storeData.currency;
+      
+      console.log(`🌍 Country changed to: ${value}`);
+      console.log(`💰 Suggested currency: ${suggestedCurrency}`);
+      console.log(`💰 Current currency: ${currentCurrency}`);
+      
+      // Update the country
+      setStoreData({
+        ...storeData,
+        [name]: value
+      });
+      
+      // Show currency suggestion if it's different from current
+      if (suggestedCurrency !== currentCurrency) {
+        const suggestedCurrencyInfo = CURRENCIES.find(c => c.code === suggestedCurrency);
+        const currentCurrencyInfo = CURRENCIES.find(c => c.code === currentCurrency);
+        
+        // Create a toast notification suggesting the currency change
+        toast((t) => (
+          <div className="flex flex-col space-y-2">
+            <div className="font-medium text-gray-900">
+              Currency Suggestion for {value}
+            </div>
+            <div className="text-sm text-gray-600">
+              The typical currency for {value} is <strong>{suggestedCurrencyInfo?.name || suggestedCurrency}</strong> ({suggestedCurrencyInfo?.symbol || suggestedCurrency}).
+            </div>
+            <div className="text-sm text-gray-600">
+              Currently using: <strong>{currentCurrencyInfo?.name || currentCurrency}</strong> ({currentCurrencyInfo?.symbol || currentCurrency})
+            </div>
+            <div className="flex space-x-2 mt-2">
+              <button
+                onClick={() => {
+                  setStoreData(prev => ({...prev, currency: suggestedCurrency}));
+                  toast.dismiss(t.id);
+                  toast.success(`Currency updated to ${suggestedCurrencyInfo?.name || suggestedCurrency}!`);
+                }}
+                className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+              >
+                Switch to {suggestedCurrencyInfo?.flag || '💰'} {suggestedCurrency}
+              </button>
+              <button
+                onClick={() => toast.dismiss(t.id)}
+                className="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400"
+              >
+                Keep {currentCurrency}
+              </button>
+            </div>
+          </div>
+        ), {
+          duration: 8000, // Keep toast open longer for user to decide
+          style: {
+            maxWidth: '400px',
+            padding: '16px'
+          }
+        });
+      }
+    } else {
+      // Handle other field changes normally
+      setStoreData({
+        ...storeData,
+        [name]: value
+      });
+    }
   };
 
   if (authLoading) {
@@ -906,6 +973,72 @@ export const Settings: React.FC = () => {
                 />
               )}
             </div>
+          </div>
+          
+          {/* Currency Selection */}
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Store Currency
+            </label>
+            <select
+              name="currency"
+              value={storeData.currency}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white"
+            >
+              {CURRENCIES.map((currency) => {
+                const isRecommended = getDefaultCurrencyForCountry(storeData.country) === currency.code;
+                return (
+                  <option key={currency.code} value={currency.code}>
+                    {currency.flag} {currency.name} ({currency.symbol})
+                    {isRecommended ? ' ⭐ Recommended for ' + storeData.country : ''}
+                  </option>
+                );
+              })}
+            </select>
+            
+            {/* Currency recommendation info */}
+            {(() => {
+              const recommendedCurrency = getDefaultCurrencyForCountry(storeData.country);
+              const isUsingRecommended = storeData.currency === recommendedCurrency;
+              const recommendedCurrencyInfo = CURRENCIES.find(c => c.code === recommendedCurrency);
+              const currentCurrencyInfo = CURRENCIES.find(c => c.code === storeData.currency);
+              
+              return (
+                <div className="mt-2">
+                  {isUsingRecommended ? (
+                    <div className="flex items-center text-green-600 text-sm">
+                      <span className="mr-2">✅</span>
+                      <span>Using the recommended currency for {storeData.country}</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center text-amber-600 text-sm">
+                        <span className="mr-2">💡</span>
+                        <span>
+                          For {storeData.country}, we recommend {recommendedCurrencyInfo?.flag || '💰'} {recommendedCurrencyInfo?.name || recommendedCurrency}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStoreData(prev => ({...prev, currency: recommendedCurrency}));
+                          toast.success(`Currency updated to ${recommendedCurrencyInfo?.name || recommendedCurrency}!`);
+                        }}
+                        className="text-blue-600 hover:text-blue-800 text-sm underline"
+                      >
+                        Switch to {recommendedCurrency}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            
+            <p className="text-xs text-gray-500 mt-2">
+              This currency will be used for all product prices and transactions in your store.
+              You can always change this later, but remember that currency and country can be different.
+            </p>
           </div>
           
           <div className="mt-4 p-4 bg-green-50 rounded-lg">

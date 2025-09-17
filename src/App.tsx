@@ -18,6 +18,7 @@ import { Orders } from './pages/dashboard/Orders';
 import { Customers } from './pages/dashboard/Customers';
 import { Analytics } from './pages/dashboard/Analytics';
 import { Settings } from './pages/dashboard/Settings';
+import { Messages } from './pages/dashboard/Messages';
 
 // Storefront
 import { StorefrontLayout } from './pages/storefront/StorefrontLayout';
@@ -108,6 +109,7 @@ function App() {
                 <Route path="products" element={<Products />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="customers" element={<Customers />} />
+                <Route path="messages" element={<Messages />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="settings" element={<Settings />} />
               </Route>

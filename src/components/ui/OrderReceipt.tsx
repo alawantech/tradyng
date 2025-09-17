@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from './Card';
+import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 
 interface ReceiptItem {
   productName: string;
@@ -15,6 +16,7 @@ interface OrderReceiptProps {
   total: number;
   paymentMethod: string;
   createdAt: string;
+  currencyCode?: string;
 }
 
 export const OrderReceipt: React.FC<OrderReceiptProps> = ({
@@ -24,7 +26,8 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
   items,
   total,
   paymentMethod,
-  createdAt
+  createdAt,
+  currencyCode = DEFAULT_CURRENCY
 }) => {
   return (
     <Card className="max-w-lg mx-auto p-8">
@@ -44,14 +47,14 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
           {items.map((item, idx) => (
             <li key={idx} className="py-2 flex justify-between">
               <span>{item.quantity}x {item.productName}</span>
-              <span>${(item.price * item.quantity).toFixed(2)}</span>
+              <span>{formatCurrency(item.price * item.quantity, currencyCode)}</span>
             </li>
           ))}
         </ul>
       </div>
       <div className="mb-4 flex justify-between font-bold text-lg">
         <span>Total:</span>
-        <span>${total.toFixed(2)}</span>
+        <span>{formatCurrency(total, currencyCode)}</span>
       </div>
       <div className="mb-4">
         <span className="font-medium text-gray-900">Payment Method:</span> {paymentMethod}
