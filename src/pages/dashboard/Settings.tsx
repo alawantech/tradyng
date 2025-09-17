@@ -386,6 +386,7 @@ export const Settings: React.FC = () => {
   };
 
   const handleLogoUpload = () => {
+    console.log('🖼️ Logo upload initiated');
     // Create a file input element
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -393,6 +394,7 @@ export const Settings: React.FC = () => {
     fileInput.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
+        console.log('📁 File selected:', { name: file.name, size: file.size, type: file.type });
         // Check file type
         if (!file.type.startsWith('image/')) {
           toast.error('Please select an image file (PNG, JPG, GIF, etc.)');
@@ -410,6 +412,7 @@ export const Settings: React.FC = () => {
         reader.onload = (e) => {
           const img = new Image();
           img.onload = () => {
+            console.log('🖼️ Image loaded for compression:', { width: img.width, height: img.height });
             // Create canvas for compression
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -442,13 +445,20 @@ export const Settings: React.FC = () => {
               
               // Convert to base64 with compression
               const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+              console.log('🗜️ Image compressed:', { 
+                originalSize: file.size, 
+                compressedSize: compressedDataUrl.length,
+                compression: ((file.size - compressedDataUrl.length) / file.size * 100).toFixed(1) + '%'
+              });
               
               // Check final size (Firebase limit is ~1MB per field)
               if (compressedDataUrl.length > 800000) { // 800KB limit
+                console.error('❌ Compressed image still too large:', compressedDataUrl.length);
                 toast.error('Image is still too large after compression. Please use a smaller image.');
                 return;
               }
               
+              console.log('✅ Setting new logo in branding settings');
               setBrandingSettings({
                 ...brandingSettings,
                 logo: compressedDataUrl
@@ -853,6 +863,11 @@ export const Settings: React.FC = () => {
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <Palette className="h-5 w-5 mr-2" />
             Branding
+            {logoUpdated && (
+              <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                Unsaved changes
+              </span>
+            )}
           </h2>
           
           <div className="space-y-6">
@@ -890,12 +905,18 @@ export const Settings: React.FC = () => {
                     type="color"
                     name="primaryColor"
                     value={brandingSettings.primaryColor}
-                    onChange={(e) => setBrandingSettings({...brandingSettings, primaryColor: e.target.value})}
+                    onChange={(e) => {
+                      console.log('🎨 Primary color changed to:', e.target.value);
+                      setBrandingSettings({...brandingSettings, primaryColor: e.target.value});
+                    }}
                     className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
                   />
                   <Input 
                     value={brandingSettings.primaryColor} 
-                    onChange={(e) => setBrandingSettings({...brandingSettings, primaryColor: e.target.value})}
+                    onChange={(e) => {
+                      console.log('🎨 Primary color text input changed to:', e.target.value);
+                      setBrandingSettings({...brandingSettings, primaryColor: e.target.value});
+                    }}
                     placeholder="#3B82F6"
                     className="font-mono text-sm"
                   />
@@ -912,12 +933,18 @@ export const Settings: React.FC = () => {
                     type="color"
                     name="secondaryColor"
                     value={brandingSettings.secondaryColor}
-                    onChange={(e) => setBrandingSettings({...brandingSettings, secondaryColor: e.target.value})}
+                    onChange={(e) => {
+                      console.log('🎨 Secondary color changed to:', e.target.value);
+                      setBrandingSettings({...brandingSettings, secondaryColor: e.target.value});
+                    }}
                     className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
                   />
                   <Input 
                     value={brandingSettings.secondaryColor}
-                    onChange={(e) => setBrandingSettings({...brandingSettings, secondaryColor: e.target.value})}
+                    onChange={(e) => {
+                      console.log('🎨 Secondary color text input changed to:', e.target.value);
+                      setBrandingSettings({...brandingSettings, secondaryColor: e.target.value});
+                    }}
                     placeholder="#10B981"
                     className="font-mono text-sm"
                   />
@@ -934,12 +961,18 @@ export const Settings: React.FC = () => {
                     type="color"
                     name="accentColor"
                     value={brandingSettings.accentColor}
-                    onChange={(e) => setBrandingSettings({...brandingSettings, accentColor: e.target.value})}
+                    onChange={(e) => {
+                      console.log('🎨 Accent color changed to:', e.target.value);
+                      setBrandingSettings({...brandingSettings, accentColor: e.target.value});
+                    }}
                     className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
                   />
                   <Input 
                     value={brandingSettings.accentColor}
-                    onChange={(e) => setBrandingSettings({...brandingSettings, accentColor: e.target.value})}
+                    onChange={(e) => {
+                      console.log('🎨 Accent color text input changed to:', e.target.value);
+                      setBrandingSettings({...brandingSettings, accentColor: e.target.value});
+                    }}
                     placeholder="#F59E0B"
                     className="font-mono text-sm"
                   />
