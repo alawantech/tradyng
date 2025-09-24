@@ -10,18 +10,20 @@ import {
   orderBy,
   Timestamp
 } from 'firebase/firestore';
+import { OrderIdService } from './orderIdService';
 
 export interface Order {
-  id?: string;
+  id?: string; // Firebase document ID (internal)
+  orderId: string; // Professional order ID (customer-facing)
   customerId?: string;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
   shippingAddress?: {
     street: string;
-    city: string;
-    state: string;
-    zipCode: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
     country: string;
   };
   items: Array<{
@@ -47,15 +49,21 @@ export interface Order {
 
 export class OrderService {
   // Create a new order for a business
-  static async createOrder(businessId: string, orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  static async createOrder(businessId: string, orderData: Omit<Order, 'id' | 'orderId' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       const now = Timestamp.now();
-      const docRef = await addDoc(collection(db, 'businesses', businessId, 'orders'), {
+      
+      // Generate professional order ID
+      const professionalOrderId = await OrderIdService.generateOrderId(businessId);
+      
+      await addDoc(collection(db, 'businesses', businessId, 'orders'), {
         ...orderData,
+        orderId: professionalOrderId,
         createdAt: now,
         updatedAt: now
       });
-      return docRef.id;
+      
+      return professionalOrderId; // Return the professional ID instead of Firebase ID
     } catch (error) {
       throw error;
     }

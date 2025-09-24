@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Phone, User, Calendar, Plus, Users } from 'lucide-react';
+import { Mail, Phone, User, Calendar, Plus, Users, X, MapPin, RefreshCw } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { CustomerService, Customer } from '../../services/customer';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -10,12 +11,35 @@ export const Customers: React.FC = () => {
   const { business } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [customerForm, setCustomerForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    street: '',
+    city: '',
+    state: '',
+    country: '',
+    notes: ''
+  });
 
   useEffect(() => {
     if (business?.id) {
       loadCustomers();
     }
   }, [business]);
+
+  // Auto-refresh customer data every 10 seconds to catch updates from other pages
+  useEffect(() => {
+    if (!business?.id) return;
+    
+    const interval = setInterval(() => {
+      loadCustomers();
+    }, 10000); // Refresh every 10 seconds
+    
+    return () => clearInterval(interval);
+  }, [business?.id]);
 
   const loadCustomers = async () => {
     if (!business?.id) return;
@@ -40,7 +64,84 @@ export const Customers: React.FC = () => {
   };
 
   const handleAddCustomer = () => {
-    toast.success('Add customer functionality coming soon');
+    setShowAddModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setCustomerForm({
+      name: '',
+      email: '',
+      phone: '',
+      street: '',
+      city: '',
+      state: '',
+      country: '',
+      notes: ''
+    });
+  };
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setCustomerForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!business?.id) return;
+
+    // Validate required fields
+    if (!customerForm.name.trim() || !customerForm.email.trim()) {
+      toast.error('Please fill in required fields (name and email)');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerForm.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setCreating(true);
+
+      // Check if customer with this email already exists
+      const existingCustomer = await CustomerService.getCustomerByEmail(business.id, customerForm.email);
+      if (existingCustomer) {
+        toast.error('A customer with this email already exists');
+        return;
+      }
+
+      const customerData = {
+        name: customerForm.name.trim(),
+        email: customerForm.email.trim().toLowerCase(),
+        phone: customerForm.phone.trim(),
+        address: customerForm.street.trim() ? {
+          street: customerForm.street.trim(),
+          city: customerForm.city.trim(),
+          state: customerForm.state.trim(),
+          country: customerForm.country.trim() || 'Nigeria'
+        } : undefined,
+        totalOrders: 0,
+        totalSpent: 0,
+        notes: customerForm.notes.trim(),
+        tags: []
+      };
+
+      await CustomerService.createCustomer(business.id, customerData);
+      toast.success('Customer added successfully!');
+      handleCloseModal();
+      loadCustomers(); // Reload customers
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      toast.error('Failed to add customer');
+    } finally {
+      setCreating(false);
+    }
   };
 
   if (loading) {
@@ -60,10 +161,20 @@ export const Customers: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
           <p className="text-gray-600">Manage your customer relationships</p>
         </div>
-        <Button onClick={handleAddCustomer}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Customer
-        </Button>
+        <div className="flex space-x-3">
+          <Button 
+            variant="outline" 
+            onClick={loadCustomers}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button onClick={handleAddCustomer}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Customer
+          </Button>
+        </div>
       </div>
 
       {customers.length === 0 ? (
@@ -104,6 +215,18 @@ export const Customers: React.FC = () => {
                   </div>
                 )}
                 
+                {customer.address && (
+                  <div className="flex items-start space-x-2 text-sm text-gray-600">
+                    <MapPin className="h-4 w-4 mt-0.5" />
+                    <span>
+                      {customer.address.city && customer.address.state 
+                        ? `${customer.address.city}, ${customer.address.state}` 
+                        : customer.address.city || customer.address.state || 'Address on file'
+                      }
+                    </span>
+                  </div>
+                )}
+                
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Calendar className="h-4 w-4" />
                   <span>Joined {customer.createdAt?.toDate().toLocaleDateString() || 'N/A'}</span>
@@ -119,7 +242,7 @@ export const Customers: React.FC = () => {
                 </div>
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
                   <div className="text-2xl font-bold text-green-600">
-                    ${customer.totalSpent.toFixed(2)}
+                    ${(customer.totalSpent || 0).toFixed(2)}
                   </div>
                   <div className="text-sm text-gray-600">Spent</div>
                 </div>
@@ -145,6 +268,157 @@ export const Customers: React.FC = () => {
               </div>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Add Customer Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold text-gray-900">Add New Customer</h2>
+                <button
+                  onClick={handleCloseModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateCustomer} className="p-6 space-y-4">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name *
+                  </label>
+                  <Input
+                    name="name"
+                    value={customerForm.name}
+                    onChange={handleFormChange}
+                    placeholder="Chioma Adekunle"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address *
+                  </label>
+                  <Input
+                    name="email"
+                    type="email"
+                    value={customerForm.email}
+                    onChange={handleFormChange}
+                    placeholder="chioma@yahoo.com"
+                    required
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number
+                  </label>
+                  <Input
+                    name="phone"
+                    type="tel"
+                    value={customerForm.phone}
+                    onChange={handleFormChange}
+                    placeholder="+234 xxx xxx xxxx"
+                  />
+                </div>
+              </div>
+
+              {/* Address Information */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Address (Optional)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Street Address
+                    </label>
+                    <Input
+                      name="street"
+                      value={customerForm.street}
+                      onChange={handleFormChange}
+                      placeholder="Plot 42 Allen Avenue, Ikeja"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      City (Optional)
+                    </label>
+                    <Input
+                      name="city"
+                      value={customerForm.city}
+                      onChange={handleFormChange}
+                      placeholder="Abuja"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      State (Optional)
+                    </label>
+                    <Input
+                      name="state"
+                      value={customerForm.state}
+                      onChange={handleFormChange}
+                      placeholder="FCT"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Country
+                    </label>
+                    <Input
+                      name="country"
+                      value={customerForm.country}
+                      onChange={handleFormChange}
+                      placeholder="Nigeria"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  name="notes"
+                  value={customerForm.notes}
+                  onChange={handleFormChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Add any notes about this customer..."
+                />
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCloseModal}
+                  disabled={creating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={creating}
+                >
+                  {creating ? 'Adding...' : 'Add Customer'}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

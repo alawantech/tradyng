@@ -110,7 +110,7 @@ export const SignUp: React.FC = () => {
               required
               value={formData.name}
               onChange={handleChange}
-              placeholder="John Doe"
+              placeholder="Adebayo Ogundimu"
               className="pl-10"
             />
 
@@ -121,7 +121,7 @@ export const SignUp: React.FC = () => {
               required
               value={formData.email}
               onChange={handleChange}
-              placeholder="john@example.com"
+              placeholder="adebayo@gmail.com"
             />
 
             <Input
@@ -141,7 +141,7 @@ export const SignUp: React.FC = () => {
               required
               value={formData.businessName}
               onChange={handleChange}
-              placeholder="My Awesome Store"
+              placeholder="Adebayo's Fashion Store"
             />
 
             <Input
@@ -151,7 +151,7 @@ export const SignUp: React.FC = () => {
               required
               value={formData.subdomain}
               onChange={handleChange}
-              placeholder="mystore"
+              placeholder="adebayofashion"
             />
             <p className="text-xs text-gray-500 mt-1">
               Your store will be available at: {formData.subdomain || 'yourstore'}.trady.ng

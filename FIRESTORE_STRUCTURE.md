@@ -1,8 +1,13 @@
 # Firestore Database Structure for Trady.ng
 
 ## Collections Overview
-
-### 1. **users** (Main Users Collection)
+  - shippingAddress: {
+    street: string
+    city: string
+    state: string
+    zipCode?: string
+    country: string
+  } **users** (Main Users Collection)
 ```
 users/{userId}
   - email: string
@@ -26,7 +31,7 @@ businesses/{businessId}
   - address?: string
   - description?: string
   - logo?: string (storage URL)
-  - plan: 'free' | 'basic' | 'pro'
+  - plan: 'free' | 'business' | 'pro'
   - status: 'active' | 'suspended' | 'pending'
   - createdAt: timestamp
   - updatedAt: timestamp
@@ -67,15 +72,16 @@ businesses/{businessId}/products/{productId}
 ### 4. **orders** (Orders for each business)
 ```
 businesses/{businessId}/orders/{orderId}
+  - orderId: string (professional ID like TRD-250924-001)
   - customerId: string (reference to customers/{customerId})
   - customerName: string
   - customerEmail: string
   - customerPhone?: string
   - shippingAddress?: {
     street: string
-    city: string
-    state: string
-    zipCode: string
+    city?: string
+    state?: string
+    zipCode?: string
     country: string
   }
   - items: [{
@@ -107,9 +113,9 @@ businesses/{businessId}/customers/{customerId}
   - phone?: string
   - address?: {
     street: string
-    city: string
-    state: string
-    zipCode: string
+    city?: string
+    state?: string
+    zipCode?: string
     country: string
   }
   - totalOrders: number
@@ -121,11 +127,19 @@ businesses/{businessId}/customers/{customerId}
   - tags?: string[]
 ```
 
-### 6. **subscriptions** (Business subscription plans)
+### 7. **counters** (Order numbering system)
+```
+businesses/{businessId}/counters/orders-{YYYY-MM-DD}
+  - currentNumber: number
+  - lastUpdated: timestamp
+  - date: string (YYYY-MM-DD)
+```
+
+### 8. **subscriptions** (Business subscription plans)
 ```
 subscriptions/{subscriptionId}
   - businessId: string
-  - plan: 'free' | 'basic' | 'pro'
+  - plan: 'free' | 'business' | 'pro'
   - status: 'active' | 'cancelled' | 'past_due' | 'trialing'
   - currentPeriodStart: timestamp
   - currentPeriodEnd: timestamp

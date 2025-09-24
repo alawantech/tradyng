@@ -164,7 +164,7 @@ export const SignIn: React.FC = () => {
               required
               value={formData.email}
               onChange={handleChange}
-              placeholder="john@example.com"
+              placeholder="adebayo@example.com"
             />
 
             <Input

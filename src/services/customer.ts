@@ -19,9 +19,9 @@ export interface Customer {
   phone?: string;
   address?: {
     street: string;
-    city: string;
-    state: string;
-    zipCode: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
     country: string;
   };
   totalOrders: number;
@@ -56,10 +56,18 @@ export class CustomerService {
       );
       const querySnapshot = await getDocs(q);
       
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Customer[];
+      const customers = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        // Ensure totalSpent and totalOrders have default values if missing
+        return {
+          id: doc.id,
+          ...data,
+          totalSpent: data.totalSpent ?? 0,
+          totalOrders: data.totalOrders ?? 0
+        };
+      }) as Customer[];
+      
+      return customers;
     } catch (error) {
       throw error;
     }
@@ -72,7 +80,14 @@ export class CustomerService {
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as Customer;
+        const data = docSnap.data();
+        // Ensure totalSpent and totalOrders have default values if missing
+        return {
+          id: docSnap.id,
+          ...data,
+          totalSpent: data.totalSpent ?? 0,
+          totalOrders: data.totalOrders ?? 0
+        } as Customer;
       }
       return null;
     } catch (error) {
@@ -84,11 +99,14 @@ export class CustomerService {
   static async updateCustomer(businessId: string, customerId: string, updates: Partial<Customer>): Promise<void> {
     try {
       const docRef = doc(db, 'businesses', businessId, 'customers', customerId);
-      await updateDoc(docRef, {
+      const updateData = {
         ...updates,
         updatedAt: Timestamp.now()
-      });
+      };
+      await updateDoc(docRef, updateData);
+      console.log(`Customer ${customerId} successfully updated: totalSpent=${updateData.totalSpent}, totalOrders=${updateData.totalOrders}`);
     } catch (error) {
+      console.error(`Error updating customer ${customerId}:`, error);
       throw error;
     }
   }
@@ -112,21 +130,32 @@ export class CustomerService {
   ): Promise<void> {
     try {
       const customer = await this.getCustomerById(businessId, customerId);
-      if (!customer) return;
+      if (!customer) {
+        console.warn('Customer not found for stats update:', customerId);
+        return;
+      }
+
+      const newTotalSpent = (customer.totalSpent || 0) + orderValue;
+      const newTotalOrders = isNewOrder ? (customer.totalOrders || 0) + 1 : (customer.totalOrders || 0);
+
+      console.log(`Updating customer ${customer.name}: totalSpent ${customer.totalSpent || 0} → ${newTotalSpent}, totalOrders ${customer.totalOrders || 0} → ${newTotalOrders}`);
 
       const updates: Partial<Customer> = {
-        totalOrders: isNewOrder ? customer.totalOrders + 1 : customer.totalOrders,
-        totalSpent: customer.totalSpent + orderValue,
+        totalOrders: newTotalOrders,
+        totalSpent: newTotalSpent,
         lastOrderAt: Timestamp.now()
       };
 
       // Set firstOrderAt if this is the first order
-      if (customer.totalOrders === 0) {
+      if ((customer.totalOrders || 0) === 0) {
         updates.firstOrderAt = Timestamp.now();
       }
 
+      console.log('About to update customer with:', updates);
       await this.updateCustomer(businessId, customerId, updates);
+      console.log('Customer database update completed successfully');
     } catch (error) {
+      console.error('Error updating customer stats:', error);
       throw error;
     }
   }

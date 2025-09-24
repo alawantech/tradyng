@@ -27,7 +27,7 @@ export interface Business {
   state?: string;
   description?: string;
   logo?: string;
-  plan: 'free' | 'basic' | 'pro';
+  plan: 'free' | 'business' | 'pro';
   status: 'active' | 'suspended' | 'pending';
   createdAt: Timestamp;
   updatedAt: Timestamp;

@@ -56,28 +56,42 @@ export const LandingPage: React.FC = () => {
       price: '$0',
       period: '/month',
       features: [
-        'Up to 10 products',
-        'Basic storefront',
-        'Email support',
-        'Payment processing',
-        'Mobile responsive'
+        '20 products max',
+        '1 image per product (no video)',
+        'Watermarked receipts',
+        'Basic business page theme',
+        '50 MB storage limit',
+        '50 orders/month limit',
+        '"Powered by trady.ng" badge',
+        'trady.ng/yourbusiness subdomain only'
       ],
       buttonText: 'Get Started Free',
-      popular: false
+      popular: false,
+      limitations: [
+        'No videos',
+        'No multiple product images',
+        'No custom domain',
+        'No advanced analytics',
+        'Basic system emails only'
+      ]
     },
     {
-      name: 'Basic',
+      name: 'Business',
       price: '$29',
       period: '/month',
       features: [
-        'Up to 100 products',
-        'Custom domain',
+        'Up to 150 products',
+        'Up to 4 images per product',
+        '30-second videos per product',
+        'Custom domain support',
+        'Unlimited orders',
+        'Access to receipts (no watermark)',
+        'Advanced analytics',
+        'Email customization',
         'Priority support',
-        'Analytics dashboard',
-        'Social media integration',
-        'SEO tools'
+        'Remove "Powered by" badge'
       ],
-      buttonText: 'Start Basic Plan',
+      buttonText: 'Start Business Plan',
       popular: true
     },
     {
@@ -85,13 +99,18 @@ export const LandingPage: React.FC = () => {
       price: '$99',
       period: '/month',
       features: [
-        'Unlimited products',
-        'Advanced customization',
-        'API access',
-        'White-label solution',
-        'Multi-language support',
+        'Up to 300 products',
+        'Up to 4 images per product',
+        '1-minute videos per product',
+        'Custom domain support',
+        'Unlimited orders',
+        'Access to receipts (no watermark)',
         'Advanced analytics',
-        'Priority support'
+        'Email customization',
+        'Priority support',
+        'Remove "Powered by" badge',
+        'API access',
+        'White-label solution'
       ],
       buttonText: 'Go Pro',
       popular: false

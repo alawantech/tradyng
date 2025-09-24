@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Filter, Package, X, Upload, Loader } from 'lucide-react';
+import { Plus, Edit, Trash2, Filter, Package, X, Upload, Loader, AlertCircle } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { ImageCropper } from '../../components/ui/ImageCropper';
+import { VideoUploader } from '../../components/ui/VideoUploader';
 import { ProductService, Product } from '../../services/product';
 import { BusinessService } from '../../services/business';
 import { ImageUploadService } from '../../services/imageUpload';
+import { VideoUploadService } from '../../services/videoUpload';
 import { useAuth } from '../../hooks/useAuth';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
+import { getPlanLimits, validatePlanLimit } from '../../constants/plans';
 import toast from 'react-hot-toast';
 
 export const Products: React.FC = () => {
@@ -15,6 +19,7 @@ export const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState({
     name: '',
     description: '',
@@ -27,6 +32,21 @@ export const Products: React.FC = () => {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
+  
+  // Cropping state
+  const [currentCropImage, setCurrentCropImage] = useState<{
+    file: File;
+    url: string;
+    index: number;
+  } | null>(null);
+  const [videos, setVideos] = useState<{[key: string]: File | null}>({});
+  const [videoUploadProgress, setVideoUploadProgress] = useState<{[key: string]: number}>({});
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<{file: File, index: number} | null>(null);
+  
+  // Video state
+  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   useEffect(() => {    
     if (authLoading) {
@@ -109,11 +129,22 @@ export const Products: React.FC = () => {
   };
 
   const handleAddProduct = () => {
+    // Check if user can add more products based on their plan
+    if (business?.plan) {
+      const validation = validatePlanLimit(business.plan, 'maxProducts', products.length);
+      if (!validation.isValid) {
+        toast.error(validation.message || 'Product limit reached for your plan');
+        return;
+      }
+    }
+    
+    setEditingProduct(null);
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
+    setEditingProduct(null);
     setProductForm({
       name: '',
       description: '',
@@ -124,6 +155,9 @@ export const Products: React.FC = () => {
     });
     setImageFiles([]);
     setImagePreviewUrls([]);
+    setCroppedImages({});
+    setCurrentCropImage(null);
+    setSelectedVideoFile(null);
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -136,6 +170,18 @@ export const Products: React.FC = () => {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    
+    // Check plan limits for images
+    if (business?.plan) {
+      const planLimits = getPlanLimits(business.plan);
+      const currentImageCount = imagePreviewUrls.length;
+      const totalAfterUpload = currentImageCount + files.length;
+      
+      if (totalAfterUpload > planLimits.maxImagesPerProduct) {
+        toast.error(`Your ${business.plan} plan allows up to ${planLimits.maxImagesPerProduct} images per product`);
+        return;
+      }
+    }
     
     // Validate each file
     const validFiles: File[] = [];
@@ -155,22 +201,101 @@ export const Products: React.FC = () => {
     }
     
     if (validFiles.length > 0) {
-      setImageFiles(prev => [...prev, ...validFiles]);
-      
-      // Create preview URLs
-      validFiles.forEach(file => {
+      // If there are valid files, show cropper for the first one
+      if (validFiles.length === 1) {
+        const file = validFiles[0];
         const reader = new FileReader();
         reader.onload = (e) => {
-          setImagePreviewUrls(prev => [...prev, e.target?.result as string]);
+          setCurrentCropImage({
+            file,
+            url: e.target?.result as string,
+            index: imageFiles.length
+          });
         };
         reader.readAsDataURL(file);
-      });
+      } else {
+        // Multiple files - add them directly (you can modify this to crop each one)
+        setImageFiles(prev => [...prev, ...validFiles]);
+        
+        // Create preview URLs
+        validFiles.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setImagePreviewUrls(prev => [...prev, e.target?.result as string]);
+          };
+          reader.readAsDataURL(file);
+        });
+      }
     }
   };
 
+  const handleCropComplete = (croppedBlob: Blob) => {
+    if (!currentCropImage) return;
+    
+    const { file, index } = currentCropImage;
+    
+    // Convert blob back to file
+    const croppedFile = new File([croppedBlob], file.name, { type: file.type });
+    
+    // Add to files and previews
+    setImageFiles(prev => [...prev, croppedFile]);
+    setCroppedImages(prev => ({ ...prev, [index]: croppedBlob }));
+    
+    // Create preview URL for cropped image
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreviewUrls(prev => [...prev, e.target?.result as string]);
+    };
+    reader.readAsDataURL(croppedFile);
+    
+    setCurrentCropImage(null);
+  };
+
+  const handleCropSkip = () => {
+    if (!currentCropImage) return;
+    
+    const { file } = currentCropImage;
+    
+    // Add original file without cropping
+    setImageFiles(prev => [...prev, file]);
+    
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreviewUrls(prev => [...prev, e.target?.result as string]);
+    };
+    reader.readAsDataURL(file);
+    
+    setCurrentCropImage(null);
+  };
+
+  const handleCropCancel = () => {
+    setCurrentCropImage(null);
+  };
+
+  const handleVideoSelect = (file: File) => {
+    setSelectedVideoFile(file);
+  };
+
+  const handleVideoRemove = () => {
+    setSelectedVideoFile(null);
+  };
+
   const removeImage = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
-    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+    if (editingProduct && index < (editingProduct.images?.length || 0)) {
+      // Removing existing image from edited product
+      const updatedPreviewUrls = imagePreviewUrls.filter((_, i) => i !== index);
+      setImagePreviewUrls(updatedPreviewUrls);
+      
+      // Update editing product's images
+      const updatedImages = (editingProduct.images || []).filter((_, i) => i !== index);
+      setEditingProduct({ ...editingProduct, images: updatedImages });
+    } else {
+      // Removing new image from the upload queue
+      const adjustedIndex = index - (editingProduct?.images?.length || 0);
+      setImageFiles(prev => prev.filter((_, i) => i !== adjustedIndex));
+      setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+    }
   };
 
   const handleCreateProduct = async (e: React.FormEvent) => {
@@ -200,8 +325,9 @@ export const Products: React.FC = () => {
       setCreating(true);
 
       let imageUrls: string[] = [];
+      let videoUrl: string | undefined = undefined;
       
-      // Upload images if any
+      // Upload new images if any
       if (imageFiles.length > 0) {
         setUploadingImages(true);
         toast.loading('Uploading images...', { id: 'upload-images' });
@@ -220,6 +346,36 @@ export const Products: React.FC = () => {
         }
       }
 
+      // Upload video if any
+      if (selectedVideoFile) {
+        setUploadingVideo(true);
+        toast.loading('Uploading video...', { id: 'upload-video' });
+        
+        try {
+          videoUrl = await VideoUploadService.uploadVideo(
+            selectedVideoFile,
+            `businesses/${business.id}/products`
+          );
+          toast.success('Video uploaded successfully!', { id: 'upload-video' });
+        } catch (uploadError) {
+          toast.error('Failed to upload video', { id: 'upload-video' });
+          throw uploadError;
+        } finally {
+          setUploadingVideo(false);
+        }
+      }
+
+      // For editing, combine existing images with new ones
+      if (editingProduct) {
+        const existingImages = editingProduct.images || [];
+        imageUrls = [...existingImages, ...imageUrls];
+        
+        // Keep existing video if no new video is uploaded
+        if (!videoUrl) {
+          videoUrl = editingProduct.video;
+        }
+      }
+
       const productData = {
         name: productForm.name.trim(),
         description: productForm.description.trim(),
@@ -228,24 +384,50 @@ export const Products: React.FC = () => {
         category: productForm.category.trim() || 'Uncategorized',
         sku: productForm.sku.trim() || '',
         images: imageUrls,
-        tags: [],
-        isActive: true
+        video: videoUrl,
+        tags: editingProduct?.tags || [],
+        isActive: editingProduct?.isActive ?? true
       };
 
-      await ProductService.createProduct(business.id, productData);
-      toast.success('Product created successfully!');
+      if (editingProduct?.id) {
+        // Update existing product
+        await ProductService.updateProduct(business.id, editingProduct.id, productData);
+        toast.success('Product updated successfully!');
+      } else {
+        // Create new product
+        await ProductService.createProduct(business.id, productData);
+        toast.success('Product created successfully!');
+      }
+      
       handleCloseModal();
       loadProducts(); // Reload products
     } catch (error) {
-      console.error('Error creating product:', error);
-      toast.error('Failed to create product');
+      console.error('Error saving product:', error);
+      toast.error(editingProduct ? 'Failed to update product' : 'Failed to create product');
     } finally {
       setCreating(false);
     }
   };
 
-  const handleEditProduct = (productId: string) => {
-    toast.success(`Edit product ${productId} modal would open here`);
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductForm({
+      name: product.name,
+      description: product.description,
+      price: product.price.toString(),
+      stock: product.stock.toString(),
+      category: product.category,
+      sku: product.sku || ''
+    });
+    
+    // Load existing images as preview URLs
+    setImagePreviewUrls(product.images || []);
+    setImageFiles([]); // Reset files since we're editing existing images
+    
+    // Reset video state - existing video will be shown in VideoUploader
+    setSelectedVideoFile(null);
+    
+    setShowModal(true);
   };
 
   const handleDeleteProduct = async (productId: string) => {
@@ -313,10 +495,38 @@ export const Products: React.FC = () => {
         </Button>
       </div>
 
+      {/* Plan Information */}
+      {business?.plan && (
+        <div className="mb-6">
+          <Card className="p-4 border-l-4 border-blue-500 bg-blue-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 text-blue-500 mr-2" />
+                <div>
+                  <h3 className="text-sm font-medium text-blue-900">
+                    {business.plan.charAt(0).toUpperCase() + business.plan.slice(1)} Plan Limits
+                  </h3>
+                  <p className="text-sm text-blue-700">
+                    Products: {products.length}/{getPlanLimits(business.plan).maxProducts === -1 ? '∞' : getPlanLimits(business.plan).maxProducts} • 
+                    Images per product: {getPlanLimits(business.plan).maxImagesPerProduct} • 
+                    Videos: {getPlanLimits(business.plan).allowVideos ? `${getPlanLimits(business.plan).maxVideoLengthSeconds}s` : 'Not allowed'}
+                  </p>
+                </div>
+              </div>
+              {business.plan === 'free' && (
+                <Button size="sm" variant="outline">
+                  Upgrade Plan
+                </Button>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Search products..."
+            placeholder="Search products by name..."
             className="pl-10"
           />
         </div>
@@ -374,7 +584,7 @@ export const Products: React.FC = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleEditProduct(product.id!)}
+                    onClick={() => handleEditProduct(product)}
                     className="flex-1"
                   >
                     <Edit className="h-4 w-4 mr-1" />
@@ -396,13 +606,26 @@ export const Products: React.FC = () => {
         )}
       </div>
 
-      {/* Create Product Modal */}
+      {/* Image Cropper Modal */}
+      {currentCropImage && (
+        <ImageCropper
+          src={currentCropImage.url}
+          onCropComplete={handleCropComplete}
+          onSkip={handleCropSkip}
+          onCancel={handleCropCancel}
+          fileName={currentCropImage.file.name}
+        />
+      )}
+
+      {/* Create/Edit Product Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-900">Add New Product</h2>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {editingProduct ? 'Edit Product' : 'Add New Product'}
+                </h2>
                 <button
                   onClick={handleCloseModal}
                   className="text-gray-400 hover:text-gray-600"
@@ -422,7 +645,7 @@ export const Products: React.FC = () => {
                     name="name"
                     value={productForm.name}
                     onChange={handleFormChange}
-                    placeholder="Enter product name"
+                    placeholder="Ankara Dress"
                     required
                   />
                 </div>
@@ -437,7 +660,7 @@ export const Products: React.FC = () => {
                     step="0.01"
                     value={productForm.price}
                     onChange={handleFormChange}
-                    placeholder="0.00"
+                    placeholder="15000"
                     required
                   />
                 </div>
@@ -463,7 +686,7 @@ export const Products: React.FC = () => {
                     name="category"
                     value={productForm.category}
                     onChange={handleFormChange}
-                    placeholder="e.g. Electronics, Clothing"
+                    placeholder="Fashion, African Wear"
                   />
                 </div>
 
@@ -475,7 +698,7 @@ export const Products: React.FC = () => {
                     name="sku"
                     value={productForm.sku}
                     onChange={handleFormChange}
-                    placeholder="Product SKU"
+                    placeholder="ANK-001"
                   />
                 </div>
               </div>
@@ -490,26 +713,55 @@ export const Products: React.FC = () => {
                   onChange={handleFormChange}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Describe your product..."
+                  placeholder="Beautiful handcrafted Ankara dress perfect for special occasions. Made with premium quality African print fabric..."
                 />
               </div>
+
+              {/* Video Upload - Only for Business and Pro plans */}
+              {business?.plan && getPlanLimits(business.plan).allowVideos && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Product Video (Optional)
+                  </label>
+                  <VideoUploader
+                    onVideoSelect={handleVideoSelect}
+                    onVideoRemove={handleVideoRemove}
+                    maxDurationSeconds={getPlanLimits(business.plan).maxVideoLengthSeconds}
+                    currentVideo={editingProduct?.video}
+                    disabled={uploadingVideo || creating}
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Product Images
                 </label>
                 
+                {/* Plan limit info */}
+                {business?.plan && (
+                  <div className="mb-2 p-2 bg-gray-50 rounded-md">
+                    <p className="text-xs text-gray-600">
+                      Your {business.plan} plan allows up to {getPlanLimits(business.plan).maxImagesPerProduct} images per product
+                      {imagePreviewUrls.length > 0 && ` (${imagePreviewUrls.length}/${getPlanLimits(business.plan).maxImagesPerProduct} used)`}
+                    </p>
+                  </div>
+                )}
+                
                 {/* File Input */}
                 <div className="mb-4">
                   <input
                     type="file"
                     accept="image/*"
-                    multiple
+                    multiple={business?.plan ? getPlanLimits(business.plan).maxImagesPerProduct > 1 : true}
                     onChange={handleImageChange}
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                   />
                   <p className="mt-1 text-sm text-gray-500">
-                    Upload up to 5 images (JPEG, PNG, WebP, max 5MB each)
+                    Upload images (JPEG, PNG, WebP, max 5MB each)
+                    {business?.plan && getPlanLimits(business.plan).maxImagesPerProduct === 1 && (
+                      <span className="text-orange-600"> - Free plan: 1 image only</span>
+                    )}
                   </p>
                 </div>
 
@@ -550,26 +802,31 @@ export const Products: React.FC = () => {
                   type="button"
                   variant="outline"
                   onClick={handleCloseModal}
-                  disabled={creating || uploadingImages}
+                  disabled={creating || uploadingImages || uploadingVideo}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={creating || uploadingImages}
+                  disabled={creating || uploadingImages || uploadingVideo}
                 >
                   {uploadingImages ? (
                     <>
                       <Loader className="w-4 h-4 mr-2 animate-spin" />
                       Uploading Images...
                     </>
+                  ) : uploadingVideo ? (
+                    <>
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />
+                      Uploading Video...
+                    </>
                   ) : creating ? (
                     <>
                       <Loader className="w-4 h-4 mr-2 animate-spin" />
-                      Creating...
+                      {editingProduct ? 'Updating...' : 'Creating...'}
                     </>
                   ) : (
-                    'Create Product'
+                    editingProduct ? 'Update Product' : 'Create Product'
                   )}
                 </Button>
               </div>

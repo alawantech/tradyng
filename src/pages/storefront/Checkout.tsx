@@ -20,7 +20,7 @@ interface CheckoutFormData {
   address: string;
   city: string;
   state: string;
-  zipCode: string;
+  zipCode?: string;
   paymentMethod: 'manual' | 'card';
   notes?: string;
 }
@@ -39,7 +39,6 @@ export const Checkout: React.FC = () => {
     address: '',
     city: '',
     state: '',
-    zipCode: '',
     paymentMethod: 'manual',
     notes: ''
   });
@@ -104,7 +103,7 @@ export const Checkout: React.FC = () => {
           name: `${formData.firstName} ${formData.lastName}`,
           email: formData.email,
           phone: formData.phone,
-          address: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`
+          address: `${formData.address}, ${formData.city}, ${formData.state}`
         },
         items: items.map(item => ({
           productId: item.id,
@@ -223,7 +222,7 @@ export const Checkout: React.FC = () => {
                   disabled={!user}
                   value={formData.firstName}
                   onChange={handleInputChange}
-                  placeholder="John"
+                  placeholder="Kemi"
                 />
                 <Input
                   label="Last Name"
@@ -232,7 +231,7 @@ export const Checkout: React.FC = () => {
                   disabled={!user}
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  placeholder="Doe"
+                  placeholder="Adeyemi"
                 />
                 <Input
                   label="Email"
@@ -242,7 +241,7 @@ export const Checkout: React.FC = () => {
                   disabled={!user}
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="john@example.com"
+                  placeholder="kemi@gmail.com"
                   className="md:col-span-1"
                 />
                 <Input
@@ -253,14 +252,14 @@ export const Checkout: React.FC = () => {
                   disabled={!user}
                   value={formData.phone}
                   onChange={handleInputChange}
-                  placeholder="+1 (555) 123-4567"
+                  placeholder="+234 901 234 5678"
                 />
               </div>
             </Card>
 
             {/* Shipping Address */}
             <Card className={`p-6 ${!user ? 'opacity-50 bg-gray-50' : ''}`}>
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Shipping Address</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Delivery Address</h2>
               <div className="space-y-4">
                 <Input
                   label="Street Address"
@@ -269,35 +268,24 @@ export const Checkout: React.FC = () => {
                   disabled={!user}
                   value={formData.address}
                   onChange={handleInputChange}
-                  placeholder="123 Main Street"
+                  placeholder="No. 23 Opebi Road, Ikeja"
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
-                    label="City"
+                    label="City (Optional)"
                     name="city"
-                    required
                     disabled={!user}
                     value={formData.city}
                     onChange={handleInputChange}
-                    placeholder="New York"
+                    placeholder="Lagos"
                   />
                   <Input
-                    label="State"
+                    label="State (Optional)"
                     name="state"
-                    required
                     disabled={!user}
                     value={formData.state}
                     onChange={handleInputChange}
-                    placeholder="NY"
-                  />
-                  <Input
-                    label="ZIP Code"
-                    name="zipCode"
-                    required
-                    disabled={!user}
-                    value={formData.zipCode}
-                    onChange={handleInputChange}
-                    placeholder="10001"
+                    placeholder="Lagos"
                   />
                 </div>
               </div>

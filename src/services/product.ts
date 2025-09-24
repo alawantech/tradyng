@@ -21,6 +21,7 @@ export interface Product {
   video?: string;
   category: string;
   stock: number;
+  sku?: string;
   isActive: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;

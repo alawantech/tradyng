@@ -89,7 +89,7 @@ export const ProductListing: React.FC = () => {
           <Card className="p-4">
             <h3 className="font-semibold text-gray-900 mb-4">Search</h3>
             <Input
-              placeholder="Search products..."
+              placeholder="Search products by name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />

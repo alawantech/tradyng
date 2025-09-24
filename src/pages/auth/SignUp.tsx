@@ -269,7 +269,7 @@ export const SignUp: React.FC = () => {
           <div className="space-y-4">
             <Input
               type="text"
-              placeholder="Enter your store name"
+              placeholder="Kemi's Fashion Store"
               value={formData.storeName}
               onChange={(e) => handleInputChange('storeName', e.target.value)}
               className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
@@ -331,7 +331,7 @@ export const SignUp: React.FC = () => {
           <div className="space-y-4">
             <Input
               type="email"
-              placeholder="Enter your email address"
+              placeholder="kemi@gmail.com"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
