@@ -169,3 +169,41 @@ html {
   background-color: #f9fafb;
   color: var(--color-primary-hover);
 }
+
+/* Print Styles for Receipts */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .print\:shadow-none * {
+    visibility: visible;
+  }
+  
+  .print\:shadow-none {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0;
+    padding: 20px;
+  }
+  
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  /* Ensure good print quality */
+  @page {
+    margin: 1cm;
+    size: A4;
+  }
+  
+  /* Force colors and backgrounds to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

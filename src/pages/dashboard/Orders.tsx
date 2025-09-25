@@ -733,11 +733,20 @@ export const Orders: React.FC = () => {
                     orderId={order.orderId || order.id || 'N/A'}
                     customerName={order.customerName}
                     customerEmail={order.customerEmail}
+                    customerPhone={order.customerPhone}
+                    customerAddress={order.shippingAddress ? 
+                      `${order.shippingAddress.street}${order.shippingAddress.city ? ', ' + order.shippingAddress.city : ''}${order.shippingAddress.state ? ', ' + order.shippingAddress.state : ''}${order.shippingAddress.country ? ', ' + order.shippingAddress.country : ''}` 
+                      : undefined
+                    }
                     items={order.items}
                     total={order.total}
                     paymentMethod={order.paymentMethod}
                     createdAt={order.createdAt?.toDate().toLocaleDateString() || 'N/A'}
                     currencyCode={business?.settings?.currency}
+                    storeName={business?.name || 'Trady.ng'}
+                    storeAddress={business?.address}
+                    storePhone={business?.phone}
+                    storeEmail={business?.email}
                   />
                   <Button variant="outline" className="absolute top-4 right-4" onClick={() => setShowReceipt(null)}>
                     Close
