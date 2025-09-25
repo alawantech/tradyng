@@ -5,6 +5,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Smooth scrolling behavior */
+html {
+  scroll-behavior: smooth;
+}
+
 /* Brand color CSS custom properties */
 :root {
   --color-primary: #3B82F6;

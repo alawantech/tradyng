@@ -11,6 +11,7 @@ import { UserService } from '../../services/user';
 import { BusinessService } from '../../services/business';
 import { CountryService, type Country, type State } from '../../data/countries';
 import { getDefaultCurrencyForCountry } from '../../constants/currencies';
+import logo from '../../assets/logo.png';
 
 interface FormData {
   storeName: string;
@@ -404,7 +405,7 @@ export const SignUp: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mx-auto h-12 w-12 bg-blue-500 rounded-xl flex items-center justify-center mb-4">
-            <Store className="h-6 w-6 text-white" />
+            <img src={logo} alt="Trady.ng Logo" className="h-6 w-6 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Create Your Store</h1>
           <p className="text-gray-400">Join thousands of successful merchants</p>

@@ -8,6 +8,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 
 // Pages
 import { LandingPage } from './pages/LandingPage';
+import { PricingPage } from './pages/PricingPage';
+import { FeaturesPage } from './pages/features/FeaturesPage';
 import { SignUp } from './pages/auth/SignUp';
 import { SignIn } from './pages/auth/SignIn';
 
@@ -98,6 +100,8 @@ function App() {
             <Routes>
               {/* Landing Page */}
               <Route path="/" element={<LandingPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/features" element={<FeaturesPage />} />
               
               {/* Authentication */}
               <Route path="/auth/signup" element={<SignUp />} />

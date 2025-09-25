@@ -39,10 +39,10 @@ export const Products: React.FC = () => {
     url: string;
     index: number;
   } | null>(null);
-  const [videos, setVideos] = useState<{[key: string]: File | null}>({});
-  const [videoUploadProgress, setVideoUploadProgress] = useState<{[key: string]: number}>({});
-  const [showImageCropper, setShowImageCropper] = useState(false);
-  const [imageToCrop, setImageToCrop] = useState<{file: File, index: number} | null>(null);
+  // const [videos, setVideos] = useState<{[key: string]: File | null}>({});
+  // const [videoUploadProgress, setVideoUploadProgress] = useState<{[key: string]: number}>({});
+  // const [showImageCropper, setShowImageCropper] = useState(false);
+  // const [imageToCrop, setImageToCrop] = useState<{file: File, index: number} | null>(null);
   
   // Video state
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
@@ -155,7 +155,7 @@ export const Products: React.FC = () => {
     });
     setImageFiles([]);
     setImagePreviewUrls([]);
-    setCroppedImages({});
+    // setCroppedImages({});
     setCurrentCropImage(null);
     setSelectedVideoFile(null);
   };
@@ -239,7 +239,7 @@ export const Products: React.FC = () => {
     
     // Add to files and previews
     setImageFiles(prev => [...prev, croppedFile]);
-    setCroppedImages(prev => ({ ...prev, [index]: croppedBlob }));
+    // setCroppedImages(prev => ({ ...prev, [index]: croppedBlob }));
     
     // Create preview URL for cropped image
     const reader = new FileReader();

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Store, Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin } from 'lucide-react';
+import logo from '../../assets/logo.png';
 
 export const Footer: React.FC = () => {
   return (
@@ -8,7 +9,7 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <Store className="h-8 w-8 text-blue-400" />
+              <img src={logo} alt="Trady.ng Logo" className="h-8 w-8 object-contain" />
               <span className="text-xl font-bold">trady.ng</span>
             </div>
             <p className="text-gray-400 mb-6">

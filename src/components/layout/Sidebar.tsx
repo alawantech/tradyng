@@ -8,12 +8,12 @@ import {
   Settings,
   Building2,
   CreditCard,
-  Store,
   LogOut,
   MessageSquare
 } from 'lucide-react';
 import { AuthService } from '../../services/auth';
 import toast from 'react-hot-toast';
+import logo from '../../assets/logo.png';
 
 interface SidebarProps {
   type?: 'business' | 'admin';
@@ -56,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business' }) => {
     <div className="w-64 bg-white shadow-lg h-screen flex flex-col">
       <div className="p-6">
         <Link to="/" className="flex items-center space-x-2">
-          <Store className="h-8 w-8 theme-primary-text" />
+          <img src={logo} alt="Trady.ng Logo" className="h-8 w-8 object-contain" />
           <span className="text-xl font-bold text-gray-900">trady.ng</span>
         </Link>
       </div>

@@ -1,44 +1,64 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Store, User, Menu } from 'lucide-react';
+import { User } from 'lucide-react';
 import { Button } from '../ui/Button';
+import logo from '../../assets/logo.png';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+
+  const scrollToFeatures = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const featuresSection = document.getElementById('features');
+    if (featuresSection) {
+      featuresSection.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
 
   return (
     <nav className="bg-white shadow-md border-b sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center space-x-2">
-            <Store className="h-8 w-8 theme-primary-text" />
+            <img src={logo} alt="Trady.ng Logo" className="h-8 w-8 object-contain" />
             <span className="text-xl font-bold text-gray-900">trady.ng</span>
           </Link>
           
+          <div className="hidden md:flex items-center space-x-8">
+            <Link to="/" className="text-gray-700 hover:theme-primary-text transition-colors">
+              Home
+            </Link>
+            {isHomePage ? (
+              <a 
+                href="#features" 
+                onClick={scrollToFeatures}
+                className="text-gray-700 hover:theme-primary-text transition-colors cursor-pointer"
+              >
+                Features
+              </a>
+            ) : (
+              <Link to="/features" className="text-gray-700 hover:theme-primary-text transition-colors">
+                Features
+              </Link>
+            )}
+            <Link to="/pricing" className="text-gray-700 hover:theme-primary-text transition-colors">
+              Pricing
+            </Link>
+          </div>
+          
           {isHomePage && (
-            <>
-              <div className="hidden md:flex items-center space-x-8">
-                <Link to="/" className="text-gray-700 hover:theme-primary-text transition-colors">
-                  Home
-                </Link>
-                <Link to="#features" className="text-gray-700 hover:theme-primary-text transition-colors">
-                  Features
-                </Link>
-                <Link to="#pricing" className="text-gray-700 hover:theme-primary-text transition-colors">
-                  Pricing
-                </Link>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <Link to="/auth/signin">
-                  <Button variant="ghost">Sign In</Button>
-                </Link>
-                <Link to="/auth/signup">
-                  <Button variant="primary">Get Started</Button>
-                </Link>
-              </div>
-            </>
+            <div className="flex items-center space-x-4">
+              <Link to="/auth/signin">
+                <Button variant="ghost">Sign In</Button>
+              </Link>
+              <Link to="/auth/signup">
+                <Button variant="primary">Get Started</Button>
+              </Link>
+            </div>
           )}
           
           {!isHomePage && (

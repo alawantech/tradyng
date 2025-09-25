@@ -1,121 +1,30 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Store, 
-  Zap, 
-  Globe, 
-  Shield, 
-  TrendingUp, 
-  Users,
-  Check,
-  ArrowRight
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
+import { PricingSection } from '../components/sections/PricingSection';
+import { FeaturesSection } from '../components/sections/FeaturesSection';
 
 export const LandingPage: React.FC = () => {
-  const features = [
-    {
-      icon: Store,
-      title: 'Custom Online Stores',
-      description: 'Create your unique storefront with custom branding and domain'
-    },
-    {
-      icon: Zap,
-      title: 'Lightning Fast Setup',
-      description: 'Get your store online in minutes, not days'
-    },
-    {
-      icon: Globe,
-      title: 'Global Reach',
-      description: 'Sell to customers anywhere in the world'
-    },
-    {
-      icon: Shield,
-      title: 'Secure Payments',
-      description: 'Multiple payment options with enterprise-level security'
-    },
-    {
-      icon: TrendingUp,
-      title: 'Analytics Dashboard',
-      description: 'Track sales, customers, and growth with detailed insights'
-    },
-    {
-      icon: Users,
-      title: '24/7 Support',
-      description: 'Expert support team ready to help you succeed'
+  // Handle hash navigation on page load
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash === '#features') {
+      const featuresSection = document.getElementById('features');
+      if (featuresSection) {
+        // Small delay to ensure page is fully loaded
+        setTimeout(() => {
+          featuresSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }, 100);
+      }
     }
-  ];
-
-  const pricingPlans = [
-    {
-      name: 'Free',
-      price: '$0',
-      period: '/month',
-      features: [
-        '20 products max',
-        '1 image per product (no video)',
-        'Watermarked receipts',
-        'Basic business page theme',
-        '50 MB storage limit',
-        '50 orders/month limit',
-        '"Powered by trady.ng" badge',
-        'trady.ng/yourbusiness subdomain only'
-      ],
-      buttonText: 'Get Started Free',
-      popular: false,
-      limitations: [
-        'No videos',
-        'No multiple product images',
-        'No custom domain',
-        'No advanced analytics',
-        'Basic system emails only'
-      ]
-    },
-    {
-      name: 'Business',
-      price: '$29',
-      period: '/month',
-      features: [
-        'Up to 150 products',
-        'Up to 4 images per product',
-        '30-second videos per product',
-        'Custom domain support',
-        'Unlimited orders',
-        'Access to receipts (no watermark)',
-        'Advanced analytics',
-        'Email customization',
-        'Priority support',
-        'Remove "Powered by" badge'
-      ],
-      buttonText: 'Start Business Plan',
-      popular: true
-    },
-    {
-      name: 'Pro',
-      price: '$99',
-      period: '/month',
-      features: [
-        'Up to 300 products',
-        'Up to 4 images per product',
-        '1-minute videos per product',
-        'Custom domain support',
-        'Unlimited orders',
-        'Access to receipts (no watermark)',
-        'Advanced analytics',
-        'Email customization',
-        'Priority support',
-        'Remove "Powered by" badge',
-        'API access',
-        'White-label solution'
-      ],
-      buttonText: 'Go Pro',
-      popular: false
-    }
-  ];
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -182,105 +91,10 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Everything You Need to Succeed
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Powerful tools and features designed to help your business grow and thrive online
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              return (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <Card className="p-8 text-center hover:shadow-xl transition-shadow duration-300">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Icon className="h-8 w-8 text-blue-600" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                      {feature.title}
-                    </h3>
-                    <p className="text-gray-600 leading-relaxed">
-                      {feature.description}
-                    </p>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <FeaturesSection />
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Simple, Transparent Pricing
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Choose the plan that fits your business needs. Scale up as you grow.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {pricingPlans.map((plan, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="relative"
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-medium">
-                      Most Popular
-                    </span>
-                  </div>
-                )}
-                <Card className={`p-8 ${plan.popular ? 'ring-2 ring-blue-600 scale-105' : ''}`}>
-                  <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                    <div className="flex items-center justify-center">
-                      <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                      <span className="text-gray-600 ml-1">{plan.period}</span>
-                    </div>
-                  </div>
-                  
-                  <ul className="space-y-4 mb-8">
-                    {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-center">
-                        <Check className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  <Link to="/auth/signup" className="block">
-                    <Button 
-                      variant={plan.popular ? 'primary' : 'outline'} 
-                      className="w-full py-3"
-                    >
-                      {plan.buttonText}
-                    </Button>
-                  </Link>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <PricingSection />
 
       <Footer />
     </div>
