@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Upload, CreditCard, Clock, CheckCircle } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
@@ -6,38 +6,54 @@ import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
+import { OrderService, Order } from '../../services/order';
 import toast from 'react-hot-toast';
-
-interface OrderData {
-  customerId: string;
-  customerInfo: {
-    name: string;
-    email: string;
-    phone: string;
-    address: string;
-  };
-  items: Array<{
-    productId: string;
-    name: string;
-    price: number;
-    quantity: number;
-    image?: string;
-  }>;
-  total: number;
-  paymentMethod: 'manual' | 'card';
-  notes?: string;
-  status: 'pending_payment';
-}
 
 export const Payment: React.FC = () => {
   const { business } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
-  const orderData = location.state?.orderData as OrderData;
   
+  // Get order ID and business ID from location state
+  const { orderId, businessId } = location.state || {};
+  
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
   const [paymentReceipt, setPaymentReceipt] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (orderId && businessId) {
+      loadOrder();
+    } else {
+      toast.error('Order information not found');
+      navigate('/');
+    }
+  }, [orderId, businessId]);
+
+  const loadOrder = async () => {
+    if (!orderId || !businessId) return;
+
+    try {
+      // Find order by professional order ID (not Firebase document ID)
+      const orders = await OrderService.getOrdersByBusinessId(businessId);
+      const foundOrder = orders.find(o => o.orderId === orderId);
+      
+      if (foundOrder) {
+        setOrder(foundOrder);
+      } else {
+        toast.error('Order not found');
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Error loading order:', error);
+      toast.error('Failed to load order details');
+      navigate('/');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!business) {
     return (
@@ -49,7 +65,17 @@ export const Payment: React.FC = () => {
     );
   }
 
-  if (!orderData) {
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900">Loading order...</h1>
+        </div>
+      </div>
+    );
+  }
+
+  if (!order) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div
@@ -97,21 +123,35 @@ export const Payment: React.FC = () => {
       return;
     }
 
+    if (!order || !businessId) {
+      toast.error('Order information not found');
+      return;
+    }
+
     setIsUploading(true);
     
     try {
-      // TODO: Implement actual file upload and order update
+      // TODO: Implement actual file upload to Firebase Storage
       // For now, simulate the upload process
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      toast.success('Payment receipt uploaded successfully! Your order is now pending approval.');
+      // Update order status to 'paid' and payment status to 'completed'
+      if (order.id) {
+        await OrderService.updateOrder(businessId, order.id, {
+          status: 'paid',
+          paymentStatus: 'completed',
+          notes: order.notes ? `${order.notes}\n\nPayment receipt uploaded` : 'Payment receipt uploaded'
+        });
+      }
+      
+      toast.success('Payment receipt uploaded successfully! Your order is now being processed.');
       
       // Redirect to order confirmation or home page
-      navigate('/', { state: { orderSubmitted: true } });
+      navigate('/', { state: { orderSubmitted: true, orderId: order.orderId } });
       
     } catch (error) {
-      console.error('Error uploading payment receipt:', error);
-      toast.error('Failed to upload payment receipt. Please try again.');
+      console.error('Error processing payment:', error);
+      toast.error('Failed to process payment. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -128,7 +168,7 @@ export const Payment: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Complete Payment</h1>
-            <p className="text-gray-600 mt-1">Manual payment for {formatCurrency(orderData.total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+            <p className="text-gray-600 mt-1">Manual payment for {formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
           </div>
           <Link to="/checkout">
             <Button variant="outline">
@@ -170,12 +210,12 @@ export const Payment: React.FC = () => {
                 
                 <div>
                   <p className="text-sm font-medium text-gray-700">Amount to Transfer</p>
-                  <p className="text-2xl font-bold text-blue-600">{formatCurrency(orderData.total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+                  <p className="text-2xl font-bold text-blue-600">{formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
                 </div>
                 
                 <div>
                   <p className="text-sm font-medium text-gray-700">Reference</p>
-                  <p className="text-lg font-mono font-semibold text-gray-900">ORDER-{Date.now()}</p>
+                  <p className="text-lg font-mono font-semibold text-gray-900">{order?.orderId || 'N/A'}</p>
                 </div>
               </div>
               
@@ -259,27 +299,25 @@ export const Payment: React.FC = () => {
               <div className="mb-6 pb-6 border-b">
                 <h3 className="font-semibold text-gray-900 mb-3">Customer Details</h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Name:</span> {orderData.customerInfo.name}</p>
-                  <p><span className="font-medium">Email:</span> {orderData.customerInfo.email}</p>
-                  <p><span className="font-medium">Phone:</span> {orderData.customerInfo.phone}</p>
-                  <p><span className="font-medium">Address:</span> {orderData.customerInfo.address}</p>
+                  <p><span className="font-medium">Name:</span> {order?.customerName}</p>
+                  <p><span className="font-medium">Email:</span> {order?.customerEmail}</p>
+                  <p><span className="font-medium">Phone:</span> {order?.customerPhone}</p>
+                  <p><span className="font-medium">Address:</span> {order?.shippingAddress?.street}, {order?.shippingAddress?.city}, {order?.shippingAddress?.state}</p>
                 </div>
               </div>
               
               {/* Order Items */}
               <div className="space-y-4 mb-6">
-                {orderData.items.map((item) => (
+                {order?.items.map((item) => (
                   <div key={item.productId} className="flex items-center space-x-3">
-                    <img
-                      src={item.image || '/api/placeholder/50/50'}
-                      alt={item.name}
-                      className="w-12 h-12 object-cover rounded-lg"
-                    />
+                    <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <span className="text-xs text-gray-500">IMG</span>
+                    </div>
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{item.name}</p>
+                      <p className="font-medium text-sm">{item.productName}</p>
                       <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
                     </div>
-                    <p className="font-medium">{formatCurrency(item.price * item.quantity, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+                    <p className="font-medium">{formatCurrency(item.total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
                   </div>
                 ))}
               </div>
@@ -287,7 +325,15 @@ export const Payment: React.FC = () => {
               <div className="space-y-3 mb-6 border-t pt-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">{formatCurrency(orderData.total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                  <span className="font-medium">{formatCurrency(order?.subtotal || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tax</span>
+                  <span className="font-medium">{formatCurrency(order?.tax || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Shipping</span>
+                  <span className="font-medium">{formatCurrency(order?.shipping || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
@@ -295,7 +341,7 @@ export const Payment: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-3">
                   <span>Total</span>
-                  <span className="text-blue-600">{formatCurrency(orderData.total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                  <span className="text-blue-600">{formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                 </div>
               </div>
 

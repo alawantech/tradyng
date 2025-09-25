@@ -10,6 +10,7 @@ import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
+import { OrderService } from '../../services/order';
 import toast from 'react-hot-toast';
 
 interface CheckoutFormData {
@@ -93,44 +94,54 @@ export const Checkout: React.FC = () => {
       return;
     }
 
+    if (!business?.id) {
+      toast.error('Business information not found');
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      // Create order (we'll implement this with the order service)
+      // Create order using OrderService
       const orderData = {
         customerId: user.uid,
-        customerInfo: {
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email,
-          phone: formData.phone,
-          address: `${formData.address}, ${formData.city}, ${formData.state}`
+        customerName: `${formData.firstName} ${formData.lastName}`,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        shippingAddress: {
+          street: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode || '',
+          country: 'Nigeria'
         },
         items: items.map(item => ({
           productId: item.id,
-          name: item.name,
-          price: item.price,
+          productName: item.name,
           quantity: item.quantity,
-          image: item.image
+          price: item.price,
+          total: item.price * item.quantity
         })),
-        total,
-        paymentMethod: formData.paymentMethod,
-        notes: formData.notes,
-        status: 'pending_payment' as const
+        subtotal: total,
+        tax: 0, // Add tax calculation if needed
+        shipping: 0, // Add shipping calculation if needed
+        total: total,
+        status: 'pending' as const,
+        paymentMethod: (formData.paymentMethod === 'card' ? 'automatic' : 'manual') as 'manual' | 'automatic',
+        paymentStatus: 'pending' as const,
+        notes: formData.notes
       };
 
-      // TODO: Implement order creation with OrderService
-      console.log('Order data:', orderData);
-      
-      // For now, simulate order creation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create order in database
+      const orderId = await OrderService.createOrder(business.id, orderData);
       
       // Clear cart and redirect to payment
       clearCart();
-      toast.success('Order created successfully!');
+      toast.success(`Order ${orderId} created successfully!`);
       
       if (formData.paymentMethod === 'manual') {
-        // Redirect to manual payment page
-        navigate('/payment', { state: { orderData } });
+        // Redirect to manual payment page with order ID
+        navigate('/payment', { state: { orderId, businessId: business.id } });
       } else {
         // Redirect to card payment (implement later)
         toast.success('Card payment integration coming soon!');
