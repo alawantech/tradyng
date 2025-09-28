@@ -22,11 +22,11 @@ export const Products: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState({
-    name: '',
-    description: '',
-    price: '',
-    stock: '',
-    category: ''
+  name: '',
+  description: '',
+  price: '',
+  stock: '', // Optional
+  category: ''
   });
   const [creating, setCreating] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -314,15 +314,17 @@ export const Products: React.FC = () => {
     }
 
     const price = parseFloat(productForm.price);
-    const stock = parseInt(productForm.stock) || 0;
+    let stock = 0;
+    if (productForm.stock && productForm.stock.trim() !== '') {
+      stock = parseInt(productForm.stock);
+      if (isNaN(stock) || stock < 0) {
+        toast.error('Stock cannot be negative');
+        return;
+      }
+    }
 
     if (isNaN(price) || price <= 0) {
       toast.error('Please enter a valid price');
-      return;
-    }
-
-    if (stock < 0) {
-      toast.error('Stock cannot be negative');
       return;
     }
 
