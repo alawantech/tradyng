@@ -272,14 +272,35 @@ export const ProductDetails: React.FC = () => {
           {/* Share Row */}
           <div className="flex items-center gap-3 mb-6">
             <span className="text-sm text-gray-600 font-medium">Share this product:</span>
-            <button className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center hover:scale-110 transition-all">
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382a3.09 3.09 0 0 0-2.462 1.26l-5.197-2.598a3.09 3.09 0 0 0 0-1.684l5.197-2.598a3.09 3.09 0 1 0-.438-1.516l-5.197 2.598a3.09 3.09 0 1 0 0 4.684l5.197 2.598a3.09 3.09 0 1 0 2.462-5.744z"/></svg>
-            </button>
-            <button className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center hover:scale-110 transition-all">
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M22.675 0h-21.35c-.733 0-1.325.592-1.325 1.326v21.348c0 .733.592 1.326 1.325 1.326h11.495v-9.294h-3.128v-3.622h3.128v-2.672c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.797.143v3.24l-1.918.001c-1.504 0-1.797.715-1.797 1.763v2.312h3.587l-.467 3.622h-3.12v9.294h6.116c.733 0 1.325-.593 1.325-1.326v-21.349c0-.734-.592-1.326-1.325-1.326z"/></svg>
-            </button>
-            <button className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:scale-110 transition-all">
+            {/* Native Share Popup */}
+            <button
+              className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center hover:scale-110 transition-all"
+              title="Share"
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: document.title,
+                    text: 'Check out this product!',
+                    url: window.location.href,
+                  });
+                } else {
+                  alert('Sharing is not supported on this device.');
+                }
+              }}
+            >
               <Share2 className="w-5 h-5" />
+            </button>
+            {/* Copy Link */}
+            <button
+              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:scale-110 transition-all"
+              title="Copy product link"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                alert('Product link copied!');
+              }}
+            >
+              {/* Universally recognizable copy icon */}
+              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             </button>
           </div>
         </div>
