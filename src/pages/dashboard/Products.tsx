@@ -26,8 +26,12 @@ export const Products: React.FC = () => {
   description: '',
   price: '',
   stock: '', // Optional
-  category: ''
-  });
+  category: '',
+  sizes: [],
+  colors: [],
+  width: '',
+  height: ''
+});
   const [creating, setCreating] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
@@ -392,9 +396,14 @@ export const Products: React.FC = () => {
         images: imageUrls,
         video: videoUrl,
         tags: editingProduct?.tags || [],
-        isActive: editingProduct?.isActive ?? true
+        isActive: editingProduct?.isActive ?? true,
+        sizes: productForm.sizes || [],
+        colors: productForm.colors || [],
+        dimensions: {
+          width: productForm.width ? parseFloat(productForm.width) : undefined,
+          height: productForm.height ? parseFloat(productForm.height) : undefined,
+        }
       };
-
       if (editingProduct?.id) {
         // Update existing product
         await ProductService.updateProduct(business.id, editingProduct.id, productData);
@@ -422,7 +431,11 @@ export const Products: React.FC = () => {
       description: product.description,
       price: product.price.toString(),
       stock: product.stock.toString(),
-      category: product.category
+      category: product.category,
+      sizes: product.sizes || [],
+      colors: product.colors || [],
+      width: product.dimensions?.width ? product.dimensions.width.toString() : '',
+      height: product.dimensions?.height ? product.dimensions.height.toString() : ''
     });
     
     // Load existing images as preview URLs
@@ -682,6 +695,30 @@ export const Products: React.FC = () => {
                     onChange={handleFormChange}
                     placeholder="0"
                   />
+                  <div className="flex gap-2 mt-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Width (cm)</label>
+                      <Input
+                        name="width"
+                        type="number"
+                        min="0"
+                        value={productForm.width || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. 30"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Height (cm)</label>
+                      <Input
+                        name="height"
+                        type="number"
+                        min="0"
+                        value={productForm.height || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. 50"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -695,6 +732,91 @@ export const Products: React.FC = () => {
                     placeholder="Select or create category"
                     disabled={creating}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sizes (Optional)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {["XS","S","M","L","XL","XXL"].map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        className={`px-3 py-1 rounded border ${productForm.sizes?.includes(size) ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-700 border-gray-300'} font-semibold`}
+                        onClick={() => {
+                          setProductForm(prev => ({
+                            ...prev,
+                            sizes: prev.sizes?.includes(size)
+                              ? prev.sizes.filter(s => s !== size)
+                              : [...(prev.sizes || []), size]
+                          }));
+                        }}
+                      >{size}</button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    className="mt-2 w-full px-2 py-1 border rounded"
+                    placeholder="Add custom size (press Enter)"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                        setProductForm(prev => ({
+                          ...prev,
+                          sizes: [...(prev.sizes || []), e.currentTarget.value.trim()]
+                        }));
+                        e.currentTarget.value = '';
+                        e.preventDefault();
+                      }
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Colors (Optional)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {["#FF0000","#00FF00","#0000FF","#FFFF00","#FFA500","#800080","#000000","#FFFFFF"].map(color => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${productForm.colors?.includes(color) ? 'border-blue-600 ring-2 ring-blue-300' : 'border-gray-300'}`}
+                        style={{backgroundColor: color}}
+                        onClick={() => {
+                          setProductForm(prev => ({
+                            ...prev,
+                            colors: prev.colors?.includes(color)
+                              ? prev.colors.filter(c => c !== color)
+                              : [...(prev.colors || []), color]
+                          }));
+                        }}
+                      >
+                        {productForm.colors?.includes(color) ? <span className="block w-3 h-3 bg-white rounded-full" /> : null}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="color"
+                      className="w-10 h-10 p-0 border-none cursor-pointer"
+                      onChange={e => {
+                        const color = e.target.value;
+                        if (!productForm.colors?.includes(color)) {
+                          setProductForm(prev => ({
+                            ...prev,
+                            colors: [...(prev.colors || []), color]
+                          }));
+                        }
+                      }}
+                    />
+                    <span className="text-xs text-gray-500">Pick a custom color</span>
+                  </div>
+                  {/* Show selected colors with name and swatch */}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {productForm.colors?.map(color => (
+                      <div key={color} className="flex items-center gap-1">
+                        <span className="w-6 h-6 rounded-full border" style={{backgroundColor: color}}></span>
+                        <span className="text-xs text-gray-700">{color}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 

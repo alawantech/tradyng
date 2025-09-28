@@ -211,6 +211,20 @@ export const ProductDetails: React.FC = () => {
               </div>
             </div>
           )}
+            {/* Dimensions */}
+            {(product.dimensions?.width || product.dimensions?.height) && (
+              <div className="mb-4">
+                <div className="mb-2 text-xs text-gray-600">Dimensions:</div>
+                <div className="flex space-x-4 text-gray-700">
+                  {product.dimensions?.width && (
+                    <span>Width: {product.dimensions.width} cm</span>
+                  )}
+                  {product.dimensions?.height && (
+                    <span>Height: {product.dimensions.height} cm</span>
+                  )}
+                </div>
+              </div>
+            )}
           {/* Quantity & Stock */}
           <div className="flex items-center mb-4">
             <div className="flex items-center border rounded-lg">
@@ -224,12 +238,16 @@ export const ProductDetails: React.FC = () => {
               <button
                 onClick={() => setQuantity(quantity + 1)}
                 className="px-3 py-2 text-gray-600 hover:bg-gray-50"
-                disabled={quantity >= product.stock}
+                disabled={product.stock !== undefined && product.stock !== null && product.stock > 0 && quantity >= product.stock}
               >+
               </button>
             </div>
             <span className="text-gray-600 ml-3">
-              {product.stock > 0 ? `${product.stock} available` : 'Out of stock'}
+              {product.isActive ? (
+                product.stock !== undefined && product.stock !== null
+                  ? (product.stock > 0 ? `${product.stock} available` : 'Out of stock')
+                  : 'Available'
+              ) : 'Unavailable'}
             </span>
           </div>
           {/* Action Buttons */}
@@ -237,16 +255,16 @@ export const ProductDetails: React.FC = () => {
             <Button 
               onClick={handleAddToCart} 
               className="w-full py-4 text-lg rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md transition-all"
-              disabled={product.stock === 0 || !product.isActive}
+              disabled={!product.isActive}
             >
               <ShoppingCart className="h-5 w-5 mr-2" />
-              {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+              Add to Cart
             </Button>
             <Button 
               onClick={handleBuyNow} 
               variant="outline" 
               className="w-full py-4 text-lg rounded-full border-blue-600 text-blue-600 font-bold shadow-md hover:bg-blue-50 transition-all"
-              disabled={product.stock === 0 || !product.isActive}
+              disabled={!product.isActive}
             >Buy Now
             </Button>
           </div>
