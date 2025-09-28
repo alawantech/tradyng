@@ -112,6 +112,28 @@ export const ProductDetails: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center">
           {/* Main Image/Video Viewer */}
           <div className="relative w-full aspect-w-1 aspect-h-1 mb-4 group">
+            {/* Slideshow arrows */}
+            <button
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white bg-opacity-70 rounded-full p-2 shadow hover:bg-blue-100"
+              style={{display: (product.images?.length || 0) + (product.video ? 1 : 0) > 1 ? 'block' : 'none'}}
+              onClick={() => {
+                if (selectedMedia === 'video') {
+                  if (product.images && product.images.length > 0) {
+                    setSelectedMedia('image');
+                    setSelectedImage(0);
+                  }
+                } else {
+                  if (product.images && selectedImage > 0) {
+                    setSelectedImage(selectedImage - 1);
+                  } else if (product.video) {
+                    setSelectedMedia('video');
+                  }
+                }
+              }}
+              aria-label="Previous"
+            >
+              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+            </button>
             {selectedMedia === 'video' && product.video ? (
               <video
                 src={product.video}
@@ -129,6 +151,27 @@ export const ProductDetails: React.FC = () => {
                 onError={e => (e.target as HTMLImageElement).src = '/api/placeholder/400/300'}
               />
             )}
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white bg-opacity-70 rounded-full p-2 shadow hover:bg-blue-100"
+              style={{display: (product.images?.length || 0) + (product.video ? 1 : 0) > 1 ? 'block' : 'none'}}
+              onClick={() => {
+                if (selectedMedia === 'video') {
+                  if (product.images && product.images.length > 0) {
+                    setSelectedMedia('image');
+                    setSelectedImage(0);
+                  }
+                } else {
+                  if (product.images && selectedImage < product.images.length - 1) {
+                    setSelectedImage(selectedImage + 1);
+                  } else if (product.video) {
+                    setSelectedMedia('video');
+                  }
+                }
+              }}
+              aria-label="Next"
+            >
+              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+            </button>
             {/* Zoom effect overlay */}
             <div className="absolute inset-0 pointer-events-none rounded-2xl group-hover:ring-4 group-hover:ring-blue-200 transition"></div>
           </div>
