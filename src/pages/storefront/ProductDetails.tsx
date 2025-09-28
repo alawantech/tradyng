@@ -14,6 +14,7 @@ export const ProductDetails: React.FC = () => {
   const { id } = useParams();
   const { business, isLoading: storeLoading } = useStore();
   const { addItem } = useCart();
+  const [selectedMedia, setSelectedMedia] = useState<'image' | 'video'>('image');
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [product, setProduct] = useState<Product | null>(null);
@@ -22,11 +23,16 @@ export const ProductDetails: React.FC = () => {
   useEffect(() => {
     const loadProduct = async () => {
       if (!id || !business?.id) return;
-      
       try {
         setIsLoading(true);
         const fetchedProduct = await ProductService.getProductById(business.id, id);
         setProduct(fetchedProduct);
+        // Show video first if it exists
+        if (fetchedProduct && fetchedProduct.video) {
+          setSelectedMedia('video');
+        } else {
+          setSelectedMedia('image');
+        }
       } catch (error) {
         console.error('Error loading product:', error);
         setProduct(null);
@@ -100,163 +106,179 @@ export const ProductDetails: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Product Media: Video first, then Images */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="space-y-4">
-            {/* Product Video (if exists) */}
-            {product.video && (
-              <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden mb-4">
-                <video
-                  src={product.video}
-                  controls
-                  className="w-full h-64 object-cover bg-black rounded-lg"
-                  poster={product.images?.[0]}
-                />
-              </div>
-            )}
-            {/* Product Images */}
-            <div className="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden">
+      {/* Main Section: Responsive Two-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        {/* LEFT: Product Media */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center">
+          {/* Main Image/Video Viewer */}
+          <div className="relative w-full aspect-w-1 aspect-h-1 mb-4 group">
+            {selectedMedia === 'video' && product.video ? (
+              <video
+                src={product.video}
+                controls
+                autoPlay
+                className="w-full h-full object-cover rounded-2xl bg-black"
+                poster={product.images?.[0]}
+              />
+            ) : (
               <img
                 src={product.images?.[selectedImage] || '/api/placeholder/400/300'}
                 alt={product.name}
-                className="w-full h-96 object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
-                }}
+                className="w-full h-full object-cover rounded-2xl transition-transform duration-300 group-hover:scale-105"
+                onError={e => (e.target as HTMLImageElement).src = '/api/placeholder/400/300'}
               />
-            </div>
-            {product.images && product.images.length > 1 && (
-              <div className="flex space-x-2">
-                {product.images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                      selectedImage === index ? 'border-blue-600' : 'border-gray-200'
-                    }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`${product.name} ${index + 1}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
-                      }}
-                    />
-                  </button>
-                ))}
-              </div>
             )}
+            {/* Zoom effect overlay */}
+            <div className="absolute inset-0 pointer-events-none rounded-2xl group-hover:ring-4 group-hover:ring-blue-200 transition"></div>
           </div>
-        </motion.div>
+          {/* Thumbnails: Video first, then images */}
+          <div className="flex space-x-2 mt-2">
+            {product.video && (
+              <button
+                onClick={() => setSelectedMedia('video')}
+                className={`w-16 h-16 rounded-lg overflow-hidden border-2 flex items-center justify-center relative transition-all duration-200 ${selectedMedia === 'video' ? 'border-blue-600 scale-105 shadow-md' : 'border-gray-200 hover:border-blue-400'}`}
+                title="Watch Product Video"
+              >
+                <img
+                  src={product.images?.[0] || '/api/placeholder/400/300'}
+                  alt="Product Video Thumbnail"
+                  className="w-full h-full object-cover opacity-70"
+                  onError={e => (e.target as HTMLImageElement).src = '/api/placeholder/400/300'}
+                />
+                {/* Play Icon Overlay */}
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-white drop-shadow-lg">
+                    <circle cx="12" cy="12" r="12" fill="rgba(0,0,0,0.4)" />
+                    <polygon points="10,8 16,12 10,16" fill="white" />
+                  </svg>
+                </span>
+              </button>
+            )}
+            {product.images && product.images.map((image, index) => (
+              <button
+                key={index}
+                onClick={() => { setSelectedImage(index); setSelectedMedia('image'); }}
+                className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${selectedMedia === 'image' && selectedImage === index ? 'border-blue-600 scale-105 shadow-md' : 'border-gray-200 hover:border-blue-400'}`}
+              >
+                <img
+                  src={image}
+                  alt={`${product.name} ${index + 1}`}
+                  className="w-full h-full object-cover"
+                  onError={e => (e.target as HTMLImageElement).src = '/api/placeholder/400/300'}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {/* Product Info */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="space-y-6"
-        >
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
-            <div className="flex items-center mt-2">
-              <div className="flex text-yellow-400">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-5 w-5 fill-current" />
+        {/* RIGHT: Product Info */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 flex flex-col justify-between">
+          {/* Title */}
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
+          {/* Price Section */}
+          <div className="flex items-center mb-4">
+            <span className="text-3xl font-bold text-blue-600 mr-3">{formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+            {/* Discount logic (mockup) */}
+            {/* <span className="text-xl line-through text-gray-400 mr-2">{formatCurrency(product.originalPrice, business?.settings?.currency || DEFAULT_CURRENCY)}</span> */}
+            {/* <span className="text-sm bg-red-100 text-red-600 px-2 py-1 rounded font-bold">-20%</span> */}
+          </div>
+          {/* Ratings & Reviews */}
+          <div className="flex items-center mb-2">
+            <span className="text-yellow-400 text-lg mr-2">★</span>
+            <span className="font-semibold text-gray-700">4.9</span>
+            <span className="text-gray-500 ml-2">(127 reviews)</span>
+          </div>
+          {/* Seller/Brand Info */}
+          <div className="text-sm text-gray-500 mb-4">Sold by <span className="font-semibold text-blue-700 cursor-pointer hover:underline">{business?.name || 'Brand Name'}</span></div>
+          {/* Variations (mockup) */}
+          {product.sizes && product.sizes.length > 0 && (
+            <div className="mb-4">
+              <div className="mb-2 text-xs text-gray-600">Size:</div>
+              <div className="flex space-x-2">
+                {product.sizes.map(size => (
+                  <button key={size} className="px-4 py-2 rounded-lg border border-gray-300 bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition-all font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300">{size}</button>
                 ))}
               </div>
-              <span className="text-sm text-gray-500 ml-2">(4.9) • 127 reviews</span>
             </div>
-          </div>
-
-          <div className="text-3xl font-bold text-blue-600">
-            {formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}
-          </div>
-
-          <p className="text-gray-700 leading-relaxed">
-            {product.description}
-          </p>
-
-          <div className="flex items-center space-x-4">
+          )}
+          {product.colors && product.colors.length > 0 && (
+            <div className="mb-4">
+              <div className="mb-2 text-xs text-gray-600">Color:</div>
+              <div className="flex space-x-2">
+                {product.colors.map(color => (
+                  <button key={color} className="w-8 h-8 rounded-full border-2 border-gray-300 bg-gray-200 hover:border-blue-400 transition-all focus:outline-none focus:ring-2 focus:ring-blue-300" style={{backgroundColor: color.toLowerCase()}}></button>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Quantity & Stock */}
+          <div className="flex items-center mb-4">
             <div className="flex items-center border rounded-lg">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
                 className="px-3 py-2 text-gray-600 hover:bg-gray-50"
                 disabled={quantity <= 1}
-              >
-                -
+              >-
               </button>
               <span className="px-4 py-2 font-medium">{quantity}</span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
                 className="px-3 py-2 text-gray-600 hover:bg-gray-50"
                 disabled={quantity >= product.stock}
-              >
-                +
+              >+
               </button>
             </div>
-            <span className="text-gray-600">
+            <span className="text-gray-600 ml-3">
               {product.stock > 0 ? `${product.stock} available` : 'Out of stock'}
             </span>
           </div>
-
-          <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-3 mb-6">
             <Button 
               onClick={handleAddToCart} 
-              className="flex-1"
+              className="w-full py-4 text-lg rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md transition-all"
               disabled={product.stock === 0 || !product.isActive}
             >
-              <ShoppingCart className="h-4 w-4 mr-2" />
+              <ShoppingCart className="h-5 w-5 mr-2" />
               {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
             </Button>
             <Button 
               onClick={handleBuyNow} 
               variant="outline" 
-              className="flex-1"
+              className="w-full py-4 text-lg rounded-full border-blue-600 text-blue-600 font-bold shadow-md hover:bg-blue-50 transition-all"
               disabled={product.stock === 0 || !product.isActive}
-            >
-              Buy Now
+            >Buy Now
             </Button>
           </div>
-
-          <div className="flex space-x-6">
-            <button className="flex items-center space-x-2 text-gray-600 hover:theme-primary-text">
-              <Heart className="h-5 w-5" />
-              <span>Add to Wishlist</span>
+          {/* Share Row */}
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-sm text-gray-600 font-medium">Share this product:</span>
+            <button className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center hover:scale-110 transition-all">
+              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382a3.09 3.09 0 0 0-2.462 1.26l-5.197-2.598a3.09 3.09 0 0 0 0-1.684l5.197-2.598a3.09 3.09 0 1 0-.438-1.516l-5.197 2.598a3.09 3.09 0 1 0 0 4.684l5.197 2.598a3.09 3.09 0 1 0 2.462-5.744z"/></svg>
             </button>
-            <button className="flex items-center space-x-2 text-gray-600 hover:theme-primary-text">
-              <Share2 className="h-5 w-5" />
-              <span>Share</span>
+            <button className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center hover:scale-110 transition-all">
+              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M22.675 0h-21.35c-.733 0-1.325.592-1.325 1.326v21.348c0 .733.592 1.326 1.325 1.326h11.495v-9.294h-3.128v-3.622h3.128v-2.672c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.797.143v3.24l-1.918.001c-1.504 0-1.797.715-1.797 1.763v2.312h3.587l-.467 3.622h-3.12v9.294h6.116c.733 0 1.325-.593 1.325-1.326v-21.349c0-.734-.592-1.326-1.325-1.326z"/></svg>
+            </button>
+            <button className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:scale-110 transition-all">
+              <Share2 className="w-5 h-5" />
             </button>
           </div>
+        </div>
+      </div>
 
-          <div className="border-t pt-6">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <Truck className="h-5 w-5 text-green-600" />
-                <span className="text-gray-700">Free shipping on orders over $50</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Shield className="h-5 w-5 text-blue-600" />
-                <span className="text-gray-700">2-year warranty included</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <RotateCcw className="h-5 w-5 text-purple-600" />
-                <span className="text-gray-700">30-day return policy</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+      {/* Product Details Section (Tabs/Accordion) */}
+      <div className="mt-10">
+        <Card className="p-6 rounded-2xl shadow-md">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Product Details</h2>
+          <div className="text-gray-700 leading-relaxed mb-2">{product.description}</div>
+          {/* Notes / Attention Section */}
+          <div className="text-xs text-orange-600 mt-2">Note: Please check size and color before ordering. Delivery times may vary.</div>
+        </Card>
       </div>
 
       {/* Reviews Section */}
-      <div className="mt-16">
-        <Card className="p-6">
+      <div className="mt-10">
+        <Card className="p-6 rounded-2xl shadow-md">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Reviews</h2>
           <div className="space-y-6">
             {[

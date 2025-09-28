@@ -32,6 +32,8 @@ export interface Product {
     width: number;
     height: number;
   };
+  sizes?: string[];
+  colors?: string[];
 }
 
 export class ProductService {
