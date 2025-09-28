@@ -572,11 +572,14 @@ export const Products: React.FC = () => {
             <Card key={product.id} className="overflow-hidden">
               <div className="aspect-w-16 aspect-h-9">
                 {product.images.length > 0 ? (
-                  <img
-                    src={product.images[0]}
-                    alt={product.name}
-                    className="w-full h-48 object-cover"
-                  />
+                  <div className="relative w-full h-48">
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-full h-full object-cover object-center rounded-lg transition-transform duration-300 hover:scale-105 bg-gray-100"
+                      style={{boxShadow: '0 4px 16px rgba(0,0,0,0.08)'}}
+                    />
+                  </div>
                 ) : (
                   <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
                     <Package className="h-12 w-12 text-gray-400" />
@@ -903,7 +906,8 @@ export const Products: React.FC = () => {
                         <img
                           src={url}
                           alt={`Preview ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg border"
+                          className="w-full h-24 object-cover object-center rounded-lg border bg-gray-100 transition-transform duration-300 hover:scale-105"
+                          style={{boxShadow: '0 4px 16px rgba(0,0,0,0.08)'}}
                         />
                         <button
                           type="button"

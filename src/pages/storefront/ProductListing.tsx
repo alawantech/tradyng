@@ -163,11 +163,12 @@ export const ProductListing: React.FC = () => {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
                   <Card className="group hover:shadow-xl transition-shadow duration-300">
-                    <div className="aspect-w-1 aspect-h-1 relative overflow-hidden rounded-t-lg">
+                    <div className="aspect-w-1 aspect-h-1 relative overflow-hidden rounded-t-lg bg-gray-100 shadow-md">
                       <img
                         src={product.images?.[0] || '/api/placeholder/400/300'}
                         alt={product.name}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-48 object-cover object-center rounded-lg transition-transform duration-300 group-hover:scale-105 bg-gray-100"
+                        style={{boxShadow: '0 4px 16px rgba(0,0,0,0.08)'}} 
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
                         }}
@@ -218,7 +219,8 @@ export const ProductListing: React.FC = () => {
                       <img
                         src={product.images?.[0] || '/api/placeholder/400/300'}
                         alt={product.name}
-                        className="w-full md:w-48 h-48 object-cover rounded-lg"
+                        className="w-full md:w-48 h-48 object-cover object-center rounded-lg transition-transform duration-300 hover:scale-105 bg-gray-100"
+                        style={{boxShadow: '0 4px 16px rgba(0,0,0,0.08)'}} 
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
                         }}

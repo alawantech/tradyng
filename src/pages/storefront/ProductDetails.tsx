@@ -124,7 +124,8 @@ export const ProductDetails: React.FC = () => {
               <img
                 src={product.images?.[selectedImage] || '/api/placeholder/400/300'}
                 alt={product.name}
-                className="w-full h-full object-cover rounded-2xl transition-transform duration-300 group-hover:scale-105"
+                className="w-full h-full object-cover object-center rounded-2xl transition-transform duration-300 group-hover:scale-105 bg-gray-100"
+                style={{boxShadow: '0 4px 16px rgba(0,0,0,0.08)'}}
                 onError={e => (e.target as HTMLImageElement).src = '/api/placeholder/400/300'}
               />
             )}
