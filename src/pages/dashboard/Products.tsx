@@ -400,8 +400,8 @@ export const Products: React.FC = () => {
         sizes: productForm.sizes || [],
         colors: productForm.colors || [],
         dimensions: {
-          width: productForm.width ? parseFloat(productForm.width) : undefined,
-          height: productForm.height ? parseFloat(productForm.height) : undefined,
+              width: productForm.width ? parseFloat(productForm.width) : null,
+              height: productForm.height ? parseFloat(productForm.height) : null,
         }
       };
       if (editingProduct?.id) {

@@ -27,12 +27,12 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Load categories when component mounts or businessId changes
+  // Load categories when component mounts, businessId changes, or dropdown opens
   useEffect(() => {
-    if (businessId) {
+    if (businessId && isOpen) {
       loadCategories();
     }
-  }, [businessId]);
+  }, [businessId, isOpen]);
 
   // Filter categories based on search
   useEffect(() => {

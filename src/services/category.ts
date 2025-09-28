@@ -23,10 +23,8 @@ export class CategoryService {
     try {
       const q = query(
         collection(db, 'categories'), 
-        where('businessId', '==', businessId),
-        orderBy('name', 'asc')
+        where('businessId', '==', businessId)
       );
-      
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
