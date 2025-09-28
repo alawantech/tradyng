@@ -101,13 +101,25 @@ export const ProductDetails: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Product Images */}
+        {/* Product Media: Video first, then Images */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
         >
           <div className="space-y-4">
+            {/* Product Video (if exists) */}
+            {product.video && (
+              <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden mb-4">
+                <video
+                  src={product.video}
+                  controls
+                  className="w-full h-64 object-cover bg-black rounded-lg"
+                  poster={product.images?.[0]}
+                />
+              </div>
+            )}
+            {/* Product Images */}
             <div className="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden">
               <img
                 src={product.images?.[selectedImage] || '/api/placeholder/400/300'}
@@ -118,7 +130,6 @@ export const ProductDetails: React.FC = () => {
                 }}
               />
             </div>
-            
             {product.images && product.images.length > 1 && (
               <div className="flex space-x-2">
                 {product.images.map((image, index) => (

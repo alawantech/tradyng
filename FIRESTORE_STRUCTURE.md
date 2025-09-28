@@ -1,13 +1,8 @@
 # Firestore Database Structure for Trady.ng
 
 ## Collections Overview
-  - shippingAddress: {
-    street: string
-    city: string
-    state: string
-    zipCode?: string
-    country: string
-  } **users** (Main Users Collection)
+
+### 1. **users** (Main Users Collection)
 ```
 users/{userId}
   - email: string
@@ -47,7 +42,16 @@ businesses/{businessId}
   - totalProducts: number
 ```
 
-### 3. **products** (Products for each business)
+### 3. **categories** (Product Categories)
+```
+categories/{categoryId}
+  - name: string (e.g., "Fashion", "African Wear", "Electronics")
+  - businessId: string (reference to businesses/{businessId})
+  - createdAt: timestamp
+  - updatedAt: timestamp
+```
+
+### 4. **products** (Products for each business)
 ```
 businesses/{businessId}/products/{productId}
   - name: string

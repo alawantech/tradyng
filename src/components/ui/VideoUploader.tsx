@@ -1,14 +1,16 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './Button';
 import { Card } from './Card';
-import { Upload, Play, AlertCircle } from 'lucide-react';
+import { Upload, Play, AlertCircle, Scissors, CheckCircle, Clock } from 'lucide-react';
 import { VideoUploadService } from '../../services/videoUpload';
+import { VideoProcessor, VideoProcessingResult } from '../../services/videoProcessor';
 
 interface VideoUploaderProps {
   onVideoSelect: (file: File) => void;
   onVideoRemove: () => void;
   maxDurationSeconds: number;
   currentVideo?: string;
+  selectedVideoFile?: File | null; // Add this to pass the selected file from parent
   disabled?: boolean;
 }
 
@@ -17,19 +19,35 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
   onVideoRemove,
   maxDurationSeconds,
   currentVideo,
+  selectedVideoFile, // Get the selected file from parent
   disabled = false
 }) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingResult, setProcessingResult] = useState<VideoProcessingResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Use selectedVideoFile from parent instead of internal state
+  const selectedFile = selectedVideoFile;
+
+  // Update preview when selectedVideoFile changes from parent
+  useEffect(() => {
+    if (selectedFile && !videoPreview) {
+      setVideoPreview(URL.createObjectURL(selectedFile));
+    } else if (!selectedFile && videoPreview) {
+      URL.revokeObjectURL(videoPreview);
+      setVideoPreview(null);
+    }
+  }, [selectedFile, videoPreview]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setError(null);
+    setProcessingResult(null);
     setIsValidating(true);
 
     try {
@@ -40,33 +58,39 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
         return;
       }
 
-      // Duration validation
-      const duration = await VideoUploadService.getVideoDuration(file);
-      if (duration > maxDurationSeconds) {
-        setError(`Video duration (${Math.round(duration)}s) exceeds the ${maxDurationSeconds}s limit for your plan`);
+      // Check if browser supports video processing
+      if (!VideoProcessor.isSupported()) {
+        setError('Your browser does not support video processing');
         return;
       }
 
-      // File is valid
-      setSelectedFile(file);
-      setVideoPreview(URL.createObjectURL(file));
-      onVideoSelect(file);
+      setIsValidating(false);
+      setIsProcessing(true);
+
+      // Process video with automatic trimming if needed
+      const result = await VideoProcessor.processVideoForPlan(file, maxDurationSeconds);
+      
+      setProcessingResult(result);
+      setVideoPreview(URL.createObjectURL(result.processedFile));
+      onVideoSelect(result.processedFile); // Let parent manage the file state
+
     } catch (err) {
-      setError('Failed to validate video file');
-      console.error('Video validation error:', err);
+      setError('Failed to process video file');
+      console.error('Video processing error:', err);
     } finally {
       setIsValidating(false);
+      setIsProcessing(false);
     }
   };
 
   const handleRemove = () => {
-    setSelectedFile(null);
     if (videoPreview) {
       URL.revokeObjectURL(videoPreview);
       setVideoPreview(null);
     }
     setError(null);
-    onVideoRemove();
+    setProcessingResult(null);
+    onVideoRemove(); // Let parent handle file removal
     
     // Reset file input
     if (fileInputRef.current) {
@@ -108,9 +132,9 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
               type="button"
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              disabled={disabled || isValidating}
+              disabled={disabled || isValidating || isProcessing}
             >
-              {isValidating ? 'Validating...' : 'Choose Video File'}
+              {isValidating ? 'Validating...' : isProcessing ? 'Processing video...' : 'Choose Video File'}
             </Button>
             
             <p className="text-xs text-gray-500 mt-2">
@@ -126,6 +150,29 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
           <div className="flex items-center">
             <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
             <p className="text-sm text-red-700">{error}</p>
+          </div>
+        </Card>
+      )}
+
+      {/* Processing Status */}
+      {isProcessing && (
+        <Card className="p-4 border-l-4 border-blue-500 bg-blue-50">
+          <div className="flex items-center">
+            <Clock className="h-5 w-5 text-blue-500 mr-2 animate-spin" />
+            <p className="text-sm text-blue-700">Processing video... This may take a moment.</p>
+          </div>
+        </Card>
+      )}
+
+      {/* Processing Result */}
+      {processingResult && processingResult.wasProcessed && (
+        <Card className="p-4 border-l-4 border-green-500 bg-green-50">
+          <div className="flex items-center">
+            <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+            <div className="text-sm text-green-700">
+              <p className="font-medium">Video automatically trimmed to fit your plan</p>
+              <p>Original: {VideoProcessor.formatDuration(processingResult.originalDuration)} → Trimmed: {VideoProcessor.formatDuration(processingResult.processedDuration)}</p>
+            </div>
           </div>
         </Card>
       )}
@@ -199,6 +246,10 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
       <div className="text-xs text-gray-500">
         <p>Video length limit for your plan: {formatDuration(maxDurationSeconds)}</p>
         <p>Supported formats: MP4, WebM, AVI, MOV (max 50MB)</p>
+        <p className="flex items-center mt-1">
+          <Scissors className="h-3 w-3 mr-1" />
+          Videos longer than {formatDuration(maxDurationSeconds)} will be automatically trimmed
+        </p>
       </div>
     </div>
   );

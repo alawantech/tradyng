@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, Filter, Package, X, Upload, Loader, AlertCircle } f
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { CategorySelector } from '../../components/ui/CategorySelector';
 import { ImageCropper } from '../../components/ui/ImageCropper';
 import { VideoUploader } from '../../components/ui/VideoUploader';
 import { ProductService, Product } from '../../services/product';
@@ -25,8 +26,7 @@ export const Products: React.FC = () => {
     description: '',
     price: '',
     stock: '',
-    category: '',
-    sku: ''
+    category: ''
   });
   const [creating, setCreating] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -143,6 +143,13 @@ export const Products: React.FC = () => {
   };
 
   const handleCloseModal = () => {
+    // If user is cropping an image, cancel the crop first but preserve other states
+    if (currentCropImage) {
+      setCurrentCropImage(null);
+      return; // Don't close the main modal yet, preserve video and other form data
+    }
+    
+    // Only reset everything when actually closing the modal
     setShowModal(false);
     setEditingProduct(null);
     setProductForm({
@@ -150,12 +157,10 @@ export const Products: React.FC = () => {
       description: '',
       price: '',
       stock: '',
-      category: '',
-      sku: ''
+      category: ''
     });
     setImageFiles([]);
     setImagePreviewUrls([]);
-    // setCroppedImages({});
     setCurrentCropImage(null);
     setSelectedVideoFile(null);
   };
@@ -232,7 +237,7 @@ export const Products: React.FC = () => {
   const handleCropComplete = (croppedBlob: Blob) => {
     if (!currentCropImage) return;
     
-    const { file, index } = currentCropImage;
+    const { file } = currentCropImage; // Remove unused index variable
     
     // Convert blob back to file
     const croppedFile = new File([croppedBlob], file.name, { type: file.type });
@@ -382,7 +387,6 @@ export const Products: React.FC = () => {
         price: price,
         stock: stock,
         category: productForm.category.trim() || 'Uncategorized',
-        sku: productForm.sku.trim() || '',
         images: imageUrls,
         video: videoUrl,
         tags: editingProduct?.tags || [],
@@ -416,8 +420,7 @@ export const Products: React.FC = () => {
       description: product.description,
       price: product.price.toString(),
       stock: product.stock.toString(),
-      category: product.category,
-      sku: product.sku || ''
+      category: product.category
     });
     
     // Load existing images as preview URLs
@@ -618,7 +621,7 @@ export const Products: React.FC = () => {
       )}
 
       {/* Create/Edit Product Modal */}
-      {showModal && (
+      {showModal && !currentCropImage && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
@@ -628,7 +631,8 @@ export const Products: React.FC = () => {
                 </h2>
                 <button
                   onClick={handleCloseModal}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="Close modal"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -682,30 +686,19 @@ export const Products: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Category
                   </label>
-                  <Input
-                    name="category"
+                  <CategorySelector
                     value={productForm.category}
-                    onChange={handleFormChange}
-                    placeholder="Fashion, African Wear"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    SKU (Optional)
-                  </label>
-                  <Input
-                    name="sku"
-                    value={productForm.sku}
-                    onChange={handleFormChange}
-                    placeholder="ANK-001"
+                    onChange={(category) => setProductForm(prev => ({ ...prev, category }))}
+                    businessId={business?.id || ''}
+                    placeholder="Select or create category"
+                    disabled={creating}
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
+                  Description (Optional)
                 </label>
                 <textarea
                   name="description"
@@ -728,6 +721,7 @@ export const Products: React.FC = () => {
                     onVideoRemove={handleVideoRemove}
                     maxDurationSeconds={getPlanLimits(business.plan).maxVideoLengthSeconds}
                     currentVideo={editingProduct?.video}
+                    selectedVideoFile={selectedVideoFile}
                     disabled={uploadingVideo || creating}
                   />
                 </div>
@@ -758,11 +752,23 @@ export const Products: React.FC = () => {
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                   />
                   <p className="mt-1 text-sm text-gray-500">
-                    Upload images (JPEG, PNG, WebP, max 5MB each)
+                    Upload images (JPEG, PNG, WebM, max 5MB each)
                     {business?.plan && getPlanLimits(business.plan).maxImagesPerProduct === 1 && (
                       <span className="text-orange-600"> - Free plan: 1 image only</span>
                     )}
                   </p>
+                  
+                  {/* Cropping Status */}
+                  {currentCropImage !== null && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-200">
+                      <p className="text-sm text-blue-700 font-medium">
+                        🖼️ Cropping image in progress...
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        Crop your image and click "Apply Crop" to continue
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Image Previews */}
@@ -784,6 +790,22 @@ export const Products: React.FC = () => {
                         </button>
                       </div>
                     ))}
+                    {/* Add Image Button if not at max */}
+                    {imagePreviewUrls.length < getPlanLimits(business.plan).maxImagesPerProduct && (
+                      <div className="flex flex-col items-center justify-center border-2 border-dashed border-blue-300 rounded-lg h-24 cursor-pointer hover:bg-blue-50 transition" onClick={() => document.getElementById('add-image-input')?.click()}>
+                        <Upload className="h-8 w-8 text-blue-400 mb-1" />
+                        <span className="text-xs text-blue-600 font-medium">Add Image</span>
+                        <input
+                          id="add-image-input"
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={handleImageChange}
+                          multiple={false}
+                          disabled={uploadingImages || imagePreviewUrls.length >= getPlanLimits(business.plan).maxImagesPerProduct}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
 import { Button } from './Button';
 import { Card } from './Card';
@@ -27,6 +27,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
     y: 5
   });
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [isCropping, setIsCropping] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -91,6 +92,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   const handleCrop = useCallback(async () => {
     if (!imgRef.current || !completedCrop) return;
 
+    setIsCropping(true);
     try {
       const croppedBlob = await getCroppedImage(
         imgRef.current,
@@ -99,8 +101,40 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
       onCropComplete(croppedBlob);
     } catch (error) {
       console.error('Error cropping image:', error);
+    } finally {
+      setIsCropping(false);
     }
   }, [completedCrop, fileName, getCroppedImage, onCropComplete]);
+
+  // Prevent background scrolling and handle keyboard shortcuts
+  useEffect(() => {
+    // Prevent background scrolling
+    document.body.style.overflow = 'hidden';
+    
+    // Handle keyboard shortcuts
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault();
+          onCancel();
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (completedCrop) {
+            handleCrop();
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup
+    return () => {
+      document.body.style.overflow = 'unset';
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [completedCrop, onCancel, handleCrop]);
 
   const resetCrop = () => {
     if (imgRef.current) {
@@ -120,7 +154,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60]">
       <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between bg-gray-50">
@@ -130,7 +164,8 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
           </h3>
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Close cropper"
           >
             <X className="w-6 h-6" />
           </button>
@@ -171,49 +206,56 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
           />
 
           {/* Controls */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center pt-4 border-t">
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={resetCrop}
+                className="flex items-center"
               >
-                <RotateCw className="h-4 w-4 mr-1" />
+                <RotateCw className="h-4 w-4 mr-2" />
                 Reset Crop
               </Button>
             </div>
 
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={onSkip}
-                className="text-gray-600"
-              >
-                Skip Crop
-              </Button>
+            <div className="flex gap-3 order-first sm:order-last">
               <Button
                 variant="outline"
                 onClick={onCancel}
-                className="text-red-600 border-red-300 hover:bg-red-50"
+                className="text-gray-700 border-gray-300 hover:bg-gray-50"
               >
-                Cancel
+                ← Back to Product
+              </Button>
+              <Button
+                variant="outline"
+                onClick={onSkip}
+                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+              >
+                Use Original
               </Button>
               <Button
                 onClick={handleCrop}
-                disabled={!completedCrop}
-                className="bg-blue-600 hover:bg-blue-700"
+                disabled={!completedCrop || isCropping}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
               >
-                Apply Crop
+                {isCropping ? 'Processing...' : 'Apply Crop'}
               </Button>
             </div>
           </div>
 
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <strong>Tip:</strong> You can drag the corners and edges to resize the crop area, 
-              or drag the center to move it. Click "Apply Crop" to use the cropped image, 
-              "Skip Crop" to use the original image, or "Cancel" to choose a different image.
-            </p>
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+              <CropIcon className="h-4 w-4 mr-2" />
+              How to crop:
+            </h4>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• <strong>Resize:</strong> Drag the corners or edges of the crop box</li>
+              <li>• <strong>Move:</strong> Drag the center of the crop box to reposition</li>
+              <li>• <strong>Apply Crop:</strong> Use the cropped version for your product</li>
+              <li>• <strong>Use Original:</strong> Skip cropping and use the full image</li>
+              <li>• <strong>Back to Product:</strong> Cancel and choose a different image</li>
+            </ul>
           </div>
         </div>
       </Card>
