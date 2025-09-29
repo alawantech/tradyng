@@ -8,6 +8,8 @@ import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 export const Customers: React.FC = () => {
+  // Search state for customers
+  const [searchTerm, setSearchTerm] = useState('');
   const { business } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,11 @@ export const Customers: React.FC = () => {
     country: '',
     notes: ''
   });
+  // Contact modal state
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactCustomerId, setContactCustomerId] = useState<string | null>(null);
+  const [contactMessage, setContactMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   useEffect(() => {
     if (business?.id) {
@@ -56,8 +63,35 @@ export const Customers: React.FC = () => {
     }
   };
   const handleContactCustomer = (customerId: string) => {
-    toast.success(`Contact customer ${customerId}`);
-  };
+    setContactCustomerId(customerId);
+    setShowContactModal(true);
+    setContactMessage('');
+  } 
+
+  const handleCloseContactModal = () => {
+    setShowContactModal(false);
+    setContactCustomerId(null);
+    setContactMessage('');
+  } 
+
+  const handleSendContactMessage = async () => {
+    if (!contactCustomerId || !contactMessage.trim()) {
+      toast.error('Please type a message');
+      return;
+    }
+    setSendingMessage(true);
+    try {
+      // Save message to customer dashboard (Firestore or backend)
+      await CustomerService.sendMessageToCustomer(contactCustomerId, contactMessage.trim());
+      // TODO: Send email to customer (configure email sending later)
+      toast.success('Message sent to customer!');
+      handleCloseContactModal();
+    } catch (error) {
+      toast.error('Failed to send message');
+    } finally {
+      setSendingMessage(false);
+    }
+  } 
 
   const handleViewCustomer = (customerId: string) => {
     toast.success(`View customer ${customerId} details`);
@@ -192,83 +226,118 @@ export const Customers: React.FC = () => {
           </Button>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {customers.map((customer) => (
-            <Card key={customer.id} className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {customer.name}
-                  </h3>
-                  <p className="text-gray-600">{customer.email}</p>
-                </div>
-              </div>
-              
-              <div className="space-y-3 mb-6">
-                {customer.phone && (
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Phone className="h-4 w-4" />
-                    <span>{customer.phone}</span>
-                  </div>
-                )}
-                
-                {customer.address && (
-                  <div className="flex items-start space-x-2 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4 mt-0.5" />
-                    <span>
-                      {customer.address.city && customer.address.state 
-                        ? `${customer.address.city}, ${customer.address.state}` 
-                        : customer.address.city || customer.address.state || 'Address on file'
-                      }
-                    </span>
-                  </div>
-                )}
-                
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Calendar className="h-4 w-4" />
-                  <span>Joined {customer.createdAt?.toDate().toLocaleDateString() || 'N/A'}</span>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {customer.totalOrders}
-                  </div>
-                  <div className="text-sm text-gray-600">Orders</div>
-                </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">
-                    ${(customer.totalSpent || 0).toFixed(2)}
-                  </div>
-                  <div className="text-sm text-gray-600">Spent</div>
-                </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleViewCustomer(customer.id!)}
-                  className="flex-1"
-                >
-                  View Profile
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => handleContactCustomer(customer.id!)}
-                  className="flex-1"
-                >
-                  <Mail className="h-4 w-4 mr-1" />
-                  Contact
-                </Button>
+        <>
+          <div className="mb-4">
+            <Card className="p-4 flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 shadow rounded-xl mb-4">
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-bold text-blue-700">{customers.length}</span>
+                <span className="text-sm text-gray-600">Total Customers</span>
               </div>
             </Card>
-          ))}
-        </div>
+            <div className="flex items-center gap-4">
+              <input
+                type="text"
+                className="border rounded px-3 py-2 text-sm"
+                placeholder="Search by name, email, or phone number"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{ minWidth: 220 }}
+              />
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white rounded-lg shadow border border-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Phone</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Address</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Joined</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Orders</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Spent</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {customers
+                .filter(customer => {
+                  if (!searchTerm) return true;
+                  const term = searchTerm.toLowerCase();
+                  return (
+                    (customer.name && customer.name.toLowerCase().includes(term)) ||
+                    (customer.email && customer.email.toLowerCase().includes(term)) ||
+                    (customer.phone && customer.phone.toLowerCase().includes(term))
+                  );
+                })
+                .map((customer) => (
+                <tr key={customer.id} className="border-b last:border-b-0 hover:bg-gray-50 transition">
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-900">{customer.name}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{customer.email}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{customer.phone || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {customer.address ? (
+                      <span>
+                        {customer.address.street ? customer.address.street + ', ' : ''}
+                        {customer.address.city ? customer.address.city + ', ' : ''}
+                        {customer.address.state ? customer.address.state + ', ' : ''}
+                        {customer.address.country || ''}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{customer.createdAt?.toDate().toLocaleDateString() || 'N/A'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 font-bold">{customer.totalOrders}</td>
+                  <td className="px-4 py-3 text-sm text-green-600 font-bold">${(customer.totalSpent || 0).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <Button
+                      size="sm"
+                      onClick={() => handleContactCustomer(customer.id!)}
+                      className="flex-1"
+                    >
+                      <Mail className="h-4 w-4 mr-1" />
+                      Message Customer
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {/* Contact Customer Modal */}
+          {showContactModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-gray-900">Send Message to Customer</h2>
+                  <button
+                    onClick={handleCloseContactModal}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="p-6">
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 mb-4"
+                    rows={5}
+                    placeholder="Type your message to the customer..."
+                    value={contactMessage}
+                    onChange={e => setContactMessage(e.target.value)}
+                    disabled={sendingMessage}
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleSendContactMessage}
+                      disabled={sendingMessage}
+                    >
+                      {sendingMessage ? 'Sending...' : 'Send Message'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+  </div>
+  </>
       )}
 
       {/* Add Customer Modal */}
