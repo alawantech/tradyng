@@ -23,6 +23,7 @@ export interface ContactMessage {
   status: 'new' | 'read' | 'responded';
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  source: 'contact' | 'customer'; // 'contact' for contact form, 'customer' for customer dashboard
 }
 
 export class ContactMessageService {
@@ -34,14 +35,16 @@ export class ContactMessageService {
   static async submitMessage(messageData: Omit<ContactMessage, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<string> {
     try {
       const now = Timestamp.now();
-      
+      if (!messageData.source) {
+        throw new Error('Message source is required (contact/customer)');
+      }
       const docRef = await addDoc(collection(db, this.collection), {
         ...messageData,
         status: 'new',
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
+        source: messageData.source
       });
-
       console.log('Contact message submitted successfully:', docRef.id);
       return docRef.id;
     } catch (error) {

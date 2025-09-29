@@ -45,9 +45,9 @@ export const Contact: React.FC = () => {
         email: formData.email,
         phone: formData.phone,
         subject: formData.subject,
-        message: formData.message
+        message: formData.message,
+        source: 'contact'
       });
-
       toast.success('Message sent successfully! We\'ll get back to you soon.');
       setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
     } catch (error) {

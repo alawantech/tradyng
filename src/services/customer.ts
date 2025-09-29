@@ -34,6 +34,23 @@ export interface Customer {
 }
 
 export class CustomerService {
+  // Send a message to a customer (admin or customer)
+  static async sendMessageToCustomer(businessId: string, customerId: string, message: string, sender: 'admin' | 'customer', senderName: string, senderEmail?: string): Promise<string> {
+    try {
+      const messageData = {
+        message,
+        sender,
+        senderName,
+        senderEmail: senderEmail || null,
+        status: 'sent',
+        createdAt: Timestamp.now()
+      };
+      const docRef = await addDoc(collection(db, 'businesses', businessId, 'customers', customerId, 'messages'), messageData);
+      return docRef.id;
+    } catch (error) {
+      throw error;
+    }
+  }
   // Create a new customer
   static async createCustomer(businessId: string, customerData: Omit<Customer, 'id' | 'createdAt'>): Promise<string> {
     try {

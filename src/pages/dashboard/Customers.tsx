@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Phone, User, Calendar, Plus, Users, X, MapPin, RefreshCw } from 'lucide-react';
+import { Mail, Plus, Users, X, RefreshCw } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { CustomerService, Customer } from '../../services/customer';
+import { Timestamp, collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
@@ -25,11 +27,13 @@ export const Customers: React.FC = () => {
     country: '',
     notes: ''
   });
-  // Contact modal state
-  const [showContactModal, setShowContactModal] = useState(false);
-  const [contactCustomerId, setContactCustomerId] = useState<string | null>(null);
-  const [contactMessage, setContactMessage] = useState('');
-  const [sendingMessage, setSendingMessage] = useState(false);
+  // Chat modal state
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [chatCustomerId, setChatCustomerId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     if (business?.id) {
@@ -62,36 +66,59 @@ export const Customers: React.FC = () => {
       setLoading(false);
     }
   };
-  const handleContactCustomer = (customerId: string) => {
-    setContactCustomerId(customerId);
-    setShowContactModal(true);
-    setContactMessage('');
-  } 
+  // Open chat modal and load messages
+  const handleOpenChat = async (customerId: string) => {
+    setChatCustomerId(customerId);
+    setShowChatModal(true);
+    setChatInput('');
+    setChatLoading(true);
+    try {
+      const messagesRef = collection(db, 'businesses', business.id, 'customers', customerId, 'messages');
+      const q = query(messagesRef, orderBy('createdAt', 'asc'));
+      const snapshot = await getDocs(q);
+      const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setChatMessages(messages);
+    } catch (error) {
+      toast.error('Failed to load chat messages');
+      setChatMessages([]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
-  const handleCloseContactModal = () => {
-    setShowContactModal(false);
-    setContactCustomerId(null);
-    setContactMessage('');
-  } 
+  // Close chat modal
+  const handleCloseChatModal = () => {
+    setShowChatModal(false);
+    setChatCustomerId(null);
+    setChatMessages([]);
+    setChatInput('');
+  };
 
-  const handleSendContactMessage = async () => {
-    if (!contactCustomerId || !contactMessage.trim()) {
+  // Send chat message (admin)
+  const handleSendChatMessage = async () => {
+    if (!chatCustomerId || !chatInput.trim()) {
       toast.error('Please type a message');
       return;
     }
-    setSendingMessage(true);
+    setSendingChat(true);
     try {
-      // Save message to customer dashboard (Firestore or backend)
-      await CustomerService.sendMessageToCustomer(contactCustomerId, contactMessage.trim());
-      // TODO: Send email to customer (configure email sending later)
-      toast.success('Message sent to customer!');
-      handleCloseContactModal();
+      await CustomerService.sendMessageToCustomer(
+        business.id,
+        chatCustomerId,
+        chatInput.trim(),
+        'admin',
+        business.name,
+        business.email || ''
+      );
+      setChatInput('');
+      // Reload chat messages
+      await handleOpenChat(chatCustomerId);
     } catch (error) {
       toast.error('Failed to send message');
     } finally {
-      setSendingMessage(false);
+      setSendingChat(false);
     }
-  } 
+  };
 
   const handleViewCustomer = (customerId: string) => {
     toast.success(`View customer ${customerId} details`);
@@ -291,45 +318,64 @@ export const Customers: React.FC = () => {
                   <td className="px-4 py-3 text-sm">
                     <Button
                       size="sm"
-                      onClick={() => handleContactCustomer(customer.id!)}
+                      onClick={() => handleOpenChat(customer.id!)}
                       className="flex-1"
                     >
                       <Mail className="h-4 w-4 mr-1" />
-                      Message Customer
+                      Chat
                     </Button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {/* Contact Customer Modal */}
-          {showContactModal && (
+          {/* Customer Chat Modal */}
+          {showChatModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-gray-900">Send Message to Customer</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Customer Chat</h2>
                   <button
-                    onClick={handleCloseContactModal}
+                    onClick={handleCloseChatModal}
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <X className="w-6 h-6" />
                   </button>
                 </div>
                 <div className="p-6">
-                  <textarea
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 mb-4"
-                    rows={5}
-                    placeholder="Type your message to the customer..."
-                    value={contactMessage}
-                    onChange={e => setContactMessage(e.target.value)}
-                    disabled={sendingMessage}
-                  />
-                  <div className="flex justify-end">
+                  {chatLoading ? (
+                    <div className="text-gray-500 text-center py-8">Loading chat...</div>
+                  ) : (
+                    <div className="space-y-4 mb-4 max-h-64 overflow-y-auto">
+                      {chatMessages.length === 0 ? (
+                        <div className="text-gray-400 text-center">No messages yet.</div>
+                      ) : (
+                        chatMessages.map(msg => (
+                          <div key={msg.id} className={`flex flex-col ${msg.sender === 'admin' ? 'items-end' : 'items-start'}`}>
+                            <div className={`inline-block px-4 py-2 rounded-lg shadow text-sm ${msg.sender === 'admin' ? 'bg-blue-100 text-blue-900' : 'bg-gray-100 text-gray-900'}`}>
+                              <span className="font-semibold">{msg.senderName || (msg.sender === 'admin' ? 'Admin' : 'Customer')}</span>
+                              <span className="ml-2 text-xs text-gray-500">{msg.createdAt && msg.createdAt.toDate ? msg.createdAt.toDate().toLocaleString() : ''}</span>
+                              <div className="mt-1">{msg.message}</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="text"
+                      className="flex-1 border rounded px-3 py-2 text-sm"
+                      placeholder="Type your message..."
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      disabled={sendingChat}
+                    />
                     <Button
-                      onClick={handleSendContactMessage}
-                      disabled={sendingMessage}
+                      onClick={handleSendChatMessage}
+                      disabled={sendingChat || !chatInput.trim()}
                     >
-                      {sendingMessage ? 'Sending...' : 'Send Message'}
+                      {sendingChat ? 'Sending...' : 'Send'}
                     </Button>
                   </div>
                 </div>

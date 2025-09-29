@@ -19,6 +19,8 @@ import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export const Messages: React.FC = () => {
+  // Tab state for separating message sources
+  const [tab, setTab] = useState<'contact' | 'customer'>('contact');
   const { business } = useAuth();
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,7 +94,11 @@ export const Messages: React.FC = () => {
     }
   };
 
-  const filteredMessages = messages.filter(msg => {
+  // Separate messages by source
+  // Treat messages with missing or undefined 'source' as contact form messages for backward compatibility
+  const contactMessages = messages.filter(msg => !msg.source || msg.source === 'contact');
+  const customerMessages = messages.filter(msg => msg.source === 'customer');
+  const filteredMessages = (tab === 'contact' ? contactMessages : customerMessages).filter(msg => {
     if (filterStatus === 'all') return true;
     return msg.status === filterStatus;
   });
@@ -185,9 +191,35 @@ export const Messages: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-          <p className="text-gray-600">Customer inquiries from your contact form</p>
+          <p className="text-gray-600">View and manage messages from contact form and customers</p>
         </div>
-        
+        {/* Tabs for source */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={tab === 'contact' ? 'default' : 'outline'}
+            onClick={() => setTab('contact')}
+            className={`px-6 py-2 rounded-lg font-semibold text-base shadow-sm transition-all duration-150 border-2 border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 ${tab === 'contact' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50'} `}
+            style={{
+              boxShadow: tab === 'contact' ? '0 2px 8px rgba(37,99,235,0.15)' : undefined,
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            Contact Form
+          </Button>
+          <Button
+            variant={tab === 'customer' ? 'default' : 'outline'}
+            onClick={() => setTab('customer')}
+            className={`px-6 py-2 rounded-lg font-semibold text-base shadow-sm transition-all duration-150 border-2 border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 ${tab === 'customer' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50'} `}
+            style={{
+              boxShadow: tab === 'customer' ? '0 2px 8px rgba(37,99,235,0.15)' : undefined,
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            Customer Messages
+          </Button>
+        </div>
         {/* Filter */}
         <div className="flex items-center space-x-4">
           <Filter className="h-4 w-4 text-gray-500" />
@@ -196,169 +228,139 @@ export const Messages: React.FC = () => {
             onChange={(e) => setFilterStatus(e.target.value as any)}
             className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="all">All Messages ({messages.length})</option>
-            <option value="new">New ({messages.filter(m => m.status === 'new').length})</option>
-            <option value="read">Read ({messages.filter(m => m.status === 'read').length})</option>
-            <option value="responded">Responded ({messages.filter(m => m.status === 'responded').length})</option>
+            <option value="all">All Messages ({tab === 'contact' ? contactMessages.length : customerMessages.length})</option>
+            <option value="new">New ({(tab === 'contact' ? contactMessages : customerMessages).filter(m => m.status === 'new').length})</option>
+            <option value="read">Read ({(tab === 'contact' ? contactMessages : customerMessages).filter(m => m.status === 'read').length})</option>
+            <option value="responded">Responded ({(tab === 'contact' ? contactMessages : customerMessages).filter(m => m.status === 'responded').length})</option>
           </select>
         </div>
       </div>
-
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="p-6">
           <div className="flex items-center">
             <MessageSquare className="h-8 w-8 text-gray-500" />
             <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900">{messages.length}</p>
-              <p className="text-sm text-gray-600">Total Messages</p>
+              <p className="text-2xl font-bold text-gray-900">{tab === 'contact' ? contactMessages.length : customerMessages.length}</p>
+              <p className="text-sm text-gray-600">{tab === 'contact' ? 'Contact Form' : 'Customer'} Messages</p>
             </div>
           </div>
         </Card>
-        
         <Card className="p-6">
           <div className="flex items-center">
             <AlertCircle className="h-8 w-8 text-red-500" />
             <div className="ml-4">
-              <p className="text-2xl font-bold text-red-600">{messages.filter(m => m.status === 'new').length}</p>
-              <p className="text-sm text-gray-600">New Messages</p>
+              <p className="text-2xl font-bold text-red-600">{(tab === 'contact' ? contactMessages : customerMessages).filter(m => m.status === 'new').length}</p>
+              <p className="text-sm text-gray-600">New</p>
             </div>
           </div>
         </Card>
-        
         <Card className="p-6">
           <div className="flex items-center">
             <Eye className="h-8 w-8 text-blue-500" />
             <div className="ml-4">
-              <p className="text-2xl font-bold text-blue-600">{messages.filter(m => m.status === 'read').length}</p>
+              <p className="text-2xl font-bold text-blue-600">{(tab === 'contact' ? contactMessages : customerMessages).filter(m => m.status === 'read').length}</p>
               <p className="text-sm text-gray-600">Read</p>
             </div>
           </div>
         </Card>
-        
         <Card className="p-6">
           <div className="flex items-center">
             <CheckCircle className="h-8 w-8 text-green-500" />
             <div className="ml-4">
-              <p className="text-2xl font-bold text-green-600">{messages.filter(m => m.status === 'responded').length}</p>
+              <p className="text-2xl font-bold text-green-600">{(tab === 'contact' ? contactMessages : customerMessages).filter(m => m.status === 'responded').length}</p>
               <p className="text-sm text-gray-600">Responded</p>
             </div>
           </div>
         </Card>
       </div>
-
       {/* Messages List */}
       {filteredMessages.length === 0 ? (
         <Card className="p-12 text-center">
           <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No messages found</h3>
-          <p className="text-gray-600">
-            {filterStatus === 'all' 
-              ? 'You haven\'t received any contact form submissions yet.'
-              : `No messages with status "${filterStatus}" found.`
-            }
-          </p>
+          <p className="text-gray-600">No messages in this category.</p>
         </Card>
       ) : (
-        <div className="grid gap-6">
-          {filteredMessages.map((message) => (
-            <Card key={message.id} className={`p-6 cursor-pointer transition-all hover:shadow-md ${
-              message.status === 'new' ? 'ring-2 ring-red-200' : ''
-            }`}>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    {getStatusIcon(message.status)}
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(message.status)}`}>
-                      {message.status.charAt(0).toUpperCase() + message.status.slice(1)}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="flex items-center space-x-2">
-                      <User className="h-4 w-4 text-gray-500" />
-                      <span className="font-medium">{message.name}</span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Mail className="h-4 w-4 text-gray-500" />
-                      <a href={`mailto:${message.email}`} className="text-blue-600 hover:underline">
-                        {message.email}
-                      </a>
-                    </div>
-                    
-                    {message.phone && (
-                      <div className="flex items-center space-x-2">
-                        <Phone className="h-4 w-4 text-gray-500" />
-                        <a href={`tel:${message.phone}`} className="text-blue-600 hover:underline">
-                          {message.phone}
-                        </a>
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-600">
-                        {formatDistanceToNow(message.createdAt.toDate(), { addSuffix: true })}
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Phone</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Subject</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Message</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredMessages.map((message) => (
+                <tr key={message.id} className={message.status === 'new' ? 'bg-red-50' : ''}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(message.status)}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(message.status)}`}>
+                        {message.status.charAt(0).toUpperCase() + message.status.slice(1)}
                       </span>
                     </div>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <h3 className="font-medium text-gray-900 mb-2">{message.subject}</h3>
-                    <p className="text-gray-600 line-clamp-3">{message.message}</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div className="flex space-x-2">
-                  {message.status === 'new' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStatusUpdate(message.id!, 'read')}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      Mark as Read
-                    </Button>
-                  )}
-                  
-                  {message.status !== 'responded' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStatusUpdate(message.id!, 'responded')}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Mark as Responded
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(`mailto:${message.email}?subject=Re: ${message.subject}`)}
-                  >
-                    <Mail className="h-4 w-4 mr-1" />
-                    Reply
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteMessage(message.id!)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-900">{message.name}</td>
+                  <td className="px-4 py-3">
+                    <a href={`mailto:${message.email}`} className="text-blue-600 hover:underline">
+                      {message.email}
+                    </a>
+                  </td>
+                  <td className="px-4 py-3">{message.phone || '—'}</td>
+                  <td className="px-4 py-3 font-semibold text-gray-800">{message.subject}</td>
+                  <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{message.message}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{formatDistanceToNow(message.createdAt.toDate(), { addSuffix: true })}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      {message.status === 'new' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusUpdate(message.id!, 'read')}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Mark as Read
+                        </Button>
+                      )}
+                      {message.status !== 'responded' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusUpdate(message.id!, 'responded')}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Mark as Responded
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(`mailto:${message.email}?subject=Re: ${message.subject}`)}
+                      >
+                        <Mail className="h-4 w-4 mr-1" />
+                        Reply
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteMessage(message.id!)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
