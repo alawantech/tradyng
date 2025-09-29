@@ -47,6 +47,7 @@ export const Orders: React.FC = () => {
     notes: ''
   });
   const [adminOrderStatus, setAdminOrderStatus] = useState<'paid' | 'pending'>('paid');
+  const [delivered, setDelivered] = useState(false);
   // Filter state for orders table
   const [filterType, setFilterType] = useState<'all' | 'day' | 'month' | 'year'>('all');
   const [filterDate, setFilterDate] = useState<string>('');
@@ -162,6 +163,7 @@ export const Orders: React.FC = () => {
       products: [], // Reset products array
       notes: ''
     });
+    setDelivered(false);
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
@@ -334,7 +336,8 @@ export const Orders: React.FC = () => {
         total: subtotal,
         status: isAdminCreating ? adminOrderStatus : 'pending',
         paymentMethod: 'manual' as const,
-        paymentStatus: isAdminCreating && adminOrderStatus === 'paid' ? 'paid' : 'pending' as const,
+        paymentStatus: isAdminCreating && adminOrderStatus === 'paid' ? 'completed' : 'pending' as const,
+        delivered,
         ...(orderData.notes && orderData.notes.trim() ? { notes: orderData.notes.trim() } : {})
       };
 
@@ -467,6 +470,13 @@ export const Orders: React.FC = () => {
       return { ...prev, products };
     });
   }
+
+  // --- Analytics Card ---
+  const totalOrders = orders.length;
+  const pendingOrders = orders.filter(o => o.status === 'pending').length;
+  const paidOrders = orders.filter(o => o.status === 'paid' || o.paymentStatus === 'completed').length;
+  const deliveredOrders = orders.filter(o => o.delivered).length;
+  const totalRevenue = orders.reduce((sum, o) => sum + (typeof o.total === 'number' ? o.total : 0), 0);
 
   return (
     <div className="p-6">
@@ -693,6 +703,17 @@ export const Orders: React.FC = () => {
                   </select>
                 </div>
               )}
+              {business?.ownerId && (
+                <div className="mb-4 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="delivered"
+                    checked={delivered}
+                    onChange={e => setDelivered(e.target.checked)}
+                  />
+                  <label htmlFor="delivered" className="text-sm font-medium text-gray-700">Delivered</label>
+                </div>
+              )}
 
               {/* Order Summary */}
               {orderData.products.length > 0 && (
@@ -733,6 +754,30 @@ export const Orders: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Analytics Card */}
+      <Card className="mb-6 p-6 flex flex-wrap gap-6 items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 shadow-lg rounded-xl">
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-blue-700">{totalOrders}</span>
+          <span className="text-sm text-gray-600">Total Orders</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-yellow-600">{pendingOrders}</span>
+          <span className="text-sm text-gray-600">Pending</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-green-600">{paidOrders}</span>
+          <span className="text-sm text-gray-600">Paid</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-indigo-600">{deliveredOrders}</span>
+          <span className="text-sm text-gray-600">Delivered</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-gray-900">{formatCurrency(totalRevenue, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+          <span className="text-sm text-gray-600">Total Revenue</span>
+        </div>
+      </Card>
 
       {/* Search and Filter Controls */}
       <div className="flex flex-wrap gap-4 items-center mb-4">
@@ -819,6 +864,7 @@ export const Orders: React.FC = () => {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Total</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Payment</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Delivered</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -850,6 +896,26 @@ export const Orders: React.FC = () => {
                           {getStatusIcon(order.status)}
                           <span>{order.status}</span>
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={order.delivered}
+                            onChange={async e => {
+                              const newDelivered = e.target.checked;
+                              setOrders(prev => prev.map(o => o.id === order.id ? { ...o, delivered: newDelivered } : o));
+                              try {
+                                await OrderService.updateOrder(business.id, order.id, { delivered: newDelivered });
+                              } catch (err) {
+                                toast.error('Failed to update delivered status');
+                              }
+                            }}
+                          />
+                          <span className={order.delivered ? 'text-green-600 font-semibold' : 'text-gray-600'}>
+                            {order.delivered ? 'Product is delivered' : 'Check if product is delivered'}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <Button
