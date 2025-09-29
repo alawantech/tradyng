@@ -64,15 +64,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     try {
       setIsLoading(true);
       const fetchedCategories = await CategoryService.getCategoriesByBusinessId(businessId);
-      
-      // If no categories exist, initialize with defaults
-      if (fetchedCategories.length === 0) {
-        await CategoryService.initializeDefaultCategories(businessId);
-        const defaultCategories = await CategoryService.getCategoriesByBusinessId(businessId);
-        setCategories(defaultCategories);
-      } else {
-        setCategories(fetchedCategories);
-      }
+      setCategories(fetchedCategories);
     } catch (error) {
       console.error('Failed to load categories:', error);
     } finally {
@@ -150,7 +142,6 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
           className="pr-10"
           onFocus={() => setIsOpen(true)}
         />
-        
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
@@ -170,6 +161,21 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
             </div>
           ) : (
             <>
+              {/* Always show Create New Category button */}
+              {!isCreating && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewCategoryName('');
+                    setIsCreating(true);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center space-x-2 border-b"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Create New Category</span>
+                </button>
+              )}
+
               {/* Create New Category Mode */}
               {isCreating && (
                 <div className="p-3 border-b bg-blue-50">
@@ -212,21 +218,6 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
                 </div>
               )}
 
-              {/* Create New Category Option */}
-              {showCreateOption && !isCreating && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewCategoryName(value.trim());
-                    setIsCreating(true);
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center space-x-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Create "{value.trim()}"</span>
-                </button>
-              )}
-
               {/* Existing Categories */}
               {filteredCategories.length > 0 ? (
                 filteredCategories.map((category) => (
@@ -242,7 +233,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
                     )}
                   </button>
                 ))
-              ) : value.trim() && !showCreateOption ? (
+              ) : value.trim() ? (
                 <div className="px-4 py-3 text-sm text-gray-500">
                   No categories found matching "{value}"
                 </div>
