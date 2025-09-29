@@ -727,8 +727,23 @@ export const Orders: React.FC = () => {
             </div>
             {/* Receipt Modal */}
             {showReceipt === (order.orderId || order.id) && (
-              <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full relative">
+              <div
+                className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
+                onClick={() => setShowReceipt(null)}
+                role="dialog"
+                aria-modal="true"
+              >
+                <div
+                  className="bg-white rounded-lg shadow-lg max-w-lg w-full relative overflow-y-auto max-h-[90vh]"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <button
+                    className="sticky top-0 right-0 float-right m-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold shadow focus:outline-none focus:ring-2 focus:ring-blue-400 z-10"
+                    onClick={() => setShowReceipt(null)}
+                    aria-label="Close receipt"
+                  >
+                    Close
+                  </button>
                   <OrderReceipt
                     orderId={order.orderId || order.id || 'N/A'}
                     customerName={order.customerName}
@@ -747,10 +762,11 @@ export const Orders: React.FC = () => {
                     storeAddress={business?.address}
                     storePhone={business?.phone}
                     storeEmail={business?.email}
+                    storeLogo={business?.logo}
+                    primaryColor={business?.settings?.primaryColor}
+                    secondaryColor={business?.settings?.secondaryColor}
+                    accentColor={business?.settings?.accentColor}
                   />
-                  <Button variant="outline" className="absolute top-4 right-4" onClick={() => setShowReceipt(null)}>
-                    Close
-                  </Button>
                 </div>
               </div>
             )}

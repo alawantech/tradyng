@@ -24,6 +24,10 @@ interface OrderReceiptProps {
   storeAddress?: string;
   storePhone?: string;
   storeEmail?: string;
+  storeLogo?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
 }
 
 export const OrderReceipt: React.FC<OrderReceiptProps> = ({
@@ -40,88 +44,108 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
   storeName = "Trady.ng",
   storeAddress,
   storePhone,
-  storeEmail
+  storeEmail,
+  storeLogo,
+  primaryColor = '#3B82F6',
+  secondaryColor = '#1E40AF',
+  accentColor = '#F59E0B'
 }) => {
   return (
-    <Card className="max-w-lg mx-auto p-8 print:shadow-none">
+    <Card
+      className="max-w-lg mx-auto p-0 print:shadow-none rounded-2xl shadow-xl border"
+      style={{
+        borderColor: primaryColor,
+        background: `linear-gradient(135deg, ${primaryColor}22 0%, #fff 100%)`
+      }}
+    >
       {/* Store Header */}
-      <div className="text-center mb-8 border-b pb-6">
-        <div className="flex items-center justify-center mb-4">
-          <img src={logo} alt="Store Logo" className="h-12 w-12 object-contain mr-3" />
-          <h1 className="text-2xl font-bold text-gray-900">{storeName}</h1>
+      <div
+        className="rounded-t-2xl p-6 text-white text-center mb-0 border-b-4"
+        style={{
+          background: `linear-gradient(90deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
+          borderColor: accentColor
+        }}
+      >
+        <div className="flex items-center justify-center mb-2">
+          <img src={storeLogo || logo} alt="Store Logo" className="h-14 w-14 object-contain mr-3 drop-shadow-lg" />
+          <h1 className="text-3xl font-extrabold tracking-tight drop-shadow-lg">{storeName}</h1>
         </div>
         {storeAddress && (
-          <p className="text-sm text-gray-600">{storeAddress}</p>
+          <p className="text-sm opacity-90">{storeAddress}</p>
         )}
-        <div className="flex justify-center space-x-4 text-sm text-gray-600">
-          {storePhone && <span>Phone: {storePhone}</span>}
-          {storeEmail && <span>Email: {storeEmail}</span>}
+        <div className="flex flex-col items-center text-sm gap-1 mt-2">
+          {storeEmail && <span className="opacity-90">Email: {storeEmail}</span>}
+          {storePhone && <span className="opacity-90">Phone: {storePhone}</span>}
         </div>
       </div>
 
-      {/* Receipt Title */}
-      <div className="text-center mb-6">
-        <h2 className="text-xl font-bold text-gray-900">Order Receipt</h2>
-        <p className="text-gray-500">Order ID: {orderId}</p>
-        <p className="text-gray-500">Date: {createdAt}</p>
+      {/* Receipt Title & Order Info */}
+      <div className="text-center py-6 px-8">
+        <h2 className="text-2xl font-bold mb-2" style={{ color: primaryColor }}>Order Receipt</h2>
+        <div className="flex justify-center gap-4 text-sm mb-2">
+          <span className="px-3 py-1 rounded-full font-semibold shadow" style={{ background: `${primaryColor}22`, color: primaryColor }}>Order ID: {orderId}</span>
+          <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-semibold shadow">Date: {createdAt}</span>
+        </div>
       </div>
 
       {/* Customer Information */}
-      <div className="mb-6 border-b pb-4">
-        <p className="font-medium text-gray-900 mb-2">Customer:</p>
-        <div className="text-sm space-y-1">
-          <p><span className="font-medium">Name:</span> {customerName}</p>
-          <p><span className="font-medium">Email:</span> {customerEmail}</p>
-          {customerPhone && (
-            <p><span className="font-medium">Phone:</span> {customerPhone}</p>
-          )}
-          {customerAddress && (
-            <p><span className="font-medium">Address:</span> {customerAddress}</p>
-          )}
+      <div className="px-8 pb-6">
+        <div className="bg-white rounded-lg border p-4 mb-4 shadow-sm" style={{ borderColor: primaryColor }}>
+          <p className="font-semibold mb-2" style={{ color: primaryColor }}>Customer Information</p>
+          <div className="text-sm space-y-1">
+            <p><span className="font-medium text-gray-700">Name:</span> {customerName}</p>
+            <p><span className="font-medium text-gray-700">Email:</span> {customerEmail}</p>
+            {customerPhone && (
+              <p><span className="font-medium text-gray-700">Phone:</span> {customerPhone}</p>
+            )}
+            {customerAddress && (
+              <p><span className="font-medium text-gray-700">Address:</span> {customerAddress}</p>
+            )}
+          </div>
         </div>
       </div>
+
       {/* Items */}
-      <div className="mb-6">
-        <p className="font-medium text-gray-900 mb-3">Items:</p>
-        <ul className="divide-y divide-gray-200 border border-gray-200 rounded-lg">
-          {items.map((item, idx) => (
-            <li key={idx} className="py-3 px-4 flex justify-between items-center">
-              <div>
-                <span className="font-medium">{item.quantity}x {item.productName}</span>
-                <p className="text-sm text-gray-500">
-                  {formatCurrency(item.price, currencyCode)} each
-                </p>
-              </div>
-              <span className="font-medium">
-                {formatCurrency(item.price * item.quantity, currencyCode)}
-              </span>
-            </li>
-          ))}
-        </ul>
+      <div className="px-8 pb-6">
+        <div className="bg-white rounded-lg border p-4 shadow-sm" style={{ borderColor: primaryColor }}>
+          <p className="font-semibold mb-3" style={{ color: primaryColor }}>Items</p>
+          <ul className="divide-y" style={{ borderColor: primaryColor }}>
+            {items.map((item, idx) => (
+              <li key={idx} className="py-3 px-2 flex justify-between items-center">
+                <div>
+                  <span className="font-medium text-gray-900">{item.quantity}x {item.productName}</span>
+                  <p className="text-xs text-gray-500">
+                    {formatCurrency(item.price, currencyCode)} each
+                  </p>
+                </div>
+                <span className="font-bold" style={{ color: primaryColor }}>
+                  {formatCurrency(item.price * item.quantity, currencyCode)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
-      {/* Total */}
-      <div className="mb-6 border-t pt-4">
-        <div className="flex justify-between items-center text-lg font-bold">
-          <span>Total:</span>
-          <span className="text-blue-600">
+      {/* Total & Payment */}
+      <div className="px-8 pb-8">
+        <div className="rounded-lg border p-4 shadow-sm mb-4 flex justify-between items-center" style={{ background: `${primaryColor}22`, borderColor: accentColor }}>
+          <span className="text-lg font-bold" style={{ color: primaryColor }}>Total:</span>
+          <span className="text-2xl font-extrabold" style={{ color: primaryColor }}>
             {formatCurrency(total, currencyCode)}
           </span>
         </div>
-      </div>
-
-      {/* Payment Method */}
-      <div className="mb-8 border-t pt-4">
-        <div className="flex justify-between items-center">
-          <span className="font-medium text-gray-900">Payment Method:</span>
-          <span className="capitalize">{paymentMethod}</span>
+        <div className="bg-white rounded-lg border p-4 shadow-sm flex justify-between items-center" style={{ borderColor: primaryColor }}>
+          <span className="font-semibold" style={{ color: primaryColor }}>Payment Method:</span>
+          <span className="capitalize text-gray-900 font-bold">{paymentMethod}</span>
         </div>
       </div>
 
       {/* Print Button */}
-      <div className="text-center">
+      <div className="text-center pb-8">
         <button
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-colors print:hidden"
+          className="px-10 py-3 rounded-xl font-bold shadow-lg transition-colors print:hidden"
+          style={{ background: `linear-gradient(90deg, ${primaryColor} 0%, ${secondaryColor} 100%)`, color: '#fff' }}
           onClick={() => window.print()}
         >
           Download / Print Receipt
