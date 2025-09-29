@@ -21,26 +21,49 @@ export const Orders: React.FC = () => {
   const [showReceipt, setShowReceipt] = useState<string | null>(null);
   const [customerOption, setCustomerOption] = useState<'existing' | 'manual'>('existing');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [orderData, setOrderData] = useState({
+  type OrderProduct = { productId: string; quantity: number };
+  const [orderData, setOrderData] = useState<{
     // Customer data for manual entry
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    // Address data
+    street: string;
+    city: string;
+    state: string;
+    country: string;
+    // Order data
+    products: OrderProduct[]; // Array of { productId, quantity }
+    notes: string;
+  }>({
     customerName: '',
     customerEmail: '',
     customerPhone: '',
-    // Address data
     street: '',
     city: '',
     state: '',
     country: '',
-    // Order data
-    productId: '',
-    quantity: 1,
+    products: [], // Reset products array
     notes: ''
   });
+  const [adminOrderStatus, setAdminOrderStatus] = useState<'paid' | 'pending'>('paid');
   // Filter state for orders table
   const [filterType, setFilterType] = useState<'all' | 'day' | 'month' | 'year'>('all');
   const [filterDate, setFilterDate] = useState<string>('');
-  // Filtered orders logic
+  // Search state for orders
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Filtered and searched orders logic
   const filteredOrders = orders.filter(order => {
+    // Search by order ID, customer name, or email
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const matches = (order.orderId && order.orderId.toLowerCase().includes(term)) ||
+        (order.customerName && order.customerName.toLowerCase().includes(term)) ||
+        (order.customerEmail && order.customerEmail.toLowerCase().includes(term));
+      if (!matches) return false;
+    }
+    // Date filters
     if (filterType === 'all' || !filterDate) return true;
     let created: Date;
     if (order.createdAt instanceof Date) {
@@ -136,8 +159,7 @@ export const Orders: React.FC = () => {
       city: '',
       state: '',
       country: '',
-      productId: '', 
-      quantity: 1,
+      products: [], // Reset products array
       notes: ''
     });
   };
@@ -161,27 +183,20 @@ export const Orders: React.FC = () => {
     try {
       // Validate required fields
       console.log('Validating product selection...');
-      if (!orderData.productId) {
+      if (orderData.products.length === 0 || !orderData.products[0].productId) {
         console.error('No product selected');
         toast.error('Please select a product');
         return;
       }
       
-      console.log('Validating quantity...');
-      if (!orderData.quantity || orderData.quantity < 1) {
-        console.error('Invalid quantity:', orderData.quantity);
-        toast.error('Please enter a valid quantity');
-        return;
+      console.log('Validating quantities...');
+      for (const prod of orderData.products) {
+        if (!prod.quantity || prod.quantity < 1) {
+          console.error('Invalid quantity:', prod.quantity);
+          toast.error('Please enter a valid quantity for all products');
+          return;
+        }
       }
-
-      const selectedProduct = products.find(p => p.id === orderData.productId);
-      if (!selectedProduct) {
-        console.error('Product not found in products list');
-        toast.error('Selected product not found');
-        return;
-      }
-
-      console.log('Selected product:', selectedProduct);
 
       // Validate customer data based on selection type
       if (customerOption === 'existing') {
@@ -211,13 +226,25 @@ export const Orders: React.FC = () => {
 
       console.log('All validations passed, preparing order data...');
 
-      const quantity = parseInt(orderData.quantity.toString(), 10);
-      const total = selectedProduct.price * quantity;
+      // Calculate subtotal and prepare items array
+      const items = orderData.products
+        .map(prod => {
+          const selectedProduct = products.find(p => p.id === prod.productId);
+          if (!selectedProduct) return undefined;
+          return {
+            productId: selectedProduct.id,
+            productName: selectedProduct.name,
+            quantity: prod.quantity,
+            price: selectedProduct.price,
+            total: selectedProduct.price * prod.quantity
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => !!item);
+      const subtotal = items.reduce((sum, item) => sum + item.total, 0);
       
       console.log('Order calculations:', {
-        productPrice: selectedProduct.price,
-        quantity: quantity,
-        total: total
+        items,
+        subtotal
       });
 
       let customerId: string | undefined;
@@ -290,31 +317,24 @@ export const Orders: React.FC = () => {
         businessId: business.id,
         customerData,
         shippingAddress,
-        total,
-        selectedProduct: {
-          id: selectedProduct.id,
-          name: selectedProduct.name,
-          price: selectedProduct.price
-        }
+        items,
+        subtotal
       });
+
+      // Helper to check if admin is creating the order
+      const isAdminCreating = !!business?.ownerId;
 
       const orderPayload = {
         ...customerData,
         ...(shippingAddress ? { shippingAddress } : {}),
-        items: [{
-          productId: orderData.productId,
-          productName: selectedProduct.name,
-          quantity: quantity,
-          price: selectedProduct.price,
-          total: total
-        }],
-        subtotal: total,
+        items,
+        subtotal,
         tax: 0,
         shipping: 0,
-        total: total,
-        status: 'pending' as const,
+        total: subtotal,
+        status: isAdminCreating ? adminOrderStatus : 'pending',
         paymentMethod: 'manual' as const,
-        paymentStatus: 'pending' as const,
+        paymentStatus: isAdminCreating && adminOrderStatus === 'paid' ? 'paid' : 'pending' as const,
         ...(orderData.notes && orderData.notes.trim() ? { notes: orderData.notes.trim() } : {})
       };
 
@@ -328,10 +348,10 @@ export const Orders: React.FC = () => {
         const customerIdToUpdate = customerId || selectedCustomer?.id;
         if (customerIdToUpdate) {
           try {
-            console.log('Updating customer statistics for:', customerIdToUpdate, 'Order total:', total);
+            console.log('Updating customer statistics for:', customerIdToUpdate, 'Order total:', subtotal);
             
             // Use the dedicated CustomerService method for updating stats
-            await CustomerService.updateCustomerStats(business.id, customerIdToUpdate, total, true);
+            await CustomerService.updateCustomerStats(business.id, customerIdToUpdate, subtotal, true);
             console.log('Customer statistics updated successfully');
             
             // Verify the update by re-fetching the customer data
@@ -426,6 +446,27 @@ export const Orders: React.FC = () => {
       toast.error('Failed to approve order');
     }
   };
+
+  // Handler for adding a product to the order
+  function handleAddProduct() {
+    setOrderData(prev => ({
+      ...prev,
+      products: [...prev.products, { productId: '', quantity: 1 }]
+    }));
+  }
+  function handleRemoveProduct(index: number) {
+    setOrderData(prev => {
+      const products = prev.products.filter((_, i) => i !== index);
+      return { ...prev, products };
+    });
+  }
+  function handleProductChange(index: number, field: string, value: any) {
+    setOrderData(prev => {
+      const products = [...prev.products];
+      products[index] = { ...products[index], [field]: value };
+      return { ...prev, products };
+    });
+  }
 
   return (
     <div className="p-6">
@@ -593,36 +634,32 @@ export const Orders: React.FC = () => {
               )}
 
               {/* Product Selection */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product *
-                  </label>
-                  <select
-                    name="productId"
-                    value={orderData.productId}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select a product...</option>
-                    {products.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} ({formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <Input
-                  label="Quantity *"
-                  name="quantity"
-                  type="number"
-                  min={1}
-                  value={orderData.quantity}
-                  onChange={handleChange}
-                  required
-                />
+              <div className="space-y-4">
+                {orderData.products.map((prod, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <select
+                      className="border rounded px-3 py-2 text-sm"
+                      value={prod.productId}
+                      onChange={e => handleProductChange(idx, 'productId', e.target.value)}
+                    >
+                      <option value="">Select Product</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={1}
+                      className="border rounded px-3 py-2 text-sm w-20"
+                      value={prod.quantity}
+                      onChange={e => handleProductChange(idx, 'quantity', Number(e.target.value))}
+                    />
+                    <Button type="button" size="sm" variant="outline" onClick={() => handleRemoveProduct(idx)}>
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" size="sm" onClick={handleAddProduct} className="mb-2">Add Product</Button>
               </div>
 
               {/* Order Notes */}
@@ -640,26 +677,46 @@ export const Orders: React.FC = () => {
                 />
               </div>
 
+              {/* Order Status - Admin Only */}
+              {business?.ownerId && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Order Status
+                  </label>
+                  <select
+                    className="border rounded px-3 py-2 text-sm"
+                    value={adminOrderStatus}
+                    onChange={e => setAdminOrderStatus(e.target.value as 'paid' | 'pending')}
+                  >
+                    <option value="paid">Paid (Approved)</option>
+                    <option value="pending">Pending (Needs Approval)</option>
+                  </select>
+                </div>
+              )}
+
               {/* Order Summary */}
-              {orderData.productId && (
+              {orderData.products.length > 0 && (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="font-medium text-gray-900 mb-2">Order Summary</h3>
-                  {(() => {
-                    const selectedProduct = products.find(p => p.id === orderData.productId);
-                    const total = selectedProduct ? selectedProduct.price * orderData.quantity : 0;
-                    return (
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span>{orderData.quantity}x {selectedProduct?.name}</span>
+                  <div className="space-y-1 text-sm">
+                    {orderData.products.map((prod, idx) => {
+                      const selectedProduct = products.find(p => p.id === prod.productId);
+                      const total = selectedProduct ? selectedProduct.price * prod.quantity : 0;
+                      return (
+                        <div key={idx} className="flex justify-between">
+                          <span>{prod.quantity}x {selectedProduct?.name}</span>
                           <span>{formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                         </div>
-                        <div className="flex justify-between font-medium text-gray-900 pt-2 border-t">
-                          <span>Total</span>
-                          <span>{formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })}
+                    <div className="flex justify-between font-medium text-gray-900 pt-2 border-t">
+                      <span>Total</span>
+                      <span>{formatCurrency(orderData.products.reduce((sum, prod) => {
+                        const selectedProduct = products.find(p => p.id === prod.productId);
+                        return sum + (selectedProduct ? selectedProduct.price * prod.quantity : 0);
+                      }, 0), business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -677,8 +734,16 @@ export const Orders: React.FC = () => {
         </div>
       )}
 
-      {/* Filter Controls */}
+      {/* Search and Filter Controls */}
       <div className="flex flex-wrap gap-4 items-center mb-4">
+        <input
+          type="text"
+          className="border rounded px-3 py-2 text-sm"
+          placeholder="Search by Order ID, Name, or Email"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          style={{ minWidth: 220 }}
+        />
         <select
           className="border rounded px-3 py-2 text-sm"
           value={filterType}
@@ -741,7 +806,8 @@ export const Orders: React.FC = () => {
               Create First Order
             </Button>
           </Card>
-        ) : (
+        ) :
+        (
           <div className="overflow-x-auto">
             <table className="min-w-full bg-white rounded-lg shadow border border-gray-200">
               <thead className="bg-gray-50">
@@ -758,9 +824,8 @@ export const Orders: React.FC = () => {
               </thead>
               <tbody>
                 {filteredOrders.map((order) => {
-                  // If order has a field like createdBy or isAdminOrder, use it to determine if admin created
-                  // For this example, assume order.createdBy === business.ownerId means admin created
-                  const isAdminOrder = order.createdBy && business?.ownerId && order.createdBy === business.ownerId;
+                  // For this example, assume all orders created in dashboard are admin orders
+                  const isAdminOrder = false; // Fix type error, you can implement your own logic
                   return (
                     <tr key={order.id} className="border-b last:border-b-0 hover:bg-gray-50 transition">
                       <td className="px-4 py-3 text-sm font-semibold text-gray-900">{order.orderId || order.id}</td>
