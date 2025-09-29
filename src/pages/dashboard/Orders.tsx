@@ -36,6 +36,33 @@ export const Orders: React.FC = () => {
     quantity: 1,
     notes: ''
   });
+  // Filter state for orders table
+  const [filterType, setFilterType] = useState<'all' | 'day' | 'month' | 'year'>('all');
+  const [filterDate, setFilterDate] = useState<string>('');
+  // Filtered orders logic
+  const filteredOrders = orders.filter(order => {
+    if (filterType === 'all' || !filterDate) return true;
+    let created: Date;
+    if (order.createdAt instanceof Date) {
+      created = order.createdAt;
+    } else if (order.createdAt?.toDate) {
+      created = order.createdAt.toDate();
+    } else if (typeof order.createdAt === 'string' || typeof order.createdAt === 'number') {
+      created = new Date(order.createdAt);
+    } else {
+      created = new Date(); // fallback to now if missing
+    }
+    if (filterType === 'day') {
+      return created.toISOString().slice(0, 10) === filterDate;
+    }
+    if (filterType === 'month') {
+      return created.toISOString().slice(0, 7) === filterDate;
+    }
+    if (filterType === 'year') {
+      return created.getFullYear().toString() === filterDate;
+    }
+    return true;
+  });
 
   useEffect(() => {
     if (business?.id) {
@@ -650,6 +677,52 @@ export const Orders: React.FC = () => {
         </div>
       )}
 
+      {/* Filter Controls */}
+      <div className="flex flex-wrap gap-4 items-center mb-4">
+        <select
+          className="border rounded px-3 py-2 text-sm"
+          value={filterType}
+          onChange={e => {
+            setFilterType(e.target.value as any);
+            setFilterDate('');
+          }}
+        >
+          <option value="all">All</option>
+          <option value="day">Day</option>
+          <option value="month">Month</option>
+          <option value="year">Year</option>
+        </select>
+        {filterType === 'day' && (
+          <input
+            type="date"
+            className="border rounded px-3 py-2 text-sm"
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
+            max={new Date().toISOString().slice(0, 10)}
+          />
+        )}
+        {filterType === 'month' && (
+          <input
+            type="month"
+            className="border rounded px-3 py-2 text-sm"
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
+            max={new Date().toISOString().slice(0, 7)}
+          />
+        )}
+        {filterType === 'year' && (
+          <input
+            type="number"
+            className="border rounded px-3 py-2 text-sm w-24"
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
+            min="2000"
+            max={new Date().getFullYear()}
+            placeholder="Year"
+          />
+        )}
+      </div>
+
       <div className="space-y-4">
         {orders.length === 0 ? (
           <Card className="p-12 text-center">
@@ -684,7 +757,7 @@ export const Orders: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => {
+                {filteredOrders.map((order) => {
                   // If order has a field like createdBy or isAdminOrder, use it to determine if admin created
                   // For this example, assume order.createdBy === business.ownerId means admin created
                   const isAdminOrder = order.createdBy && business?.ownerId && order.createdBy === business.ownerId;
