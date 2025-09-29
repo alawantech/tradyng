@@ -388,22 +388,22 @@ export const Products: React.FC = () => {
       }
 
       const productData = {
-        name: productForm.name.trim(),
-        description: productForm.description.trim(),
-        price: price,
-        stock: stock,
-        category: productForm.category.trim() || 'Uncategorized',
-        images: imageUrls,
-        video: videoUrl,
-        tags: editingProduct?.tags || [],
-        isActive: editingProduct?.isActive ?? true,
-        sizes: productForm.sizes || [],
-        colors: productForm.colors || [],
-        dimensions: {
-              width: productForm.width ? parseFloat(productForm.width) : null,
-              height: productForm.height ? parseFloat(productForm.height) : null,
-        }
-      };
+    name: productForm.name.trim(),
+    description: productForm.description.trim(),
+    price: price,
+    stock: stock,
+    category: productForm.category.trim() || 'Uncategorized',
+    images: imageUrls,
+    ...(videoUrl ? { video: videoUrl } : {}),
+    tags: editingProduct?.tags || [],
+    isActive: editingProduct?.isActive ?? true,
+    sizes: productForm.sizes || [],
+    colors: productForm.colors || [],
+    dimensions: {
+      width: productForm.width ? parseFloat(productForm.width) : null,
+      height: productForm.height ? parseFloat(productForm.height) : null,
+    }
+  };
       if (editingProduct?.id) {
         // Update existing product
         await ProductService.updateProduct(business.id, editingProduct.id, productData);

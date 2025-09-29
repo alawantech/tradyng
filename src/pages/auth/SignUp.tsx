@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Store, ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { Store, ArrowRight, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -9,14 +9,18 @@ import toast from 'react-hot-toast';
 import { AuthService } from '../../services/auth';
 import { UserService } from '../../services/user';
 import { BusinessService } from '../../services/business';
-import { CountryService, type Country, type State } from '../../data/countries';
+import { CountryService, countriesWithStates } from '../../data/countries';
 import { getDefaultCurrencyForCountry } from '../../constants/currencies';
+import { COUNTRY_CALLING_CODES } from '../../data/countryCallingCodes';
 import logo from '../../assets/logo.png';
 
 interface FormData {
   storeName: string;
   email: string;
   password: string;
+  repeatPassword: string;
+  phone: string;
+  countryCode: string;
   country: string;
   state: string;
 }
@@ -31,7 +35,8 @@ const steps = [
   { id: 1, title: 'Store Name', description: 'Choose your store name' },
   { id: 2, title: 'Email', description: 'Enter your email address' },
   { id: 3, title: 'Password', description: 'Create a secure password' },
-  { id: 4, title: 'Location', description: 'Where is your business?' }
+  { id: 4, title: 'Whatsapp Number', description: 'Add your store Whatsapp number' },
+  { id: 5, title: 'Location', description: 'Where is your business?' }
 ];
 
 export const SignUp: React.FC = () => {
@@ -45,6 +50,9 @@ export const SignUp: React.FC = () => {
     storeName: '',
     email: '',
     password: '',
+    repeatPassword: '',
+    phone: '',
+    countryCode: '234',
     country: 'Nigeria', // Default to Nigeria
     state: ''
   });
@@ -54,6 +62,9 @@ export const SignUp: React.FC = () => {
     available: null,
     message: ''
   });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRepeatPassword, setShowRepeatPassword] = useState(false);
 
   // Load countries on component mount
   useEffect(() => {
@@ -164,8 +175,14 @@ export const SignUp: React.FC = () => {
       case 2:
         return formData.email.includes('@') && formData.email.includes('.');
       case 3:
-        return formData.password.length >= 6;
+        return (
+          formData.password.length >= 6 &&
+          formData.repeatPassword.length >= 6 &&
+          formData.password === formData.repeatPassword
+        );
       case 4:
+        return formData.phone.trim().length >= 7;
+      case 5:
         return formData.country.trim() !== '' && formData.state.trim() !== '';
       default:
         return false;
@@ -173,7 +190,7 @@ export const SignUp: React.FC = () => {
   };
 
   const nextStep = () => {
-    if (currentStep < 4 && isStepValid(currentStep)) {
+    if (currentStep < 5 && isStepValid(currentStep)) {
       setCurrentStep(prev => prev + 1);
     }
   };
@@ -185,7 +202,7 @@ export const SignUp: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!isStepValid(4)) return;
+    if (!isStepValid(5)) return;
     
     setLoading(true);
     
@@ -225,6 +242,7 @@ export const SignUp: React.FC = () => {
           subdomain: subdomain,
           ownerId: authUser.uid,
           email: formData.email,
+          phone: `${formData.countryCode}${formData.phone}`,
           country: formData.country,
           state: formData.state,
           plan: 'free',
@@ -341,20 +359,83 @@ export const SignUp: React.FC = () => {
         );
 
       case 3:
+        const passwordMismatch = formData.repeatPassword.length > 0 && formData.password !== formData.repeatPassword;
         return (
           <div className="space-y-4">
-            <Input
-              type="password"
-              placeholder="Create a secure password"
-              value={formData.password}
-              onChange={(e) => handleInputChange('password', e.target.value)}
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-400">Password must be at least 6 characters long</p>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="Create a secure password"
+                value={formData.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
+                className={`w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 pr-10 ${passwordMismatch ? 'border-red-500' : ''}`}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-3 text-gray-400 hover:text-white"
+                onClick={() => setShowPassword((prev) => !prev)}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            <div className="relative">
+              <Input
+                type={showRepeatPassword ? "text" : "password"}
+                placeholder="Repeat password"
+                value={formData.repeatPassword}
+                onChange={(e) => handleInputChange('repeatPassword', e.target.value)}
+                className={`w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 pr-10 ${passwordMismatch ? 'border-red-500' : ''}`}
+                error={passwordMismatch ? 'Passwords do not match' : ''}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-3 text-gray-400 hover:text-white"
+                onClick={() => setShowRepeatPassword((prev) => !prev)}
+                tabIndex={-1}
+              >
+                {showRepeatPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            <p className={`text-xs ${passwordMismatch ? 'text-red-500' : 'text-gray-400'}`}>Password must be at least 6 characters long. Both passwords must match.</p>
           </div>
         );
 
       case 4:
+        // Prepare country code options for select
+        const countryOptions = Object.entries(COUNTRY_CALLING_CODES).map(([country, code]) => ({
+          value: code,
+          label: `${country} (${code})`
+        }));
+        const selectedCountryCode = formData.countryCode || '234';
+        return (
+          <div className="space-y-4">
+            <label className="block text-sm font-bold text-white mb-1 drop-shadow-lg">
+              Whatsapp Number
+            </label>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedCountryCode}
+                onChange={e => handleInputChange('countryCode', e.target.value)}
+                className="px-3 py-2 bg-gray-700 text-white rounded-lg font-semibold border border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              >
+                {countryOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <Input
+                type="tel"
+                placeholder="e.g. 8012345678 (no leading zero)"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value.replace(/^0+/, ''))}
+                className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <p className="text-xs text-gray-400">Select your country code and enter your Whatsapp number without the first zero.</p>
+          </div>
+        );
+
+      case 5:
         const isNigeria = formData.country === 'Nigeria';
         
         return (
@@ -464,7 +545,7 @@ export const SignUp: React.FC = () => {
               Back
             </Button>
 
-            {currentStep < 4 ? (
+            {currentStep < steps.length ? (
               <Button
                 onClick={nextStep}
                 disabled={!isStepValid(currentStep)}
@@ -480,9 +561,9 @@ export const SignUp: React.FC = () => {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={!isStepValid(4) || loading}
+                disabled={!isStepValid(5) || loading}
                 className={`flex-1 h-12 rounded-lg font-medium transition-colors ${
-                  isStepValid(4) && !loading
+                  isStepValid(5) && !loading
                   ? 'bg-blue-500 text-white hover:bg-blue-600' 
                   : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}
