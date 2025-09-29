@@ -684,98 +684,104 @@ export const Orders: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id} className="border-b last:border-b-0 hover:bg-gray-50 transition">
-                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">{order.orderId || order.id}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : ''}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="font-medium text-gray-900">{order.customerName}</div>
-                      <div className="text-xs text-gray-600">{order.customerEmail}</div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="text-gray-900">
-                          {item.quantity}x {item.productName}
-                        </div>
-                      ))}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900">
-                      {formatCurrency(order.total, business?.settings?.currency || DEFAULT_CURRENCY)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{order.paymentMethod}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                        {getStatusIcon(order.status)}
-                        <span>{order.status}</span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleViewOrder(order.orderId || order.id || 'unknown')}
-                        className="mb-2"
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View Receipt
-                      </Button>
-                      {order.status === 'pending' && (
+                {orders.map((order) => {
+                  // If order has a field like createdBy or isAdminOrder, use it to determine if admin created
+                  // For this example, assume order.createdBy === business.ownerId means admin created
+                  const isAdminOrder = order.createdBy && business?.ownerId && order.createdBy === business.ownerId;
+                  return (
+                    <tr key={order.id} className="border-b last:border-b-0 hover:bg-gray-50 transition">
+                      <td className="px-4 py-3 text-sm font-semibold text-gray-900">{order.orderId || order.id}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : ''}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <div className="font-medium text-gray-900">{order.customerName}</div>
+                        <div className="text-xs text-gray-600">{order.customerEmail}</div>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="text-gray-900">
+                            {item.quantity}x {item.productName}
+                          </div>
+                        ))}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-bold text-gray-900">
+                        {formatCurrency(order.total, business?.settings?.currency || DEFAULT_CURRENCY)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{order.paymentMethod}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                          {getStatusIcon(order.status)}
+                          <span>{order.status}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
                         <Button
                           size="sm"
-                          onClick={() => handleApproveOrder(order.orderId || order.id || 'unknown')}
+                          variant="outline"
+                          onClick={() => handleViewOrder(order.orderId || order.id || 'unknown')}
+                          className="mb-2"
                         >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Approve
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Receipt
                         </Button>
-                      )}
-                      {/* Receipt Modal */}
-                      {showReceipt === (order.orderId || order.id) && (
-                        <div
-                          className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
-                          onClick={() => setShowReceipt(null)}
-                          role="dialog"
-                          aria-modal="true"
-                        >
-                          <div
-                            className="bg-white rounded-lg shadow-lg max-w-lg w-full relative overflow-y-auto max-h-[90vh]"
-                            onClick={e => e.stopPropagation()}
+                        {/* Only show Approve button for customer manual payment orders, not admin orders */}
+                        {order.status === 'pending' && order.paymentMethod === 'manual' && !isAdminOrder && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleApproveOrder(order.orderId || order.id || 'unknown')}
                           >
-                            <button
-                              className="sticky top-0 right-0 float-right m-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold shadow focus:outline-none focus:ring-2 focus:ring-blue-400 z-10"
-                              onClick={() => setShowReceipt(null)}
-                              aria-label="Close receipt"
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                        )}
+                        {/* Receipt Modal */}
+                        {showReceipt === (order.orderId || order.id) && (
+                          <div
+                            className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
+                            onClick={() => setShowReceipt(null)}
+                            role="dialog"
+                            aria-modal="true"
+                          >
+                            <div
+                              className="bg-white rounded-lg shadow-lg max-w-lg w-full relative overflow-y-auto max-h-[90vh]"
+                              onClick={e => e.stopPropagation()}
                             >
-                              Close
-                            </button>
-                            <OrderReceipt
-                              orderId={order.orderId || order.id || 'N/A'}
-                              customerName={order.customerName}
-                              customerEmail={order.customerEmail}
-                              customerPhone={order.customerPhone}
-                              customerAddress={order.shippingAddress ? 
-                                `${order.shippingAddress.street}${order.shippingAddress.city ? ', ' + order.shippingAddress.city : ''}${order.shippingAddress.state ? ', ' + order.shippingAddress.state : ''}${order.shippingAddress.country ? ', ' + order.shippingAddress.country : ''}` 
-                                : undefined
-                              }
-                              items={order.items}
-                              total={order.total}
-                              paymentMethod={order.paymentMethod}
-                              createdAt={order.createdAt?.toDate().toLocaleDateString() || 'N/A'}
-                              currencyCode={business?.settings?.currency}
-                              storeName={business?.name || 'Trady.ng'}
-                              storeAddress={business?.address}
-                              storePhone={business?.phone}
-                              storeEmail={business?.email}
-                              storeLogo={business?.logo}
-                              primaryColor={business?.settings?.primaryColor}
-                              secondaryColor={business?.settings?.secondaryColor}
-                              accentColor={business?.settings?.accentColor}
-                            />
+                              <button
+                                className="sticky top-0 right-0 float-right m-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold shadow focus:outline-none focus:ring-2 focus:ring-blue-400 z-10"
+                                onClick={() => setShowReceipt(null)}
+                                aria-label="Close receipt"
+                              >
+                                Close
+                              </button>
+                              <OrderReceipt
+                                orderId={order.orderId || order.id || 'N/A'}
+                                customerName={order.customerName}
+                                customerEmail={order.customerEmail}
+                                customerPhone={order.customerPhone}
+                                customerAddress={order.shippingAddress ? 
+                                  `${order.shippingAddress.street}${order.shippingAddress.city ? ', ' + order.shippingAddress.city : ''}${order.shippingAddress.state ? ', ' + order.shippingAddress.state : ''}${order.shippingAddress.country ? ', ' + order.shippingAddress.country : ''}` 
+                                  : undefined
+                                }
+                                items={order.items}
+                                total={order.total}
+                                paymentMethod={order.paymentMethod}
+                                createdAt={order.createdAt?.toDate().toLocaleDateString() || 'N/A'}
+                                currencyCode={business?.settings?.currency}
+                                storeName={business?.name || 'Trady.ng'}
+                                storeAddress={business?.address}
+                                storePhone={business?.phone}
+                                storeEmail={business?.email}
+                                storeLogo={business?.logo}
+                                primaryColor={business?.settings?.primaryColor}
+                                secondaryColor={business?.settings?.secondaryColor}
+                                accentColor={business?.settings?.accentColor}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
