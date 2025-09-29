@@ -499,29 +499,7 @@ export const Orders: React.FC = () => {
   const deliveredOrders = analyticsOrders.filter(o => o.delivered).length;
   const totalRevenue = analyticsOrders.reduce((sum, o) => sum + (typeof o.total === 'number' ? o.total : 0), 0);
 
-  // Top customers
-  const customerTotals: Record<string, { name: string; email: string; total: number }> = {};
-  analyticsOrders.forEach(o => {
-    if (!customerTotals[o.customerEmail]) {
-      customerTotals[o.customerEmail] = { name: o.customerName, email: o.customerEmail, total: 0 };
-    }
-    customerTotals[o.customerEmail].total += o.total;
-  });
-  const topCustomers = Object.values(customerTotals).sort((a, b) => b.total - a.total).slice(0, 3);
-
-  // Top products
-  const productTotals: Record<string, { name: string; total: number }> = {};
-  analyticsOrders.forEach(o => {
-    o.items.forEach((item: any) => {
-      if (!productTotals[item.productId]) {
-        productTotals[item.productId] = { name: item.productName, total: 0 };
-      }
-      productTotals[item.productId].total += item.quantity;
-    });
-  });
-  const topProducts = Object.values(productTotals).sort((a, b) => b.total - a.total).slice(0, 3);
-
-  // --- Analytics Card UI ---
+  // --- Simple Order Analytics Card (no filters, no top customers/products) ---
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -799,100 +777,27 @@ export const Orders: React.FC = () => {
         </div>
       )}
 
-      {/* Analytics Card */}
-      <Card className="mb-6 p-6 flex flex-col gap-6 bg-gradient-to-r from-blue-50 to-blue-100 shadow-lg rounded-xl">
-        <div className="flex flex-wrap gap-6 items-center justify-between mb-4">
-          <div className="flex flex-col items-center">
-            <span className="text-2xl font-bold text-blue-700">{totalOrders}</span>
-            <span className="text-sm text-gray-600">Total Orders</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-2xl font-bold text-yellow-600">{pendingOrders}</span>
-            <span className="text-sm text-gray-600">Pending</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-2xl font-bold text-green-600">{paidOrders}</span>
-            <span className="text-sm text-gray-600">Paid</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-2xl font-bold text-indigo-600">{deliveredOrders}</span>
-            <span className="text-sm text-gray-600">Delivered</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-2xl font-bold text-gray-900">{formatCurrency(totalRevenue, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-            <span className="text-sm text-gray-600">Total Revenue</span>
-          </div>
+      {/* Simple Order Analytics Card */}
+      <Card className="mb-6 p-6 flex flex-wrap gap-6 items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 shadow-lg rounded-xl">
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-blue-700">{orders.length}</span>
+          <span className="text-sm text-gray-600">Total Orders</span>
         </div>
-        <div className="flex flex-wrap gap-4 items-center mb-2">
-          <select
-            className="border rounded px-3 py-2 text-sm"
-            value={analyticsPeriod}
-            onChange={e => { setAnalyticsPeriod(e.target.value as any); setAnalyticsDate(''); }}
-          >
-            <option value="all">All Time</option>
-            <option value="day">Day</option>
-            <option value="month">Month</option>
-            <option value="year">Year</option>
-          </select>
-          {analyticsPeriod === 'day' && (
-            <input
-              type="date"
-              className="border rounded px-3 py-2 text-sm"
-              value={analyticsDate}
-              onChange={e => setAnalyticsDate(e.target.value)}
-              max={new Date().toISOString().slice(0, 10)}
-            />
-          )}
-          {analyticsPeriod === 'month' && (
-            <input
-              type="month"
-              className="border rounded px-3 py-2 text-sm"
-              value={analyticsDate}
-              onChange={e => setAnalyticsDate(e.target.value)}
-              max={new Date().toISOString().slice(0, 7)}
-            />
-          )}
-          {analyticsPeriod === 'year' && (
-            <input
-              type="number"
-              className="border rounded px-3 py-2 text-sm w-24"
-              value={analyticsDate}
-              onChange={e => setAnalyticsDate(e.target.value)}
-              min="2000"
-              max={new Date().getFullYear()}
-              placeholder="Year"
-            />
-          )}
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-yellow-600">{orders.filter(o => o.status === 'pending').length}</span>
+          <span className="text-sm text-gray-600">Pending</span>
         </div>
-        <div className="flex flex-wrap gap-8 mt-4">
-          <div>
-            <div className="font-semibold text-gray-700 mb-1">Top Customers</div>
-            {topCustomers.length === 0 ? (
-              <div className="text-xs text-gray-500">No data</div>
-            ) : (
-              <ul className="text-sm">
-                {topCustomers.map(c => (
-                  <li key={c.email} className="mb-1">
-                    <span className="font-medium text-blue-700">{c.name}</span> - {formatCurrency(c.total, business?.settings?.currency || DEFAULT_CURRENCY)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div>
-            <div className="font-semibold text-gray-700 mb-1">Top Products</div>
-            {topProducts.length === 0 ? (
-              <div className="text-xs text-gray-500">No data</div>
-            ) : (
-              <ul className="text-sm">
-                {topProducts.map(p => (
-                  <li key={p.name} className="mb-1">
-                    <span className="font-medium text-indigo-700">{p.name}</span> - {p.total} sold
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-green-600">{orders.filter(o => o.status === 'paid' || o.paymentStatus === 'completed').length}</span>
+          <span className="text-sm text-gray-600">Paid</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-indigo-600">{orders.filter(o => o.delivered).length}</span>
+          <span className="text-sm text-gray-600">Delivered</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-gray-900">{formatCurrency(orders.reduce((sum, o) => sum + (typeof o.total === 'number' ? o.total : 0), 0), business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+          <span className="text-sm text-gray-600">Total Revenue</span>
         </div>
       </Card>
 
