@@ -404,8 +404,8 @@ export const SignUp: React.FC = () => {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="mx-auto h-12 w-12 bg-blue-500 rounded-xl flex items-center justify-center mb-4">
-            <img src={logo} alt="Trady.ng Logo" className="h-6 w-6 object-contain" />
+          <div className="mx-auto h-12 w-12 flex items-center justify-center mb-4">
+            <img src={logo} alt="Trady.ng Logo" className="h-12 w-12 object-contain bg-white rounded-xl" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Create Your Store</h1>
           <p className="text-gray-400">Join thousands of successful merchants</p>
@@ -504,7 +504,7 @@ export const SignUp: React.FC = () => {
         <div className="text-center mt-6">
           <p className="text-sm text-gray-400">
             Already have an account?{' '}
-            <Link to="/signin" className="text-blue-400 hover:text-blue-300 font-medium">
+            <Link to="/auth/signin" className="text-blue-400 hover:text-blue-300 font-medium">
               Sign in here
             </Link>
           </p>
