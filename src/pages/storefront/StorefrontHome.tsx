@@ -131,11 +131,11 @@ export const StorefrontHome: React.FC = () => {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
                   <Card className="group hover:shadow-xl transition-shadow duration-300">
-                    <div className="aspect-w-1 aspect-h-1 relative overflow-hidden rounded-t-lg">
+                    <div className="aspect-w-1 aspect-h-1 relative overflow-hidden rounded-t-lg flex items-center justify-center bg-gray-100">
                       <img
                         src={product.images?.[0] || '/api/placeholder/400/300'}
                         alt={product.name}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="h-48 w-48 object-cover rounded-lg shadow-md transition-transform duration-300 hover:scale-105 mx-auto"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
                         }}
