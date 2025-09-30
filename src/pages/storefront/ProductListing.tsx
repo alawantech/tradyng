@@ -153,25 +153,28 @@ export const ProductListing: React.FC = () => {
               )}
             </div>
           ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 justify-center">
               {filteredProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="flex justify-center"
                 >
-                  <Card className="group hover:shadow-xl transition-shadow duration-300 flex flex-col h-full">
-                    <div className="aspect-w-1 aspect-h-1 relative overflow-hidden rounded-t-lg bg-gray-100 shadow-md">
+                  <Card className="group hover:shadow-xl transition-shadow duration-300 max-w-xs min-w-[16rem] w-full mx-auto">
+                    <div className="aspect-w-1 aspect-h-1 relative overflow-hidden rounded-t-lg flex items-center justify-center bg-gray-100">
                       <img
                         src={product.images?.[0] || '/api/placeholder/400/300'}
                         alt={product.name}
-                        className="w-full h-48 object-cover object-center rounded-lg transition-transform duration-300 group-hover:scale-105 bg-gray-100"
-                        style={{boxShadow: '0 4px 16px rgba(0,0,0,0.08)'}} 
+                        className="h-48 w-48 object-cover rounded-lg shadow-md transition-transform duration-300 hover:scale-105 mx-auto"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
                         }}
                       />
+                      <div className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ShoppingCart className="h-4 w-4 text-blue-600" />
+                      </div>
                     </div>
                     <div className="p-4 flex flex-col flex-1">
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">
