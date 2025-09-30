@@ -10,9 +10,8 @@ import { ProductService, Product } from '../../services/product';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 
 export const ProductListing: React.FC = () => {
-  const { business, isLoading: storeLoading } = useStore();
+  const { business, isLoading: storeLoading, searchTerm, setSearchTerm } = useStore();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [searchTerm, setSearchTerm] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 

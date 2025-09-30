@@ -9,7 +9,7 @@ import { ProductService, Product } from '../../services/product';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 
 export const StorefrontHome: React.FC = () => {
-  const { business, isLoading: storeLoading } = useStore();
+  const { business, isLoading: storeLoading, searchTerm } = useStore();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
@@ -51,6 +51,12 @@ export const StorefrontHome: React.FC = () => {
       </div>
     );
   }
+
+  // Filter featured products by search term
+  const filteredFeaturedProducts = featuredProducts.filter(product =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -102,9 +108,9 @@ export const StorefrontHome: React.FC = () => {
                 </div>
               ))}
             </div>
-          ) : featuredProducts.length > 0 ? (
+          ) : filteredFeaturedProducts.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {featuredProducts.map((product, index) => (
+              {filteredFeaturedProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -158,8 +164,12 @@ export const StorefrontHome: React.FC = () => {
               <div className="text-gray-400 mb-4">
                 <ShoppingCart className="h-16 w-16 mx-auto" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Products Yet</h3>
-              <p className="text-gray-600">This store hasn't added any products yet. Check back later!</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{searchTerm ? 'No Products Found' : 'No Products Yet'}</h3>
+              <p className="text-gray-600">
+                {searchTerm
+                  ? `No products match "${searchTerm}". Try a different search term.`
+                  : "This store hasn't added any products yet. Check back later!"}
+              </p>
             </div>
           )}
           

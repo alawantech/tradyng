@@ -9,17 +9,22 @@ import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
 
-// Context for store data
+
+// Context for store data and search term
 interface StoreContextType {
   business: Business | null;
   isLoading: boolean;
   error: string | null;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
 }
 
 const StoreContext = createContext<StoreContextType>({
   business: null,
   isLoading: true,
-  error: null
+  error: null,
+  searchTerm: '',
+  setSearchTerm: () => {},
 });
 
 export const useStore = () => useContext(StoreContext);
@@ -30,11 +35,12 @@ export const StorefrontLayout: React.FC = () => {
   const { user, signOut } = useCustomerAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
-  const [storeData, setStoreData] = useState<StoreContextType>({
+  const [storeData, setStoreData] = useState<Omit<StoreContextType, 'searchTerm' | 'setSearchTerm'>>({
     business: null,
     isLoading: true,
     error: null
   });
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const loadStoreData = async () => {
@@ -104,37 +110,47 @@ export const StorefrontLayout: React.FC = () => {
   const primaryColor = business.settings?.primaryColor || '#2563eb';
 
   return (
-    <StoreContext.Provider value={storeData}>
+    <StoreContext.Provider value={{
+      ...storeData,
+      searchTerm,
+      setSearchTerm
+    }}>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <header className="bg-white shadow-md sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link to="/" className="flex items-center space-x-2">
-                {business.logo ? (
-                  <img src={business.logo} alt={storeName} className="h-8 w-8 object-contain" />
-                ) : (
-                  <Store className="h-8 w-8" style={{ color: primaryColor }} />
-                )}
-                <span className="text-xl font-bold text-gray-900">{storeName}</span>
-              </Link>
-              
-              <div className="hidden md:flex flex-1 max-w-lg mx-8">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center h-auto md:h-16 py-4 md:py-0">
+              <div className="flex items-center justify-between md:justify-start md:items-center w-full md:w-auto">
+                <Link to="/" className="flex items-center space-x-2">
+                  {business.logo ? (
+                    <img src={business.logo} alt={storeName} className="h-8 w-8 object-contain" />
+                  ) : (
+                    <Store className="h-8 w-8" style={{ color: primaryColor }} />
+                  )}
+                  <span className="text-xl font-bold text-gray-900">{storeName}</span>
+                </Link>
+                {/* Mobile search icon (optional) */}
+              </div>
+
+              {/* Search bar: always visible, full width on mobile/tablet, centered on desktop */}
+              <div className="w-full md:max-w-lg md:mx-8 mt-4 md:mt-0">
                 <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search products by name..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-blue-500 text-sm"
                     style={{ 
                       '--tw-ring-color': primaryColor,
                       borderColor: `${primaryColor}20`
                     } as React.CSSProperties}
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
                   />
                 </div>
               </div>
-              
-              <div className="flex items-center space-x-4">
+
+              <div className="flex items-center space-x-2 md:space-x-4 mt-4 md:mt-0">
                 <Link to="/cart">
                   <Button variant="ghost" className="relative">
                     <ShoppingCart className="h-5 w-5" />
