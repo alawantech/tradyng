@@ -60,23 +60,36 @@ export const StorefrontHome: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <section className="relative theme-storefront-hero-gradient text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <motion.div
+      {/* Hero Section - Beautiful, compact, visually impressive */}
+      <section className="relative bg-gradient-to-br from-blue-600 via-blue-400 to-purple-500 text-white overflow-hidden">
+        {/* Decorative blurred circles */}
+        <div className="absolute top-0 left-0 w-72 h-72 bg-purple-400 opacity-30 rounded-full blur-2xl -z-10" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-300 opacity-20 rounded-full blur-2xl -z-10" />
+        <div className="max-w-3xl mx-auto px-4 sm:px-8 py-16 md:py-20 flex flex-col items-center justify-center text-center">
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 drop-shadow-lg"
+            style={{letterSpacing: '0.01em'}}
+          >
+            Welcome to <span className="bg-white bg-opacity-20 px-2 rounded text-shadow-lg">{business.name}</span>
+          </motion.h1>
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center"
+            transition={{ duration: 0.9, delay: 0.2 }}
+            className="text-lg sm:text-xl md:text-2xl mb-6 max-w-xl mx-auto text-white/90"
           >
-            <h1 className="text-4xl lg:text-6xl font-bold mb-6">
-              Welcome to {business.name}
-            </h1>
-            <p className="text-xl theme-primary-light-text mb-8 max-w-2xl mx-auto">
-              {business.description || `Discover amazing products from ${business.name}. Quality guaranteed, fast shipping.`}
-            </p>
+            {business.description || `Discover amazing products from ${business.name}. Quality guaranteed, fast shipping.`}
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, delay: 0.4 }}
+          >
             <Link to="/products">
-              <Button size="lg" className="hero-btn-primary">
+              <Button size="lg" className="bg-gradient-to-r from-purple-600 via-blue-500 to-blue-400 text-white font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 transition-transform duration-200">
                 Shop Now
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -131,7 +144,7 @@ export const StorefrontHome: React.FC = () => {
                         <ShoppingCart className="h-4 w-4 text-blue-600" />
                       </div>
                     </div>
-                    <div className="p-4">
+                    <div className="p-4 flex flex-col flex-1">
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">
                         {product.name}
                       </h3>
@@ -146,13 +159,22 @@ export const StorefrontHome: React.FC = () => {
                         </div>
                         <span className="text-sm text-gray-500 ml-2">(5.0)</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xl font-bold text-blue-600">
+                      <div className="flex flex-col sm:flex-row gap-2 justify-between items-center mt-auto">
+                        <span className="text-xl font-bold text-blue-600 mb-3 w-full text-left">
                           {formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}
                         </span>
-                        <Link to={`/product/${product.id}`}>
-                          <Button size="sm">View Details</Button>
-                        </Link>
+                        <div className="flex flex-col gap-2 w-full">
+                          <Button
+                            size="sm"
+                            className="w-full px-2 py-1 rounded-full font-semibold text-xs bg-gradient-to-r from-blue-600 to-blue-400 text-white hover:from-blue-700 hover:to-blue-500 transition-all shadow-sm border border-blue-500"
+                            onClick={() => {/* TODO: Add to cart logic here */}}
+                          >
+                            <ShoppingCart className="h-3 w-3 mr-1 inline" /> Add to Cart
+                          </Button>
+                          <Link to={`/product/${product.id}`} className="w-full">
+                            <Button size="sm" className="w-full px-2 py-1 rounded-full font-semibold text-xs bg-white border border-blue-400 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all shadow-sm">View Details</Button>
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </Card>
