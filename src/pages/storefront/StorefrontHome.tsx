@@ -122,15 +122,16 @@ export const StorefrontHome: React.FC = () => {
               ))}
             </div>
           ) : filteredFeaturedProducts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 justify-center">
               {filteredFeaturedProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="flex justify-center"
                 >
-                  <Card className="group hover:shadow-xl transition-shadow duration-300">
+                  <Card className="group hover:shadow-xl transition-shadow duration-300 max-w-xs min-w-[16rem] w-full mx-auto">
                     <div className="aspect-w-1 aspect-h-1 relative overflow-hidden rounded-t-lg flex items-center justify-center bg-gray-100">
                       <img
                         src={product.images?.[0] || '/api/placeholder/400/300'}
