@@ -14,11 +14,11 @@ export const ProductListing: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   useEffect(() => {
     const loadProducts = async () => {
       if (!business?.id) return;
-      
       try {
         setIsLoadingProducts(true);
         const fetchedProducts = await ProductService.getProductsByBusinessId(business.id);
@@ -30,14 +30,18 @@ export const ProductListing: React.FC = () => {
         setIsLoadingProducts(false);
       }
     };
-
     loadProducts();
   }, [business?.id]);
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Dynamically get unique categories from products
+  const categories = Array.from(new Set(products.map(p => p.category))).filter(Boolean);
+
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.category);
+    return matchesSearch && matchesCategory;
+  });
 
   if (storeLoading || isLoadingProducts) {
     return (
@@ -97,33 +101,31 @@ export const ProductListing: React.FC = () => {
           <Card className="p-4">
             <h3 className="font-semibold text-gray-900 mb-4">Categories</h3>
             <div className="space-y-2">
-              {['Electronics', 'Wearables', 'Home & Office', 'Fashion', 'Food & Beverage'].map((category) => (
-                <label key={category} className="flex items-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                  <span className="ml-2 text-sm text-gray-700">{category}</span>
-                </label>
-              ))}
+              {categories.length === 0 ? (
+                <span className="text-gray-500 text-sm">No categories found</span>
+              ) : (
+                categories.map((category) => (
+                  <label key={category} className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={selectedCategories.includes(category)}
+                      onChange={(e) => {
+                        setSelectedCategories(prev =>
+                          e.target.checked
+                            ? [...prev, category]
+                            : prev.filter(c => c !== category)
+                        );
+                      }}
+                    />
+                    <span className="ml-2 text-sm text-gray-700">{category}</span>
+                  </label>
+                ))
+              )}
             </div>
           </Card>
 
-          <Card className="p-4">
-            <h3 className="font-semibold text-gray-900 mb-4">Price Range</h3>
-            <div className="space-y-4">
-              <div>
-                <input
-                  type="range"
-                  min="0"
-                  max="500"
-                  defaultValue="250"
-                  className="w-full"
-                />
-                <div className="flex justify-between text-sm text-gray-600 mt-1">
-                  <span>{formatCurrency(0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-                  <span>{formatCurrency(500, business?.settings?.currency || DEFAULT_CURRENCY)}+</span>
-                </div>
-              </div>
-            </div>
-          </Card>
+          {/* Price Range filter removed as requested */}
         </div>
 
         {/* Products Grid/List */}

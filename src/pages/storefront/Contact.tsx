@@ -230,43 +230,24 @@ export const Contact: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-start">
-                  <Clock className="h-5 w-5 mt-1 mr-4" style={{ color: primaryColor }} />
-                  <div>
-                    <h3 className="font-medium text-gray-900">Business Hours</h3>
-                    <div className="text-gray-600 mt-1 space-y-1">
-                      <p>Monday - Friday: 9:00 AM - 6:00 PM</p>
-                      <p>Saturday: 10:00 AM - 4:00 PM</p>
-                      <p>Sunday: Closed</p>
-                    </div>
-                  </div>
-                </div>
+                {/* Business Hours removed as requested */}
               </div>
             </Card>
 
             {/* Quick Info Card */}
-            <Card className="p-6 bg-gradient-to-br from-gray-50 to-gray-100">
-              <h3 className="font-bold text-lg mb-3" style={{ color: primaryColor }}>
-                Why Choose {storeName}?
+            <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center justify-center">
+              <div className="mb-4">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="32" cy="32" r="32" fill={primaryColor} fillOpacity="0.15" />
+                  <path d="M20 32L28 40L44 24" stroke={primaryColor} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-lg mb-3 text-center" style={{ color: primaryColor }}>
+                Experience Shopping Like Never Before
               </h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-center">
-                  <span className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: primaryColor }}></span>
-                  Fast and reliable customer service
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: primaryColor }}></span>
-                  Quality products with warranty
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: primaryColor }}></span>
-                  Free shipping on orders over $50
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: primaryColor }}></span>
-                  30-day return policy
-                </li>
-              </ul>
+              <p className="text-gray-700 text-center text-base mb-2 max-w-md">
+                Discover a curated selection of products, seamless service, and a community that cares. We believe every purchase should feel special—enjoy peace of mind with our dedicated support.
+              </p>
             </Card>
           </div>
         </div>
