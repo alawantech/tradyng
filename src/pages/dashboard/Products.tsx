@@ -16,9 +16,14 @@ import { getPlanLimits, validatePlanLimit } from '../../constants/plans';
 import toast from 'react-hot-toast';
 
 export const Products: React.FC = () => {
+  const [selectedCategory, setSelectedCategory] = useState('');
+  // ...existing code...
   const [searchTerm, setSearchTerm] = useState('');
   const { user, business, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const totalProducts = products.length;
+  const uniqueCategories = Array.from(new Set(products.map(p => p.category && p.category.trim() ? p.category.trim() : 'Uncategorized')));
+  const totalCategories = uniqueCategories.length;
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -518,15 +523,33 @@ export const Products: React.FC = () => {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
+      <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">Products</h1>
           <p className="text-gray-600">Manage your product catalog</p>
         </div>
-        <Button onClick={handleAddProduct}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Product
-        </Button>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-4">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-400 shadow-lg rounded-xl px-6 py-4 flex items-center min-w-[160px]">
+              <Package className="h-8 w-8 text-white mr-4" />
+              <div>
+                <div className="text-3xl font-bold text-white">{totalProducts}</div>
+                <div className="text-sm text-blue-100 font-medium">Total Products</div>
+              </div>
+            </div>
+            <div className="bg-gradient-to-r from-green-500 to-green-400 shadow-lg rounded-xl px-6 py-4 flex items-center min-w-[160px]">
+              <Filter className="h-8 w-8 text-white mr-4" />
+              <div>
+                <div className="text-3xl font-bold text-white">{totalCategories}</div>
+                <div className="text-sm text-green-100 font-medium">Total Categories</div>
+              </div>
+            </div>
+          </div>
+          <Button onClick={handleAddProduct}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Plan Information */}
@@ -566,14 +589,24 @@ export const Products: React.FC = () => {
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="mt-2 sm:mt-0">
-          <Filter className="h-4 w-4 mr-2" />
-          Filters
-        </Button>
+        <div className="flex items-center gap-2 mt-2 sm:mt-0">
+          <label htmlFor="categoryFilter" className="text-sm font-medium text-gray-700 mr-2">Category:</label>
+          <select
+            id="categoryFilter"
+            className="border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500"
+            value={selectedCategory}
+            onChange={e => setSelectedCategory(e.target.value)}
+          >
+            <option value="">All</option>
+            {uniqueCategories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {products.length === 0 ? (
+  {products.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-12">
             <Package className="h-16 w-16 text-gray-300 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No products yet</h3>
@@ -587,10 +620,12 @@ export const Products: React.FC = () => {
           </div>
         ) : (
           products
-            .filter(product =>
-              product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              product.description.toLowerCase().includes(searchTerm.toLowerCase())
-            )
+            .filter(product => {
+              const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                product.description.toLowerCase().includes(searchTerm.toLowerCase());
+              const matchesCategory = !selectedCategory || (product.category && product.category.trim() === selectedCategory);
+              return matchesSearch && matchesCategory;
+            })
             .map((product) => (
               <div key={product.id} className="flex justify-center items-stretch">
                 <Card className="overflow-hidden max-w-sm w-full min-h-[24rem] flex flex-col mx-auto">
