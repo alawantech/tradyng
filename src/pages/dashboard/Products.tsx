@@ -16,22 +16,33 @@ import { getPlanLimits, validatePlanLimit } from '../../constants/plans';
 import toast from 'react-hot-toast';
 
 export const Products: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState('');
   const { user, business, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [productForm, setProductForm] = useState({
-  name: '',
-  description: '',
-  price: '',
-  stock: '', // Optional
-  category: '',
-  sizes: [],
-  colors: [],
-  width: '',
-  height: ''
-});
+  const [productForm, setProductForm] = useState<{
+    name: string;
+    description: string;
+    price: string;
+    stock: string;
+    category: string;
+    sizes: string[];
+    colors: string[];
+    width: string;
+    height: string;
+  }>({
+    name: '',
+    description: '',
+    price: '',
+    stock: '',
+    category: '',
+    sizes: [],
+    colors: [],
+    width: '',
+    height: ''
+  });
   const [creating, setCreating] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
@@ -161,7 +172,11 @@ export const Products: React.FC = () => {
       description: '',
       price: '',
       stock: '',
-      category: ''
+      category: '',
+      sizes: [],
+      colors: [],
+      width: '',
+      height: ''
     });
     setImageFiles([]);
     setImagePreviewUrls([]);
@@ -400,8 +415,9 @@ export const Products: React.FC = () => {
     sizes: productForm.sizes || [],
     colors: productForm.colors || [],
     dimensions: {
-      width: productForm.width ? parseFloat(productForm.width) : null,
-      height: productForm.height ? parseFloat(productForm.height) : null,
+      length: 0,
+      width: productForm.width ? parseFloat(productForm.width) : 0,
+      height: productForm.height ? parseFloat(productForm.height) : 0,
     }
   };
       if (editingProduct?.id) {
@@ -545,10 +561,12 @@ export const Products: React.FC = () => {
         <div className="flex-1">
           <Input
             placeholder="Search products by name..."
-            className="pl-10"
+            className="pl-10 w-full max-w-md rounded-lg border focus:ring-2 focus:ring-blue-500"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline">
+        <Button variant="outline" className="mt-2 sm:mt-0">
           <Filter className="h-4 w-4 mr-2" />
           Filters
         </Button>
@@ -568,62 +586,70 @@ export const Products: React.FC = () => {
             </Button>
           </div>
         ) : (
-          products.map((product) => (
-            <Card key={product.id} className="overflow-hidden">
-              <div className="aspect-w-16 aspect-h-9">
-                {product.images.length > 0 ? (
-                  <div className="relative w-full h-48">
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-full object-cover object-center rounded-lg transition-transform duration-300 hover:scale-105 bg-gray-100"
-                      style={{boxShadow: '0 4px 16px rgba(0,0,0,0.08)'}}
-                    />
+          products
+            .filter(product =>
+              product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              product.description.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .map((product) => (
+              <div key={product.id} className="flex justify-center items-stretch">
+                <Card className="overflow-hidden max-w-sm w-full min-h-[24rem] flex flex-col mx-auto">
+                  <div className="aspect-square w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded-t-lg">
+                    {product.images.length > 0 ? (
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover object-center rounded-lg transition-transform duration-300 hover:scale-105"
+                        style={{boxShadow: '0 4px 16px rgba(0,0,0,0.08)'}}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-32 h-32 bg-gray-200 flex items-center justify-center rounded-lg">
+                        <Package className="h-12 w-12 text-gray-400" />
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                    <Package className="h-12 w-12 text-gray-400" />
+                  <div className="p-4 flex flex-col flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {product.name}
+                    </h3>
+                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                      {product.description}
+                    </p>
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xl font-bold text-blue-600">
+                        {formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {product.stock} in stock
+                      </span>
+                    </div>
+                    <div className="flex space-x-2 mt-auto">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditProduct(product)}
+                        className="flex-1"
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteProduct(product.id!)}
+                        className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
                   </div>
-                )}
+                </Card>
               </div>
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {product.name}
-                </h3>
-                <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                  {product.description}
-                </p>
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-xl font-bold text-blue-600">
-                    {formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {product.stock} in stock
-                  </span>
-                </div>
-                <div className="flex space-x-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEditProduct(product)}
-                    className="flex-1"
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDeleteProduct(product.id!)}
-                    className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))
+            ))
         )}
       </div>
 
