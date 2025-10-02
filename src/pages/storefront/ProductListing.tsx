@@ -164,51 +164,34 @@ export const ProductListing: React.FC = () => {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   className="flex justify-center"
                 >
-                  <Card className="group hover:shadow-xl transition-shadow duration-300 max-w-xs min-w-[16rem] w-full mx-auto">
-                    <div className="aspect-w-1 aspect-h-1 relative overflow-hidden rounded-t-lg flex items-center justify-center bg-gray-100">
+                  <Card className="bg-white border border-gray-200 shadow-sm w-full max-w-xs flex flex-col p-0">
+                    <div className="w-full aspect-square overflow-hidden">
                       <img
                         src={product.images?.[0] || '/api/placeholder/400/300'}
                         alt={product.name}
-                        className="h-48 w-48 object-cover rounded-lg shadow-md transition-transform duration-300 hover:scale-105 mx-auto"
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
                         }}
                       />
-                      <div className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ShoppingCart className="h-4 w-4 text-blue-600" />
-                      </div>
                     </div>
-                    <div className="p-4 flex flex-col flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {product.name}
-                      </h3>
-                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                        {product.description}
-                      </p>
-                      <div className="flex items-center mb-3">
+                    <div className="flex flex-col px-4 py-3">
+                      <h3 className="text-base font-semibold text-gray-900 mb-1 truncate">{product.name}</h3>
+                      <span className="text-lg font-bold text-blue-600 mb-2">{formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                      <p className="text-gray-600 text-xs mb-2 line-clamp-2">{product.description}</p>
+                      <div className="flex items-center mb-2">
                         <div className="flex text-yellow-400">
                           {[...Array(5)].map((_, i) => (
                             <Star key={i} className="h-4 w-4 fill-current" />
                           ))}
                         </div>
-                        <span className="text-sm text-gray-500 ml-2">(5.0)</span>
+                        <span className="text-xs text-gray-500 ml-2">(5.0)</span>
                       </div>
-                      <div className="flex flex-col sm:flex-row gap-2 justify-between items-center mt-auto">
-                        <span className="text-xl font-bold text-blue-600 mb-3 w-full text-left">
-                          {formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}
-                        </span>
-                        <div className="flex flex-col gap-2 w-full">
-                          <Button
-                            size="sm"
-                            className="w-full px-2 py-1 rounded-full font-semibold text-xs bg-gradient-to-r from-blue-600 to-blue-400 text-white hover:from-blue-700 hover:to-blue-500 transition-all shadow-sm border border-blue-500"
-                            onClick={() => {/* TODO: Add to cart logic here */}}
-                          >
-                            <ShoppingCart className="h-3 w-3 mr-1 inline" /> Add to Cart
-                          </Button>
-                          <Link to={`/product/${product.id}`} className="w-full">
-                            <Button size="sm" className="w-full px-2 py-1 rounded-full font-semibold text-xs bg-white border border-blue-400 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all shadow-sm">View Details</Button>
-                          </Link>
-                        </div>
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" className="flex-1 px-2 py-1 rounded font-semibold text-xs bg-blue-600 text-white hover:bg-blue-700 transition-all">Add to Cart</Button>
+                        <Link to={`/product/${product.id}`} className="flex-1">
+                          <Button size="sm" className="w-full px-2 py-1 rounded font-semibold text-xs bg-white border border-blue-400 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all">View Details</Button>
+                        </Link>
                       </div>
                     </div>
                   </Card>
