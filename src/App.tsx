@@ -24,7 +24,6 @@ import { Settings } from './pages/dashboard/Settings';
 // Storefront
 import { StorefrontLayout } from './pages/storefront/StorefrontLayout';
 import { StorefrontHome } from './pages/storefront/StorefrontHome';
-import { ProductListing } from './pages/storefront/ProductListing';
 import { ProductDetails } from './pages/storefront/ProductDetails';
 import { Cart } from './pages/storefront/Cart';
 import { Checkout } from './pages/storefront/Checkout';
@@ -81,7 +80,6 @@ function App() {
                 <Routes>
                   <Route path="/" element={<StorefrontLayout />}>
                     <Route index element={<StorefrontHome />} />
-                    <Route path="products" element={<ProductListing />} />
                     <Route path="product/:id" element={<ProductDetails />} />
                     <Route path="cart" element={<Cart />} />
                     <Route path="checkout" element={<Checkout />} />

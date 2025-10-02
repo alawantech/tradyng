@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Star, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Star } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
@@ -83,30 +83,12 @@ export const StorefrontHome: React.FC = () => {
           >
             {business.description || `Discover amazing products from ${business.name}. Quality guaranteed, fast shipping.`}
           </motion.p>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-          >
-            <Link to="/products">
-              <Button size="lg" className="bg-gradient-to-r from-purple-600 via-blue-500 to-blue-400 text-white font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 transition-transform duration-200">
-                Shop Now
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          </motion.div>
         </div>
       </section>
 
       {/* Featured Products */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Products</h2>
-            <p className="text-xl text-gray-600">
-              Hand-picked products just for you
-            </p>
-          </div>
           
           {isLoadingProducts ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -176,17 +158,6 @@ export const StorefrontHome: React.FC = () => {
                   ? `No products match "${searchTerm}". Try a different search term.`
                   : "This store hasn't added any products yet. Check back later!"}
               </p>
-            </div>
-          )}
-          
-          {featuredProducts.length > 0 && (
-            <div className="text-center mt-12">
-              <Link to="/products">
-                <Button size="lg" variant="outline">
-                  View All Products
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
             </div>
           )}
         </div>
