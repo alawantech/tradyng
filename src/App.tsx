@@ -20,7 +20,6 @@ import { Orders } from './pages/dashboard/Orders';
 import { Customers } from './pages/dashboard/Customers';
 import { Analytics } from './pages/dashboard/Analytics';
 import { Settings } from './pages/dashboard/Settings';
-import { Messages } from './pages/dashboard/Messages';
 
 // Storefront
 import { StorefrontLayout } from './pages/storefront/StorefrontLayout';
@@ -30,7 +29,6 @@ import { ProductDetails } from './pages/storefront/ProductDetails';
 import { Cart } from './pages/storefront/Cart';
 import { Checkout } from './pages/storefront/Checkout';
 import { Payment } from './pages/storefront/Payment';
-import { Contact } from './pages/storefront/Contact';
 
 // Admin
 import { AdminLayout } from './pages/admin/AdminLayout';
@@ -85,7 +83,6 @@ function App() {
                     <Route index element={<StorefrontHome />} />
                     <Route path="products" element={<ProductListing />} />
                     <Route path="product/:id" element={<ProductDetails />} />
-                    <Route path="contact" element={<Contact />} />
                     <Route path="cart" element={<Cart />} />
                     <Route path="checkout" element={<Checkout />} />
                     <Route path="payment" element={<Payment />} />
@@ -113,7 +110,6 @@ function App() {
                 <Route path="products" element={<Products />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="customers" element={<Customers />} />
-                <Route path="messages" element={<Messages />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="settings" element={<Settings />} />
               </Route>

@@ -9,7 +9,6 @@ import {
   Building2,
   CreditCard,
   LogOut,
-  MessageSquare,
   X
 } from 'lucide-react';
 import { AuthService } from '../../services/auth';
@@ -29,7 +28,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
     { path: '/dashboard/products', icon: Package, label: 'Products' },
     { path: '/dashboard/orders', icon: ShoppingCart, label: 'Orders' },
     { path: '/dashboard/customers', icon: Users, label: 'Customers' },
-    { path: '/dashboard/messages', icon: MessageSquare, label: 'Messages' },
     { path: '/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/dashboard/settings', icon: Settings, label: 'Store Settings' },
   ];

@@ -228,16 +228,6 @@ export const StorefrontLayout: React.FC = () => {
                 >
                   All Products
                 </Link>
-                <Link 
-                  to="/contact" 
-                  className={`font-medium transition-colors ${
-                    location.pathname === '/contact' 
-                      ? 'theme-primary-text' 
-                      : 'text-gray-700 hover:theme-primary-text'
-                  }`}
-                >
-                  Contact
-                </Link>
               </nav>
             </div>
           </div>
@@ -291,7 +281,6 @@ export const StorefrontLayout: React.FC = () => {
                 <ul className="space-y-2 text-gray-400">
                   <li><Link to="/" className="hover:text-white">Home</Link></li>
                   <li><Link to="/products" className="hover:text-white">Products</Link></li>
-                  <li><Link to="/contact" className="hover:text-white">Contact</Link></li>
                 </ul>
               </div>
               
