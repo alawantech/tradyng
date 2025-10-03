@@ -11,6 +11,8 @@ export interface SubdomainInfo {
 export class SubdomainService {
   private static MAIN_DOMAINS = [
     'localhost',
+    'rady.ng',
+    'www.rady.ng',
     'trady.ng',
     'www.trady.ng'
   ];
@@ -60,9 +62,9 @@ export class SubdomainService {
       };
     }
 
-    // Check if it's a subdomain of trady.ng
-    if (hostname.endsWith('.trady.ng')) {
-      const subdomain = hostname.replace('.trady.ng', '');
+    // Check if it's a subdomain of rady.ng or trady.ng
+    if (hostname.endsWith('.rady.ng') || hostname.endsWith('.trady.ng')) {
+      const subdomain = hostname.replace('.rady.ng', '').replace('.trady.ng', '');
       
       // Skip www and other system subdomains
       if (subdomain && subdomain !== 'www' && subdomain !== 'api' && subdomain !== 'admin') {
@@ -112,7 +114,7 @@ export class SubdomainService {
   // Generate store URL for a given store name
   static generateStoreUrl(storeName: string, isProduction: boolean = false): string {
     if (isProduction) {
-      return `https://${storeName}.trady.ng`;
+      return `https://${storeName}.rady.ng`;
     } else {
       // For development, use query parameter
       const currentPort = window.location.port;
@@ -131,7 +133,7 @@ export class SubdomainService {
     }
 
     // Check if it's the main domain
-    return this.MAIN_DOMAINS.includes(hostname) || hostname === 'trady.ng';
+    return this.MAIN_DOMAINS.includes(hostname) || hostname === 'rady.ng' || hostname === 'trady.ng';
   }
 
   // Get the dashboard URL (always main domain)
@@ -139,7 +141,7 @@ export class SubdomainService {
     const isProduction = !window.location.hostname.includes('localhost');
     
     if (isProduction) {
-      return 'https://trady.ng/dashboard';
+      return 'https://rady.ng/dashboard';
     } else {
       const currentPort = window.location.port;
       return `http://localhost${currentPort ? `:${currentPort}` : ''}/dashboard`;

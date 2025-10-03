@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../contexts/ThemeContext';
 import { BusinessService } from '../../services/business';
+import { CustomDomainService } from '../../services/customDomain';
 import { CURRENCIES, DEFAULT_CURRENCY, getDefaultCurrencyForCountry } from '../../constants/currencies';
 import toast from 'react-hot-toast';
 
