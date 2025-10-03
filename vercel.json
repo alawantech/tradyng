@@ -1,41 +1,28 @@
 {
-  "builds": [
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/dashboard/(.*)",
-      "dest": "/index.html"
+      "source": "/dashboard/(.*)",
+      "destination": "/index.html"
     },
     {
-      "src": "/auth/(.*)",
-      "dest": "/index.html"
+      "source": "/auth/(.*)",
+      "destination": "/index.html"
     },
     {
-      "src": "/admin/(.*)",
-      "dest": "/index.html"
+      "source": "/admin/(.*)",
+      "destination": "/index.html"
     },
     {
-      "src": "/features",
-      "dest": "/index.html"
+      "source": "/features",
+      "destination": "/index.html"
     },
     {
-      "src": "/pricing",
-      "dest": "/index.html"
+      "source": "/pricing",
+      "destination": "/index.html"
     },
     {
-      "src": "/demo/(.*)",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/demo/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
