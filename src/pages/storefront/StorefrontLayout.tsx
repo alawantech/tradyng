@@ -1,10 +1,11 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { Store, ShoppingCart, User, Search, ChevronDown } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { SubdomainService } from '../../services/subdomain';
 import { BusinessService, Business } from '../../services/business';
+import { CategoryService, Category } from '../../services/category';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
@@ -17,6 +18,9 @@ interface StoreContextType {
   error: string | null;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  selectedCategory: string;
+  setSelectedCategory: (category: string) => void;
+  categories: Category[];
 }
 
 const StoreContext = createContext<StoreContextType>({
@@ -25,22 +29,26 @@ const StoreContext = createContext<StoreContextType>({
   error: null,
   searchTerm: '',
   setSearchTerm: () => {},
+  selectedCategory: '',
+  setSelectedCategory: () => {},
+  categories: [],
 });
 
 export const useStore = () => useContext(StoreContext);
 
 export const StorefrontLayout: React.FC = () => {
-  const location = useLocation();
   const { itemCount } = useCart();
   const { user, signOut } = useCustomerAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
-  const [storeData, setStoreData] = useState<Omit<StoreContextType, 'searchTerm' | 'setSearchTerm'>>({
+  const [storeData, setStoreData] = useState<Omit<StoreContextType, 'searchTerm' | 'setSearchTerm' | 'selectedCategory' | 'setSelectedCategory' | 'categories'>>({
     business: null,
     isLoading: true,
     error: null
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     const loadStoreData = async () => {
@@ -55,6 +63,22 @@ export const StorefrontLayout: React.FC = () => {
               isLoading: false,
               error: null
             });
+            
+            // Load categories for this business
+            try {
+              const businessCategories = await CategoryService.getCategoriesByBusinessId(subdomainInfo.businessId);
+              // If no categories exist, initialize with defaults
+              if (businessCategories.length === 0) {
+                await CategoryService.initializeDefaultCategories(subdomainInfo.businessId);
+                const updatedCategories = await CategoryService.getCategoriesByBusinessId(subdomainInfo.businessId);
+                setCategories(updatedCategories);
+              } else {
+                setCategories(businessCategories);
+              }
+            } catch (error) {
+              console.error('Error loading categories:', error);
+              setCategories([]);
+            }
           } else {
             setStoreData({
               business: null,
@@ -84,8 +108,9 @@ export const StorefrontLayout: React.FC = () => {
 
   if (storeData.isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center relative">
+        <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,255,255,0.3)_1px,_transparent_0)] bg-[length:20px_20px] pointer-events-none"></div>
+        <div className="text-center relative z-10">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading store...</p>
         </div>
@@ -95,11 +120,13 @@ export const StorefrontLayout: React.FC = () => {
 
   if (storeData.error || !storeData.business) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center relative">
+        <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,255,255,0.3)_1px,_transparent_0)] bg-[length:20px_20px] pointer-events-none"></div>
+        <div className="text-center relative z-10">
           <Store className="h-24 w-24 text-gray-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Store Not Found</h1>
           <p className="text-gray-600">{storeData.error || 'This store does not exist or is not available.'}</p>
+          <p className="text-sm text-gray-500 mt-4">Try visiting: http://localhost:5174?store=demo</p>
         </div>
       </div>
     );
@@ -113,7 +140,10 @@ export const StorefrontLayout: React.FC = () => {
     <StoreContext.Provider value={{
       ...storeData,
       searchTerm,
-      setSearchTerm
+      setSearchTerm,
+      selectedCategory,
+      setSelectedCategory,
+      categories
     }}>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
@@ -207,24 +237,41 @@ export const StorefrontLayout: React.FC = () => {
           {/* Navigation */}
           <div className="border-t">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <nav className="flex space-x-8 py-4">
-                <Link 
-                  to="/" 
-                  className={`font-medium transition-colors ${
-                    location.pathname === '/' 
-                      ? 'theme-primary-text' 
-                      : 'text-gray-700 hover:theme-primary-text'
+              <nav className="flex space-x-6 py-4 overflow-x-auto">
+                <button
+                  onClick={() => setSelectedCategory('')}
+                  className={`font-medium whitespace-nowrap transition-colors ${
+                    selectedCategory === '' 
+                      ? 'text-blue-600 border-b-2 border-blue-600 pb-2' 
+                      : 'text-gray-700 hover:text-blue-600'
                   }`}
                 >
-                  Home
-                </Link>
+                  All
+                </button>
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category.name)}
+                    className={`font-medium whitespace-nowrap transition-colors ${
+                      selectedCategory === category.name 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-2' 
+                        : 'text-gray-700 hover:text-blue-600'
+                    }`}
+                  >
+                    {category.name}
+                  </button>
+                ))}
               </nav>
             </div>
           </div>
         </header>
 
-        <main>
-          <Outlet />
+        <main className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen relative">
+          {/* Subtle pattern overlay */}
+          <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,255,255,0.3)_1px,_transparent_0)] bg-[length:20px_20px] pointer-events-none"></div>
+          <div className="relative z-10">
+            <Outlet />
+          </div>
         </main>
 
         {/* Footer */}

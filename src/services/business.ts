@@ -89,6 +89,36 @@ export class BusinessService {
 
   // Get business by ID
   static async getBusinessById(businessId: string): Promise<Business | null> {
+    // For demo purposes, return a mock business
+    if (businessId === 'demo-business-id') {
+      return {
+        id: 'demo-business-id',
+        name: 'Demo Beauty Store',
+        subdomain: 'demo',
+        ownerId: 'demo-owner',
+        email: 'demo@example.com',
+        phone: '+1 (555) 123-4567',
+        address: '123 Beauty Lane',
+        country: 'United States',
+        state: 'California',
+        description: 'Welcome to our amazing beauty store! We offer the finest perfumes, body mists, and beauty products.',
+        plan: 'business',
+        status: 'active',
+        revenue: 0,
+        totalOrders: 0,
+        totalProducts: 0,
+        settings: {
+          currency: 'USD',
+          primaryColor: '#3B82F6',
+          secondaryColor: '#1E40AF',
+          accentColor: '#F59E0B',
+          enableNotifications: true
+        },
+        createdAt: new Date() as any,
+        updatedAt: new Date() as any
+      } as Business;
+    }
+    
     try {
       const docRef = doc(db, 'businesses', businessId);
       const docSnap = await getDoc(docRef);

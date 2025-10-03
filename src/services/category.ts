@@ -4,8 +4,7 @@ import {
   addDoc, 
   getDocs, 
   query, 
-  where, 
-  orderBy,
+  where,
   Timestamp
 } from 'firebase/firestore';
 
@@ -85,21 +84,21 @@ export class CategoryService {
   // Get default categories (common categories for new businesses)
   static getDefaultCategories(): string[] {
     return [
+      'Perfume',
+      'Body Mist',
+      'Body Spray',
+      'Beauty',
       'Fashion',
-      'African Wear',
       'Electronics',
       'Home & Garden',
-      'Beauty & Personal Care',
-      'Sports & Outdoors',
-      'Books & Media',
-      'Food & Beverages',
       'Health & Wellness',
+      'Sports & Outdoors',
+      'Food & Beverages',
+      'Books & Media',
       'Toys & Games',
       'Automotive',
       'Arts & Crafts',
-      'Jewelry & Accessories',
-      'Bags & Shoes',
-      'Office Supplies'
+      'Jewelry & Accessories'
     ];
   }
 

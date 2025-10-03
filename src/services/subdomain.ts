@@ -26,6 +26,17 @@ export class SubdomainService {
       const storeParam = params.get('store');
       
       if (storeParam) {
+        // For demo purposes, create a mock business for 'demo' store
+        if (storeParam === 'demo') {
+          return {
+            isSubdomain: true,
+            storeName: 'demo',
+            businessId: 'demo-business-id',
+            isCustomDomain: false,
+            originalDomain: hostname + (port ? `:${port}` : '')
+          };
+        }
+        
         try {
           // Try to find business by store name
           const business = await BusinessService.getBusinessBySubdomain(storeParam);

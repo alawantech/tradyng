@@ -9,7 +9,7 @@ import { ProductService, Product } from '../../services/product';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 
 export const StorefrontHome: React.FC = () => {
-  const { business, isLoading: storeLoading, searchTerm } = useStore();
+  const { business, isLoading: storeLoading, searchTerm, selectedCategory } = useStore();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
@@ -20,8 +20,12 @@ export const StorefrontHome: React.FC = () => {
       try {
         setIsLoadingProducts(true);
         const products = await ProductService.getProductsByBusinessId(business.id);
-        // Get first 4 products as featured
-        setFeaturedProducts(products.slice(0, 4));
+        // Show all products, not just first 4 when category is selected
+        if (selectedCategory) {
+          setFeaturedProducts(products);
+        } else {
+          setFeaturedProducts(products.slice(0, 4));
+        }
       } catch (error) {
         console.error('Error loading products:', error);
         setFeaturedProducts([]);
@@ -31,7 +35,7 @@ export const StorefrontHome: React.FC = () => {
     };
 
     loadProducts();
-  }, [business?.id]);
+  }, [business?.id, selectedCategory]);
 
   if (storeLoading) {
     return (
@@ -52,14 +56,16 @@ export const StorefrontHome: React.FC = () => {
     );
   }
 
-  // Filter featured products by search term
-  const filteredFeaturedProducts = featuredProducts.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter featured products by search term and category
+  const filteredFeaturedProducts = featuredProducts.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = !selectedCategory || product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       {/* Hero Section - Beautiful, compact, visually impressive */}
       <section className="relative bg-gradient-to-br from-blue-600 via-blue-400 to-purple-500 text-white overflow-hidden">
         {/* Decorative blurred circles */}
@@ -89,6 +95,17 @@ export const StorefrontHome: React.FC = () => {
       {/* Featured Products */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Dynamic section title based on category */}
+          {selectedCategory && (
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                {selectedCategory}
+              </h2>
+              <p className="text-gray-600">
+                {filteredFeaturedProducts.length} product{filteredFeaturedProducts.length !== 1 ? 's' : ''} in this category
+              </p>
+            </div>
+          )}
           
           {isLoadingProducts ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -113,33 +130,43 @@ export const StorefrontHome: React.FC = () => {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   className="flex justify-center"
                 >
-                  <Card className="bg-white border border-gray-200 shadow-sm w-full max-w-xs flex flex-col p-0">
-                    <div className="w-full aspect-square overflow-hidden">
-                      <img
-                        src={product.images?.[0] || '/api/placeholder/400/300'}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
-                        }}
-                      />
-                    </div>
-                    <div className="flex flex-col px-4 py-3">
-                      <h3 className="text-base font-semibold text-gray-900 mb-1 truncate">{product.name}</h3>
-                      <span className="text-lg font-bold text-blue-600 mb-2">{formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}</span>
-                      <p className="text-gray-600 text-xs mb-2 line-clamp-2">{product.description}</p>
-                      <div className="flex items-center mb-2">
-                        <div className="flex text-yellow-400">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} className="h-4 w-4 fill-current" />
-                          ))}
-                        </div>
-                        <span className="text-xs text-gray-500 ml-2">(5.0)</span>
+                  <Card className="bg-white border border-gray-200 shadow-sm w-full max-w-xs flex flex-col p-0 hover:shadow-md transition-shadow duration-200">
+                    <Link to={`/product/${product.id}`} className="flex flex-col flex-1">
+                      <div className="w-full aspect-square overflow-hidden">
+                        <img
+                          src={product.images?.[0] || '/api/placeholder/400/300'}
+                          alt={product.name}
+                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
+                          }}
+                        />
                       </div>
-                      <div className="flex gap-2 mt-2">
-                        <Button size="sm" className="flex-1 px-2 py-1 rounded font-semibold text-xs bg-blue-600 text-white hover:bg-blue-700 transition-all">Add to Cart</Button>
+                      <div className="flex flex-col px-4 py-3 flex-1">
+                        <h3 className="text-base font-semibold text-gray-900 mb-1 truncate">{product.name}</h3>
+                        <span className="text-lg font-bold text-blue-600 mb-2">{formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}</span>
+                        <p className="text-gray-600 text-xs mb-2 line-clamp-2">{product.description}</p>
+                        <div className="flex items-center mb-2">
+                          <div className="flex text-yellow-400">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className="h-4 w-4 fill-current" />
+                            ))}
+                          </div>
+                          <span className="text-xs text-gray-500 ml-2">(5.0)</span>
+                        </div>
+                      </div>
+                    </Link>
+                    <div className="px-4 pb-3">
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          className="flex-1 px-2 py-1 rounded font-semibold text-xs bg-blue-600 text-white hover:bg-blue-700 transition-all"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Add to Cart
+                        </Button>
                         <Link to={`/product/${product.id}`} className="flex-1">
-                          <Button size="sm" className="w-full px-2 py-1 rounded font-semibold text-xs bg-white border border-blue-400 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all">View</Button>
+                          <Button size="sm" className="w-full px-2 py-1 rounded font-semibold text-xs bg-white border border-blue-400 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all">View Details</Button>
                         </Link>
                       </div>
                     </div>
@@ -152,10 +179,16 @@ export const StorefrontHome: React.FC = () => {
               <div className="text-gray-400 mb-4">
                 <ShoppingCart className="h-16 w-16 mx-auto" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{searchTerm ? 'No Products Found' : 'No Products Yet'}</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {searchTerm || selectedCategory ? 'No Products Found' : 'No Products Yet'}
+              </h3>
               <p className="text-gray-600">
-                {searchTerm
+                {searchTerm && selectedCategory
+                  ? `No products match "${searchTerm}" in ${selectedCategory}. Try a different search term or category.`
+                  : searchTerm
                   ? `No products match "${searchTerm}". Try a different search term.`
+                  : selectedCategory
+                  ? `No products found in ${selectedCategory} category.`
                   : "This store hasn't added any products yet. Check back later!"}
               </p>
             </div>
