@@ -30,6 +30,10 @@
       "dest": "/index.html"
     },
     {
+      "src": "/demo/(.*)",
+      "dest": "/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
@@ -50,8 +54,19 @@
         {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
+        },
+        {
+          "key": "X-Subdomain-Support",
+          "value": "enabled"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/subdomain-demo",
+      "destination": "/demo/subdomains",
+      "permanent": false
     }
   ]
 }

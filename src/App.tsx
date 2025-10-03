@@ -29,6 +29,9 @@ import { Cart } from './pages/storefront/Cart';
 import { Checkout } from './pages/storefront/Checkout';
 import { Payment } from './pages/storefront/Payment';
 
+// Demo
+import { StoreSubdomainDemo } from './pages/demo/StoreSubdomainDemo';
+
 // Admin
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { Businesses } from './pages/admin/Businesses';
@@ -97,6 +100,7 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/features" element={<FeaturesPage />} />
+              <Route path="/demo/subdomains" element={<StoreSubdomainDemo />} />
               
               {/* Authentication */}
               <Route path="/auth/signup" element={<SignUp />} />

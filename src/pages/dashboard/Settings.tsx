@@ -158,7 +158,7 @@ export const Settings: React.FC = () => {
       console.log('🎨 Setting branding data:', newBrandingSettings);
       setBrandingSettings(newBrandingSettings);
       
-      console.log('🌐 Store URL will be:', business.subdomain ? `${business.subdomain}.trady.ng` : 'No subdomain available');
+      console.log('🌐 Store URL will be:', business.subdomain ? `${business.subdomain}.rady.ng` : 'No subdomain available');
     } else {
       console.log('❌ No business data available');
     }
@@ -845,13 +845,13 @@ export const Settings: React.FC = () => {
                     <p className="text-sm font-medium text-gray-900 mb-1">Your Store URL</p>
                     <div className="flex items-center space-x-2">
                       <code className="text-lg font-mono px-3 py-2 bg-white border border-gray-200 rounded-md text-blue-700">
-                        {storeData.subdomain ? `${storeData.subdomain}.trady.ng` : 'your-subdomain.trady.ng'}
+                        {storeData.subdomain ? `${storeData.subdomain}.rady.ng` : 'your-subdomain.rady.ng'}
                       </code>
                       {storeData.subdomain && subdomainAvailable !== false && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.open(`https://${storeData.subdomain}.trady.ng`, '_blank')}
+                          onClick={() => window.open(`https://${storeData.subdomain}.rady.ng`, '_blank')}
                           className="theme-primary-text hover:theme-primary-text"
                         >
                           <ExternalLink className="h-4 w-4" />
