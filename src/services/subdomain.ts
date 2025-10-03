@@ -79,9 +79,27 @@ export class SubdomainService {
               isCustomDomain: false,
               originalDomain: hostname
             };
+          } else {
+            // Store subdomain detected but no business found
+            console.warn(`Store subdomain '${subdomain}' detected but no business found in database`);
+            return {
+              isSubdomain: true,
+              storeName: subdomain,
+              businessId: undefined,
+              isCustomDomain: false,
+              originalDomain: hostname
+            };
           }
         } catch (error) {
           console.error('Error finding business by store name:', error);
+          // Return subdomain info even if there's an error
+          return {
+            isSubdomain: true,
+            storeName: subdomain,
+            businessId: undefined,
+            isCustomDomain: false,
+            originalDomain: hostname
+          };
         }
       }
     }

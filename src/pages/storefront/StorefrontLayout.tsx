@@ -3,12 +3,13 @@ import { Outlet } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { Store, ShoppingCart, User, Search, ChevronDown } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { SubdomainService } from '../../services/subdomain';
+import { SubdomainService, SubdomainInfo } from '../../services/subdomain';
 import { BusinessService, Business } from '../../services/business';
 import { CategoryService, Category } from '../../services/category';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
+import StoreNotFound from '../../components/sections/StoreNotFound';
 
 
 // Context for store data and search term
@@ -49,14 +50,16 @@ export const StorefrontLayout: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subdomainInfo, setSubdomainInfo] = useState<SubdomainInfo | null>(null);
 
   useEffect(() => {
     const loadStoreData = async () => {
       try {
-        const subdomainInfo = await SubdomainService.detectSubdomain();
+        const detectedSubdomain = await SubdomainService.detectSubdomain();
+        setSubdomainInfo(detectedSubdomain);
         
-        if (subdomainInfo.businessId) {
-          const business = await BusinessService.getBusinessById(subdomainInfo.businessId);
+        if (detectedSubdomain.businessId) {
+          const business = await BusinessService.getBusinessById(detectedSubdomain.businessId);
           if (business) {
             setStoreData({
               business,
@@ -66,11 +69,11 @@ export const StorefrontLayout: React.FC = () => {
             
             // Load categories for this business
             try {
-              const businessCategories = await CategoryService.getCategoriesByBusinessId(subdomainInfo.businessId);
+              const businessCategories = await CategoryService.getCategoriesByBusinessId(detectedSubdomain.businessId);
               // If no categories exist, initialize with defaults
               if (businessCategories.length === 0) {
-                await CategoryService.initializeDefaultCategories(subdomainInfo.businessId);
-                const updatedCategories = await CategoryService.getCategoriesByBusinessId(subdomainInfo.businessId);
+                await CategoryService.initializeDefaultCategories(detectedSubdomain.businessId);
+                const updatedCategories = await CategoryService.getCategoriesByBusinessId(detectedSubdomain.businessId);
                 setCategories(updatedCategories);
               } else {
                 setCategories(businessCategories);
@@ -86,6 +89,13 @@ export const StorefrontLayout: React.FC = () => {
               error: 'Store not found'
             });
           }
+        } else if (detectedSubdomain.isSubdomain && detectedSubdomain.storeName) {
+          // Subdomain detected but no business found
+          setStoreData({
+            business: null,
+            isLoading: false,
+            error: 'Store not found'
+          });
         } else {
           setStoreData({
             business: null,
@@ -119,6 +129,12 @@ export const StorefrontLayout: React.FC = () => {
   }
 
   if (storeData.error || !storeData.business) {
+    // If it's a subdomain that was detected but no business found, show the custom component
+    if (subdomainInfo?.isSubdomain && subdomainInfo.storeName) {
+      return <StoreNotFound storeName={subdomainInfo.storeName} />;
+    }
+    
+    // Default error handling for other cases
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center relative">
         <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,255,255,0.3)_1px,_transparent_0)] bg-[length:20px_20px] pointer-events-none"></div>
