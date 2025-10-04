@@ -2,6 +2,7 @@
 import { db } from '../config/firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, Timestamp, limit } from 'firebase/firestore';
 import { EmailService } from './emailService';
+import DirectEmailService from './directEmailService';
 
 export interface OTPRecord {
   email: string;
@@ -90,9 +91,24 @@ export class OTPService {
       const emailSent = await EmailService.sendRegistrationOTP(
         email,
         otp,
-        storeBranding,
-        `Verify your email - ${businessName || 'Registration'}`
+        storeBranding
       );
+
+      // If Firebase Functions fails, try direct SendGrid
+      if (!emailSent) {
+        console.log('🔄 Firebase Functions failed, trying direct SendGrid...');
+        const directEmailSent = await DirectEmailService.sendOTPEmail(
+          email,
+          otp,
+          businessName || 'Store'
+        );
+        
+        if (directEmailSent) {
+          console.log('✅ Email sent via direct SendGrid');
+        } else {
+          console.error('❌ Both email services failed');
+        }
+      }
 
       if (emailSent) {
         return {
