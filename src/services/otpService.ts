@@ -1,6 +1,6 @@
 // OTP Service for customer registration verification
 import { db } from '../config/firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, Timestamp, limit } from 'firebase/firestore';
 import { EmailService } from './emailService';
 
 export interface OTPRecord {
@@ -29,17 +29,26 @@ export class OTPService {
     try {
       const emailLower = email.toLowerCase();
       
-      // Check rate limiting - prevent spam
+      // Check rate limiting - prevent spam (simplified query)
       const recentOTPQuery = query(
         collection(db, 'email_otps'),
         where('email', '==', emailLower),
-        where('createdAt', '>', Timestamp.fromDate(new Date(Date.now() - this.RATE_LIMIT_MINUTES * 60000))),
-        orderBy('createdAt', 'desc'),
-        limit(1)
+        limit(10) // Get recent OTPs and filter in code
       );
       
       const recentOTPs = await getDocs(recentOTPQuery);
-      if (!recentOTPs.empty) {
+      
+      // Filter in code to avoid index requirement
+      const now = new Date();
+      const oneMinuteAgo = new Date(now.getTime() - this.RATE_LIMIT_MINUTES * 60000);
+      
+      const recentOTP = recentOTPs.docs.find(doc => {
+        const data = doc.data();
+        const createdAt = data.createdAt.toDate();
+        return createdAt > oneMinuteAgo;
+      });
+      
+      if (recentOTP) {
         return {
           success: false,
           message: `Please wait ${this.RATE_LIMIT_MINUTES} minute before requesting another OTP`
@@ -112,13 +121,12 @@ export class OTPService {
     try {
       const emailLower = email.toLowerCase();
       
-      // Find valid OTP for this email
+      // Find valid OTP for this email (simplified query)
       const otpQuery = query(
         collection(db, 'email_otps'),
         where('email', '==', emailLower),
         where('isUsed', '==', false),
-        orderBy('createdAt', 'desc'),
-        limit(1)
+        limit(10) // Get recent OTPs and sort in code
       );
 
       const otpDocs = await getDocs(otpQuery);
@@ -130,7 +138,14 @@ export class OTPService {
         };
       }
 
-      const otpDoc = otpDocs.docs[0];
+      // Sort by creation date and get the most recent
+      const sortedDocs = otpDocs.docs.sort((a, b) => {
+        const aTime = a.data().createdAt.toDate();
+        const bTime = b.data().createdAt.toDate();
+        return bTime.getTime() - aTime.getTime();
+      });
+
+      const otpDoc = sortedDocs[0];
       const data = otpDoc.data();
       const expiresAt = data.expiresAt.toDate();
       
@@ -189,7 +204,7 @@ export class OTPService {
         collection(db, 'email_otps'),
         where('email', '==', emailLower),
         where('isUsed', '==', false),
-        limit(1)
+        limit(5)
       );
 
       const otpDocs = await getDocs(otpQuery);
@@ -198,10 +213,17 @@ export class OTPService {
         return false;
       }
 
-      const data = otpDocs.docs[0].data();
-      const expiresAt = data.expiresAt.toDate();
+      // Check if any OTP is still valid
+      const now = new Date();
+      for (const docSnapshot of otpDocs.docs) {
+        const data = docSnapshot.data();
+        const expiresAt = data.expiresAt.toDate();
+        if (expiresAt > now) {
+          return true;
+        }
+      }
       
-      return expiresAt > new Date();
+      return false;
     } catch (error) {
       console.error('Error checking OTP validity:', error);
       return false;
@@ -251,8 +273,7 @@ export class OTPService {
         collection(db, 'email_otps'),
         where('email', '==', emailLower),
         where('isUsed', '==', false),
-        orderBy('createdAt', 'desc'),
-        limit(1)
+        limit(5)
       );
 
       const otpDocs = await getDocs(otpQuery);
@@ -261,8 +282,22 @@ export class OTPService {
         return null;
       }
 
-      const data = otpDocs.docs[0].data();
-      return data.expiresAt.toDate();
+      // Find the most recent valid OTP
+      const now = new Date();
+      let latestExpiry: Date | null = null;
+      
+      for (const docSnapshot of otpDocs.docs) {
+        const data = docSnapshot.data();
+        const expiresAt = data.expiresAt.toDate();
+        
+        if (expiresAt > now) {
+          if (!latestExpiry || expiresAt > latestExpiry) {
+            latestExpiry = expiresAt;
+          }
+        }
+      }
+      
+      return latestExpiry;
     } catch (error) {
       console.error('Error getting OTP expiry:', error);
       return null;
