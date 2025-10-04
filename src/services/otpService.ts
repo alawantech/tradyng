@@ -16,7 +16,6 @@ export interface OTPRecord {
 
 export class OTPService {
   private static OTP_EXPIRY_MINUTES = 10; // OTP expires in 10 minutes
-  private static MAX_ATTEMPTS = 5;
   private static RATE_LIMIT_MINUTES = 1; // Can only request new OTP every minute
 
   // Generate 6-digit OTP
@@ -116,17 +115,16 @@ export class OTPService {
     }
   }
 
-  // Verify OTP
+  // Verify OTP - accepts any valid (not used, not expired) OTP for the email
   static async verifyOTP(email: string, inputOTP: string): Promise<{ valid: boolean; message: string }> {
     try {
       const emailLower = email.toLowerCase();
       
-      // Find valid OTP for this email (simplified query)
+      // Find all OTPs for this email (simplified query)
       const otpQuery = query(
         collection(db, 'email_otps'),
         where('email', '==', emailLower),
-        where('isUsed', '==', false),
-        limit(10) // Get recent OTPs and sort in code
+        limit(20) // Get multiple OTPs to check all codes
       );
 
       const otpDocs = await getDocs(otpQuery);
@@ -138,53 +136,45 @@ export class OTPService {
         };
       }
 
-      // Sort by creation date and get the most recent
-      const sortedDocs = otpDocs.docs.sort((a, b) => {
-        const aTime = a.data().createdAt.toDate();
-        const bTime = b.data().createdAt.toDate();
-        return bTime.getTime() - aTime.getTime();
-      });
+      const now = new Date();
+      let matchingOTP = null;
+      let otpDocId = null;
 
-      const otpDoc = sortedDocs[0];
-      const data = otpDoc.data();
-      const expiresAt = data.expiresAt.toDate();
-      
-      // Check if OTP is expired
-      if (expiresAt < new Date()) {
-        await deleteDoc(doc(db, 'email_otps', otpDoc.id));
-        return {
-          valid: false,
-          message: 'Verification code has expired. Please request a new one.'
-        };
-      }
-
-      // Check max attempts
-      if (data.attempts >= this.MAX_ATTEMPTS) {
-        await deleteDoc(doc(db, 'email_otps', otpDoc.id));
-        return {
-          valid: false,
-          message: 'Too many attempts. Please request a new verification code.'
-        };
-      }
-
-      // Verify OTP
-      if (data.otp === inputOTP) {
-        // Mark as used and delete
-        await deleteDoc(doc(db, 'email_otps', otpDoc.id));
+      // Check all OTPs to find a matching, valid one
+      for (const otpDoc of otpDocs.docs) {
+        const data = otpDoc.data();
+        const expiresAt = data.expiresAt.toDate();
         
-        return {
-          valid: true,
-          message: 'Email verified successfully!'
-        };
-      } else {
-        // Increment attempts but don't delete yet
-        // Note: In a real app, you'd update the document, but for simplicity we'll delete and recreate
-        // This is a simplified approach - in production you'd want to update the attempts field
+        // Skip if expired or used
+        if (expiresAt < now || data.isUsed) {
+          continue;
+        }
+
+        // Check if this OTP matches the input
+        if (data.otp === inputOTP) {
+          matchingOTP = data;
+          otpDocId = otpDoc.id;
+          break;
+        }
+      }
+
+      if (!matchingOTP) {
         return {
           valid: false,
-          message: `Invalid verification code. ${this.MAX_ATTEMPTS - data.attempts - 1} attempts remaining.`
+          message: 'Invalid or expired verification code. You can use any code we sent you.'
         };
       }
+
+      // Valid OTP found - mark as used and clean up ALL OTPs for this email
+      await deleteDoc(doc(db, 'email_otps', otpDocId!));
+      
+      // Clean up all other OTPs for this email after successful verification
+      await this.cleanupAllOTPs(emailLower);
+      
+      return {
+        valid: true,
+        message: 'Email verified successfully!'
+      };
 
     } catch (error) {
       console.error('Error verifying OTP:', error);
@@ -255,13 +245,75 @@ export class OTPService {
     }
   }
 
-  // Resend OTP (create new one)
+  // Resend OTP (create new one while keeping old valid ones)
   static async resendOTP(email: string, businessId?: string, businessName?: string): Promise<{ success: boolean; message: string }> {
-    // Clean up existing OTPs first
-    await this.cleanupOTPs(email.toLowerCase());
-    
-    // Send new OTP
+    // Simply call sendOTP again - it will handle rate limiting and create a new OTP
+    // Old valid OTPs remain usable until someone verifies or they expire
     return this.sendOTP(email, businessId, businessName);
+  }
+
+  // Clean up ALL OTPs for an email (after successful verification)
+  private static async cleanupAllOTPs(email: string): Promise<void> {
+    try {
+      const cleanupQuery = query(
+        collection(db, 'email_otps'),
+        where('email', '==', email),
+        limit(50)
+      );
+
+      const docs = await getDocs(cleanupQuery);
+
+      for (const docSnapshot of docs.docs) {
+        await deleteDoc(doc(db, 'email_otps', docSnapshot.id));
+      }
+    } catch (error) {
+      console.error('Error cleaning up all OTPs:', error);
+    }
+  }
+
+  // Get time until next OTP can be requested
+  static async getNextOTPTime(email: string): Promise<Date | null> {
+    try {
+      const emailLower = email.toLowerCase();
+      
+      const otpQuery = query(
+        collection(db, 'email_otps'),
+        where('email', '==', emailLower),
+        limit(10)
+      );
+
+      const otpDocs = await getDocs(otpQuery);
+      
+      if (otpDocs.empty) {
+        return null; // Can request immediately
+      }
+
+      // Find the most recent OTP creation time
+      let latestCreation: Date | null = null;
+
+      for (const otpDoc of otpDocs.docs) {
+        const data = otpDoc.data();
+        const createdAt = data.createdAt.toDate();
+        
+        if (!latestCreation || createdAt > latestCreation) {
+          latestCreation = createdAt;
+        }
+      }
+
+      if (latestCreation) {
+        const nextAllowedTime = new Date(latestCreation.getTime() + this.RATE_LIMIT_MINUTES * 60000);
+        const now = new Date();
+        
+        if (nextAllowedTime > now) {
+          return nextAllowedTime;
+        }
+      }
+
+      return null; // Can request immediately
+    } catch (error) {
+      console.error('Error getting next OTP time:', error);
+      return null;
+    }
   }
 
   // Get remaining time for OTP
@@ -272,8 +324,7 @@ export class OTPService {
       const otpQuery = query(
         collection(db, 'email_otps'),
         where('email', '==', emailLower),
-        where('isUsed', '==', false),
-        limit(5)
+        limit(10)
       );
 
       const otpDocs = await getDocs(otpQuery);
@@ -290,7 +341,7 @@ export class OTPService {
         const data = docSnapshot.data();
         const expiresAt = data.expiresAt.toDate();
         
-        if (expiresAt > now) {
+        if (!data.isUsed && expiresAt > now) {
           if (!latestExpiry || expiresAt > latestExpiry) {
             latestExpiry = expiresAt;
           }

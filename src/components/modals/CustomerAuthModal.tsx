@@ -132,7 +132,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       if (result.success) {
         toast.success(result.message);
         setMode('verify-email');
-        setOtpTimer(600); // 10 minutes
+        setOtpTimer(60); // 1 minute until can resend
       } else {
         toast.error(result.message);
       }
@@ -205,8 +205,11 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   };
 
   const handleResendOTP = async () => {
-    if (otpTimer > 0) {
-      toast.error(`Please wait ${Math.ceil(otpTimer / 60)} more minutes before requesting a new code`);
+    // Check if rate limit is still active
+    const nextOTPTime = await OTPService.getNextOTPTime(formData.email);
+    if (nextOTPTime && nextOTPTime > new Date()) {
+      const remainingSeconds = Math.ceil((nextOTPTime.getTime() - new Date().getTime()) / 1000);
+      toast.error(`Please wait ${remainingSeconds} seconds before requesting a new code`);
       return;
     }
 
@@ -220,9 +223,10 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       );
 
       if (result.success) {
-        toast.success('New verification code sent!');
-        setOtpTimer(600); // Reset 10 minute timer
-        setFormData(prev => ({ ...prev, otp: '' })); // Clear OTP field
+        toast.success('New verification code sent! Both old and new codes will work.');
+        // Reset timer to 1 minute (60 seconds) for next resend
+        setOtpTimer(60);
+        // Don't clear OTP field - let user use old code if they want
       } else {
         toast.error(result.message);
       }
@@ -719,7 +723,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1 text-center">
-                      Enter the 6-digit code sent to your email
+                      Enter any 6-digit code we sent you (old or new codes both work)
                     </p>
                   </div>
 
@@ -740,7 +744,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                       ) : (
                         <>
                           <RefreshCw className="h-4 w-4" />
-                          <span>{otpTimer > 0 ? `Resend in ${formatTime(otpTimer)}` : 'Resend code'}</span>
+                          <span>{otpTimer > 0 ? `Resend in ${otpTimer}s` : 'Resend code'}</span>
                         </>
                       )}
                     </button>
