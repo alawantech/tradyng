@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Eye, EyeOff, User, Mail, Lock } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -28,6 +28,14 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     displayName: '',
     confirmPassword: '',
   });
+
+  // Sync mode with initialMode when modal opens or initialMode changes
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      resetForm();
+    }
+  }, [isOpen, initialMode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
