@@ -1,0 +1,21 @@
+{
+  "name": "tradyng-email-api",
+  "version": "1.0.0",
+  "description": "Email API for Tradyng platform using SendGrid",
+  "main": "send-email.js",
+  "scripts": {
+    "start": "node send-email.js",
+    "dev": "nodemon send-email.js"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

@@ -1,9 +1,5 @@
-import sgMail from '@sendgrid/mail';
-
-// WARNING: This is a client-side implementation that exposes the API key
-// In production, this should be moved to a secure server-side endpoint
-// For demo/development purposes only
-sgMail.setApiKey(import.meta.env.VITE_SENDGRID_API_KEY || '');
+// EmailService - Mock implementation for frontend development
+// In production, this should be replaced with backend API calls
 
 export interface EmailTemplate {
   to: string;
@@ -40,13 +36,67 @@ export interface OTPData {
 }
 
 export class EmailService {
+  // Mock email sending for development
+  // In production, this should call your backend API endpoint
   static async sendEmail(emailData: EmailTemplate): Promise<boolean> {
     try {
-      await sgMail.send(emailData);
-      console.log('Email sent successfully to:', emailData.to);
+      // Simulate email sending delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // In development, log the email details instead of actually sending
+      console.log('📧 Mock Email Sent Successfully!');
+      console.log('To:', emailData.to);
+      console.log('Subject:', emailData.subject);
+      console.log('Content Preview:', emailData.text?.substring(0, 100) + '...');
+      
+      // For OTP emails, extract and display the OTP code
+      if (emailData.subject.includes('Verification') || emailData.subject.includes('OTP')) {
+        const otpMatch = emailData.html.match(/\b\d{6}\b/);
+        if (otpMatch) {
+          console.log('🔐 OTP CODE:', otpMatch[0]);
+          console.log('👆 Use this code for verification!');
+          
+          // Show a notification with the OTP code for development
+          if (typeof window !== 'undefined') {
+            // Create a temporary notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              background: #10B981;
+              color: white;
+              padding: 16px 20px;
+              border-radius: 8px;
+              box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+              z-index: 10000;
+              font-family: system-ui, -apple-system, sans-serif;
+              font-weight: 500;
+              max-width: 300px;
+            `;
+            notification.innerHTML = `
+              <div style="font-size: 14px; margin-bottom: 8px;">📧 Mock Email Sent!</div>
+              <div style="font-size: 18px; font-weight: bold; letter-spacing: 2px; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px; text-align: center;">
+                ${otpMatch[0]}
+              </div>
+              <div style="font-size: 12px; margin-top: 8px; opacity: 0.9;">Use this OTP code to verify</div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Remove notification after 10 seconds
+            setTimeout(() => {
+              if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+              }
+            }, 10000);
+          }
+        }
+      }
+      
       return true;
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error('Mock email service error:', error);
       return false;
     }
   }
