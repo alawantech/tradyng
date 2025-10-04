@@ -58,6 +58,9 @@ export class EmailService {
           
           // Show a notification with the OTP code for development
           if (typeof window !== 'undefined') {
+            // Also show browser alert for immediate visibility
+            alert(`🔐 OTP CODE: ${otpMatch[0]}\n\n📧 Mock Email Sent!\nUse this code for verification.\n\n(In production, this would be sent via email)`);
+            
             // Create a temporary notification element
             const notification = document.createElement('div');
             notification.style.cssText = `
@@ -84,12 +87,12 @@ export class EmailService {
             
             document.body.appendChild(notification);
             
-            // Remove notification after 10 seconds
+            // Remove notification after 15 seconds (longer time)
             setTimeout(() => {
               if (notification.parentNode) {
                 notification.parentNode.removeChild(notification);
               }
-            }, 10000);
+            }, 15000);
           }
         }
       }
