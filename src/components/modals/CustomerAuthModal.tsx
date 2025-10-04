@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Eye, EyeOff, User, Mail, Lock, ShoppingBag, Heart, Star, Shield } from 'lucide-react';
+import { X, Eye, EyeOff, User, Mail, Lock, ShoppingBag, Heart, Star, Shield, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
@@ -85,7 +85,42 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       onClose();
     } catch (error: any) {
       console.error('Auth error:', error);
-      toast.error(error.message || 'Authentication failed');
+      
+      // Handle specific Firebase auth errors
+      if (error.code === 'auth/email-already-in-use') {
+        toast.error(
+          `This email is already registered! Try signing in instead.`,
+          {
+            duration: 5000,
+            icon: '👋',
+          }
+        );
+        // Automatically switch to sign-in mode
+        setTimeout(() => {
+          setMode('signin');
+          // Keep the email but clear other fields
+          setFormData(prev => ({
+            email: prev.email,
+            password: '',
+            displayName: '',
+            confirmPassword: '',
+          }));
+        }, 2000);
+      } else if (error.code === 'auth/weak-password') {
+        toast.error('Password is too weak. Please choose a stronger password.');
+      } else if (error.code === 'auth/invalid-email') {
+        toast.error('Please enter a valid email address.');
+      } else if (error.code === 'auth/user-not-found') {
+        toast.error('No account found with this email. Please sign up first.');
+      } else if (error.code === 'auth/wrong-password') {
+        toast.error('Incorrect password. Please try again.');
+      } else if (error.code === 'auth/invalid-credential') {
+        toast.error('Invalid email or password. Please check your credentials.');
+      } else if (error.code === 'auth/too-many-requests') {
+        toast.error('Too many failed attempts. Please try again later.');
+      } else {
+        toast.error(error.message || 'Authentication failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -248,6 +283,30 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
               >
+                {/* Email already exists notice */}
+                {mode === 'signup' && formData.email && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start space-x-3"
+                  >
+                    <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="text-blue-800 font-medium">Already have an account?</p>
+                      <p className="text-blue-600">
+                        If you've shopped with {storeName} before, try{' '}
+                        <button
+                          type="button"
+                          onClick={() => setMode('signin')}
+                          className="underline font-medium hover:text-blue-800"
+                        >
+                          signing in instead
+                        </button>
+                        .
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
                 {mode === 'signup' && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
@@ -327,6 +386,21 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                     <p className="text-xs text-gray-500 mt-1">
                       Must be at least 6 characters long
                     </p>
+                  )}
+                  {mode === 'signin' && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                        onClick={() => {
+                          toast.error('Password reset feature coming soon!', {
+                            icon: '🔄',
+                          });
+                        }}
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
                   )}
                 </div>
 
