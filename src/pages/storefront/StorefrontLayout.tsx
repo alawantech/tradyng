@@ -1,7 +1,7 @@
-import React, { useEffect, useState, createContext, useContext } from 'react';
+import React, { useEffect, useState, createContext, useContext, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Link } from 'react-router-dom';
-import { Store, ShoppingCart, User, Search, ChevronDown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Store, ShoppingCart, User, Search, ChevronDown, UserCircle, Package, LogOut } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { SubdomainService, SubdomainInfo } from '../../services/subdomain';
 import { BusinessService, Business } from '../../services/business';
@@ -10,6 +10,7 @@ import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
 import StoreNotFound from '../../components/sections/StoreNotFound';
+import toast from 'react-hot-toast';
 
 
 // Context for store data and search term
@@ -40,8 +41,11 @@ export const useStore = () => useContext(StoreContext);
 export const StorefrontLayout: React.FC = () => {
   const { itemCount } = useCart();
   const { user, signOut } = useCustomerAuth();
+  const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
   const [storeData, setStoreData] = useState<Omit<StoreContextType, 'searchTerm' | 'setSearchTerm' | 'selectedCategory' | 'setSelectedCategory' | 'categories'>>({
     business: null,
     isLoading: true,
@@ -51,6 +55,20 @@ export const StorefrontLayout: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [subdomainInfo, setSubdomainInfo] = useState<SubdomainInfo | null>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    if (showUserDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showUserDropdown]);
 
   useEffect(() => {
     const loadStoreData = async () => {
@@ -209,19 +227,70 @@ export const StorefrontLayout: React.FC = () => {
                   </Button>
                 </Link>
                 {user ? (
-                  <div className="relative">
-                    <Button variant="outline" className="flex items-center">
+                  <div className="relative" ref={userDropdownRef}>
+                    <Button 
+                      variant="outline" 
+                      className="flex items-center"
+                      onClick={() => setShowUserDropdown(!showUserDropdown)}
+                    >
                       <User className="h-4 w-4 mr-2" />
-                      {user.displayName || user.email}
+                      <span className="hidden sm:inline">
+                        {user.displayName || user.email?.split('@')[0] || 'Account'}
+                      </span>
                       <ChevronDown className="h-4 w-4 ml-2" />
                     </Button>
-                    {/* TODO: Add dropdown menu for account options */}
-                    <button
-                      onClick={() => signOut()}
-                      className="absolute top-full right-0 mt-1 px-4 py-2 bg-white border rounded-lg shadow-lg text-sm hover:bg-gray-50"
-                    >
-                      Sign Out
-                    </button>
+                    
+                    {showUserDropdown && (
+                      <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                        <div className="py-2">
+                          <div className="px-4 py-2 border-b border-gray-100">
+                            <p className="text-sm font-medium text-gray-900">
+                              {user.displayName || 'Customer'}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user.email}
+                            </p>
+                          </div>
+                          
+                          <Link
+                            to="/profile"
+                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            onClick={() => setShowUserDropdown(false)}
+                          >
+                            <UserCircle className="h-4 w-4 mr-3" />
+                            My Profile
+                          </Link>
+                          
+                          <Link
+                            to="/orders"
+                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            onClick={() => setShowUserDropdown(false)}
+                          >
+                            <Package className="h-4 w-4 mr-3" />
+                            Order History
+                          </Link>
+                          
+                          <div className="border-t border-gray-100 mt-1 pt-1">
+                            <button
+                              onClick={async () => {
+                                setShowUserDropdown(false);
+                                try {
+                                  await signOut();
+                                  toast.success('Signed out successfully');
+                                } catch (error) {
+                                  console.error('Error signing out:', error);
+                                  toast.error('Failed to sign out');
+                                }
+                              }}
+                              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              <LogOut className="h-4 w-4 mr-3" />
+                              Sign Out
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center space-x-2">

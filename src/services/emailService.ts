@@ -1,7 +1,9 @@
 import sgMail from '@sendgrid/mail';
 
-// Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
+// WARNING: This is a client-side implementation that exposes the API key
+// In production, this should be moved to a secure server-side endpoint
+// For demo/development purposes only
+sgMail.setApiKey(import.meta.env.VITE_SENDGRID_API_KEY || '');
 
 export interface EmailTemplate {
   to: string;

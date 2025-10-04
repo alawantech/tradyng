@@ -9,6 +9,9 @@ import {
   deleteDoc, 
   query,
   orderBy,
+  where,
+  limit,
+  setDoc,
   Timestamp
 } from 'firebase/firestore';
 
@@ -33,7 +36,386 @@ export interface Customer {
   tags?: string[];
 }
 
+// Enhanced customer interfaces for storefront
+export interface CustomerAddress {
+  id?: string;
+  customerId: string;
+  label: string; // e.g., "Home", "Work", "Default"
+  isDefault: boolean;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode?: string;
+  country: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CustomerProfile {
+  id: string;
+  uid: string; // Firebase Auth UID
+  email: string;
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  dateOfBirth?: Date;
+  gender?: 'male' | 'female' | 'other';
+  preferences: {
+    emailNotifications: boolean;
+    smsNotifications: boolean;
+    promotionalEmails: boolean;
+  };
+  defaultAddressId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastLoginAt?: Date;
+  isActive: boolean;
+}
+
+export interface CustomerOrderHistory {
+  orderId: string;
+  businessId: string;
+  businessName: string;
+  total: number;
+  status: string;
+  orderDate: Date;
+  itemCount: number;
+}
+
 export class CustomerService {
+  // ENHANCED STOREFRONT CUSTOMER METHODS
+  
+  // Create or update customer profile for storefront users
+  static async createOrUpdateProfile(profileData: Partial<CustomerProfile> & { uid: string; email: string }): Promise<void> {
+    try {
+      const customerRef = doc(db, 'customers', profileData.uid);
+      const existingCustomer = await getDoc(customerRef);
+      
+      if (existingCustomer.exists()) {
+        // Update existing profile
+        await updateDoc(customerRef, {
+          ...profileData,
+          updatedAt: Timestamp.now(),
+          lastLoginAt: Timestamp.now()
+        });
+      } else {
+        // Create new profile
+        const newCustomer: CustomerProfile = {
+          id: profileData.uid,
+          displayName: profileData.displayName || '',
+          firstName: profileData.firstName || '',
+          lastName: profileData.lastName || '',
+          phone: profileData.phone || '',
+          preferences: {
+            emailNotifications: true,
+            smsNotifications: true,
+            promotionalEmails: true,
+          },
+          createdAt: Timestamp.now() as any,
+          updatedAt: Timestamp.now() as any,
+          lastLoginAt: Timestamp.now() as any,
+          isActive: true,
+          ...profileData
+        };
+        
+        await setDoc(customerRef, newCustomer);
+      }
+    } catch (error) {
+      console.error('Error creating/updating customer profile:', error);
+      throw error;
+    }
+  }
+
+  // Get customer profile
+  static async getProfile(customerId: string): Promise<CustomerProfile | null> {
+    try {
+      const customerRef = doc(db, 'customers', customerId);
+      const customerSnap = await getDoc(customerRef);
+      
+      if (customerSnap.exists()) {
+        const data = customerSnap.data();
+        return {
+          ...data,
+          createdAt: data.createdAt?.toDate(),
+          updatedAt: data.updatedAt?.toDate(),
+          lastLoginAt: data.lastLoginAt?.toDate(),
+          dateOfBirth: data.dateOfBirth?.toDate(),
+        } as CustomerProfile;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting customer profile:', error);
+      throw error;
+    }
+  }
+
+  // Update customer profile
+  static async updateProfile(customerId: string, updates: Partial<CustomerProfile>): Promise<void> {
+    try {
+      const customerRef = doc(db, 'customers', customerId);
+      await updateDoc(customerRef, {
+        ...updates,
+        updatedAt: Timestamp.now()
+      });
+    } catch (error) {
+      console.error('Error updating customer profile:', error);
+      throw error;
+    }
+  }
+
+  // Add customer address
+  static async addAddress(addressData: Omit<CustomerAddress, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      // If this is being set as default, update the previous default
+      if (addressData.isDefault) {
+        await this.unsetDefaultAddress(addressData.customerId);
+      }
+
+      const addressesRef = collection(db, 'customer_addresses');
+      const newAddress: Omit<CustomerAddress, 'id'> = {
+        ...addressData,
+        createdAt: Timestamp.now() as any,
+        updatedAt: Timestamp.now() as any
+      };
+      
+      const docRef = await addDoc(addressesRef, newAddress);
+      
+      // Update customer's default address if this is marked as default
+      if (addressData.isDefault) {
+        await this.updateProfile(addressData.customerId, { defaultAddressId: docRef.id });
+      }
+      
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding customer address:', error);
+      throw error;
+    }
+  }
+
+  // Get customer addresses
+  static async getAddresses(customerId: string): Promise<CustomerAddress[]> {
+    try {
+      const addressesRef = collection(db, 'customer_addresses');
+      const q = query(
+        addressesRef, 
+        where('customerId', '==', customerId),
+        orderBy('isDefault', 'desc'),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+        updatedAt: doc.data().updatedAt?.toDate(),
+      })) as CustomerAddress[];
+    } catch (error) {
+      console.error('Error getting customer addresses:', error);
+      throw error;
+    }
+  }
+
+  // Get default address
+  static async getDefaultAddress(customerId: string): Promise<CustomerAddress | null> {
+    try {
+      const addresses = await this.getAddresses(customerId);
+      return addresses.find(addr => addr.isDefault) || addresses[0] || null;
+    } catch (error) {
+      console.error('Error getting default address:', error);
+      throw error;
+    }
+  }
+
+  // Update address
+  static async updateAddress(addressId: string, updates: Partial<CustomerAddress>): Promise<void> {
+    try {
+      const addressRef = doc(db, 'customer_addresses', addressId);
+      
+      // If setting as default, unset previous default
+      if (updates.isDefault && updates.customerId) {
+        await this.unsetDefaultAddress(updates.customerId);
+        await this.updateProfile(updates.customerId, { defaultAddressId: addressId });
+      }
+      
+      await updateDoc(addressRef, {
+        ...updates,
+        updatedAt: Timestamp.now()
+      });
+    } catch (error) {
+      console.error('Error updating customer address:', error);
+      throw error;
+    }
+  }
+
+  // Delete address
+  static async deleteAddress(addressId: string, customerId: string): Promise<void> {
+    try {
+      const addressRef = doc(db, 'customer_addresses', addressId);
+      await deleteDoc(addressRef);
+      
+      // If this was the default address, unset it from customer profile
+      const profile = await this.getProfile(customerId);
+      if (profile?.defaultAddressId === addressId) {
+        await this.updateProfile(customerId, { defaultAddressId: undefined });
+      }
+    } catch (error) {
+      console.error('Error deleting customer address:', error);
+      throw error;
+    }
+  }
+
+  // Set address as default
+  static async setDefaultAddress(customerId: string, addressId: string): Promise<void> {
+    try {
+      // Unset previous default
+      await this.unsetDefaultAddress(customerId);
+      
+      // Set new default
+      await this.updateAddress(addressId, { isDefault: true });
+      await this.updateProfile(customerId, { defaultAddressId: addressId });
+    } catch (error) {
+      console.error('Error setting default address:', error);
+      throw error;
+    }
+  }
+
+  // Unset default address (private helper)
+  private static async unsetDefaultAddress(customerId: string): Promise<void> {
+    try {
+      const addresses = await this.getAddresses(customerId);
+      const currentDefault = addresses.find(addr => addr.isDefault);
+      
+      if (currentDefault?.id) {
+        const addressRef = doc(db, 'customer_addresses', currentDefault.id);
+        await updateDoc(addressRef, { 
+          isDefault: false,
+          updatedAt: Timestamp.now()
+        });
+      }
+    } catch (error) {
+      console.error('Error unsetting default address:', error);
+      // Don't throw - this is a helper function
+    }
+  }
+
+  // Create customer from checkout data (for guest checkout -> account creation)
+  static async createFromCheckoutData(
+    uid: string,
+    email: string,
+    checkoutData: {
+      firstName: string;
+      lastName: string;
+      phone: string;
+      address: string;
+      city: string;
+      state: string;
+      zipCode?: string;
+      country?: string;
+    }
+  ): Promise<void> {
+    try {
+      // Create customer profile
+      await this.createOrUpdateProfile({
+        uid,
+        email,
+        displayName: `${checkoutData.firstName} ${checkoutData.lastName}`,
+        firstName: checkoutData.firstName,
+        lastName: checkoutData.lastName,
+        phone: checkoutData.phone
+      });
+
+      // Add address as default
+      await this.addAddress({
+        customerId: uid,
+        label: 'Default',
+        isDefault: true,
+        firstName: checkoutData.firstName,
+        lastName: checkoutData.lastName,
+        phone: checkoutData.phone,
+        street: checkoutData.address,
+        city: checkoutData.city,
+        state: checkoutData.state,
+        zipCode: checkoutData.zipCode || '',
+        country: checkoutData.country || 'Nigeria'
+      });
+    } catch (error) {
+      console.error('Error creating customer from checkout data:', error);
+      throw error;
+    }
+  }
+
+  // Check if customer exists by email
+  static async customerExistsByEmail(email: string): Promise<CustomerProfile | null> {
+    try {
+      const customersRef = collection(db, 'customers');
+      const q = query(customersRef, where('email', '==', email), limit(1));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        return null;
+      }
+      
+      const doc = querySnapshot.docs[0];
+      const data = doc.data();
+      return {
+        ...data,
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate(),
+        lastLoginAt: data.lastLoginAt?.toDate(),
+        dateOfBirth: data.dateOfBirth?.toDate(),
+      } as CustomerProfile;
+    } catch (error) {
+      console.error('Error checking customer by email:', error);
+      throw error;
+    }
+  }
+
+  // Get customer order history for a specific business
+  static async getOrderHistory(customerId: string, businessId?: string): Promise<CustomerOrderHistory[]> {
+    try {
+      let ordersQuery = query(
+        collection(db, 'orders'),
+        where('customerId', '==', customerId),
+        orderBy('createdAt', 'desc')
+      );
+      
+      if (businessId) {
+        ordersQuery = query(
+          collection(db, 'orders'),
+          where('customerId', '==', customerId),
+          where('businessId', '==', businessId),
+          orderBy('createdAt', 'desc')
+        );
+      }
+      
+      const querySnapshot = await getDocs(ordersQuery);
+      
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          orderId: data.orderId || doc.id,
+          orderDate: data.createdAt?.toDate() || new Date(),
+          status: data.status || 'pending',
+          total: data.total || 0,
+          itemCount: data.items?.length || 0,
+          businessId: data.businessId,
+          businessName: data.businessName
+        };
+      });
+    } catch (error) {
+      console.error('Error getting order history:', error);
+      throw error;
+    }
+  }
+
+  // EXISTING ADMIN METHODS FOR BUSINESS CUSTOMER MANAGEMENT
   // Send a message to a customer (admin or customer)
   static async sendMessageToCustomer(businessId: string, customerId: string, message: string, sender: 'admin' | 'customer', senderName: string, senderEmail?: string): Promise<string> {
     try {
