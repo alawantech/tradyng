@@ -19,9 +19,9 @@ export class OTPService {
   private static OTP_EXPIRY_MINUTES = 10; // OTP expires in 10 minutes
   private static RATE_LIMIT_MINUTES = 1; // Can only request new OTP every minute
 
-  // Generate 6-digit OTP
+  // Generate 4-digit OTP
   static generateOTP(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return Math.floor(1000 + Math.random() * 9000).toString();
   }
 
   // Send OTP via email

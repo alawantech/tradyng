@@ -100,9 +100,9 @@ exports.sendOTPEmail = functions.https.onCall(async (request, response) => {
         if (!data.email || !data.otp || !data.storeName) {
             throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: email, otp, storeName');
         }
-        // Validate OTP format (6 digits)
-        if (!/^\d{6}$/.test(data.otp)) {
-            throw new functions.https.HttpsError('invalid-argument', 'OTP must be 6 digits');
+        // Validate OTP format (4 digits)
+        if (!/^\d{4}$/.test(data.otp)) {
+            throw new functions.https.HttpsError('invalid-argument', 'OTP must be 4 digits');
         }
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -147,7 +147,7 @@ exports.sendOTPEmail = functions.https.onCall(async (request, response) => {
             <!-- OTP Code -->
             <div style="background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%); border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0; border: 2px dashed ${primaryColor};">
               <p style="margin: 0 0 15px; color: #6B7280; font-size: 14px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</p>
-              <div style="font-size: 36px; font-weight: bold; color: ${primaryColor}; letter-spacing: 8px; font-family: 'Courier New', monospace; background: white; padding: 15px 25px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+              <div style="font-size: 32px; font-weight: bold; color: ${primaryColor}; letter-spacing: 6px; font-family: 'Courier New', monospace; background: white; padding: 15px 25px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 ${data.otp}
               </div>
               <p style="margin: 15px 0 0; color: #9CA3AF; font-size: 12px;">This code expires in 10 minutes</p>

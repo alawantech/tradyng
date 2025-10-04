@@ -196,9 +196,6 @@ export class EmailService {
         `;
         notification.innerHTML = `
           <div style="font-size: 14px; margin-bottom: 8px;">✅ OTP Email Sent!</div>
-          <div style="font-size: 18px; font-weight: bold; letter-spacing: 2px; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px; text-align: center; margin: 8px 0;">
-            ${otp}
-          </div>
           <div style="font-size: 12px; opacity: 0.9;">Check ${email} for verification code</div>
         `;
         

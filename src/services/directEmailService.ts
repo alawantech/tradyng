@@ -45,7 +45,7 @@ class DirectEmailService {
 
               <div style="background: #F3F4F6; border: 2px dashed #3B82F6; border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0;">
                 <p style="margin: 0 0 15px; color: #6B7280; font-size: 14px; font-weight: 500;">Your Verification Code</p>
-                <div style="font-size: 36px; font-weight: bold; color: #3B82F6; letter-spacing: 8px; font-family: monospace;">
+                <div style="font-size: 28px; font-weight: bold; color: #3B82F6; letter-spacing: 6px; font-family: monospace;">
                   ${otp}
                 </div>
                 <p style="margin: 15px 0 0; color: #9CA3AF; font-size: 12px;">This code expires in 10 minutes</p>
