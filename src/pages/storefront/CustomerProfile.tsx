@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { 
   User, 
   MapPin, 
@@ -8,11 +9,11 @@ import {
   Plus, 
   Save, 
   Package, 
-  Heart,
-  Settings,
   LogOut,
-  Check,
-  X
+  X,
+  ExternalLink,
+  Menu,
+  ChevronRight
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -28,8 +29,6 @@ interface ProfileFormData {
   firstName: string;
   lastName: string;
   phone: string;
-  dateOfBirth?: string;
-  gender?: 'male' | 'female' | 'other';
   preferences: {
     emailNotifications: boolean;
     smsNotifications: boolean;
@@ -63,6 +62,7 @@ export const CustomerProfilePage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const [profileForm, setProfileForm] = useState<ProfileFormData>({
     displayName: '',
@@ -104,44 +104,91 @@ export const CustomerProfilePage: React.FC = () => {
     setIsLoading(true);
     try {
       // Load customer profile
-      let profile = await CustomerService.getProfile(user.uid);
-      
-      if (!profile) {
-        // Create profile if it doesn't exist
-        await CustomerService.createOrUpdateProfile({
-          uid: user.uid,
-          email: user.email!,
-          displayName: user.displayName || ''
-        });
+      let profile = null;
+      try {
         profile = await CustomerService.getProfile(user.uid);
-      }
-      
-      if (profile) {
-        setCustomerProfile(profile);
-        setProfileForm({
-          displayName: profile.displayName,
-          firstName: profile.firstName || '',
-          lastName: profile.lastName || '',
-          phone: profile.phone || '',
-          dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth.toISOString().split('T')[0] : '',
-          gender: profile.gender,
-          preferences: profile.preferences
-        });
+        
+        if (!profile) {
+          // Create profile if it doesn't exist
+          const displayName = user.displayName || user.email?.split('@')[0] || 'Customer';
+          console.log('Creating profile with displayName:', displayName, 'from user.displayName:', user.displayName);
+          await CustomerService.createOrUpdateProfile({
+            uid: user.uid,
+            email: user.email!,
+            displayName
+          });
+          profile = await CustomerService.getProfile(user.uid);
+        }
+        
+        if (profile) {
+          console.log('Loaded profile:', profile);
+          setCustomerProfile(profile);
+          
+          // Check if displayName looks like an email prefix and provide better fallback
+          let displayName = profile.displayName;
+          const emailPrefix = user.email?.split('@')[0];
+          
+          // If displayName is just the email prefix and user has a Firebase displayName, use that instead
+          if (displayName === emailPrefix && user.displayName && user.displayName !== emailPrefix) {
+            displayName = user.displayName;
+          }
+          
+          setProfileForm({
+            displayName: displayName || user.displayName || emailPrefix || '',
+            firstName: profile.firstName || '',
+            lastName: profile.lastName || '',
+            phone: profile.phone || '',
+            preferences: profile.preferences || {
+              emailNotifications: true,
+              smsNotifications: true,
+              promotionalEmails: true,
+            }
+          });
+        } else {
+          // If no profile exists and creation failed, use user data as fallback
+          const fallbackDisplayName = user.displayName || user.email?.split('@')[0] || '';
+          setProfileForm({
+            displayName: fallbackDisplayName,
+            firstName: '',
+            lastName: '',
+            phone: '',
+            preferences: {
+              emailNotifications: true,
+              smsNotifications: true,
+              promotionalEmails: true,
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error loading customer profile:', error);
+        // Continue loading other data even if profile fails
       }
       
       // Load addresses
-      const addresses = await CustomerService.getAddresses(user.uid);
-      setCustomerAddresses(addresses);
+      try {
+        const addresses = await CustomerService.getAddresses(user.uid);
+        setCustomerAddresses(addresses);
+      } catch (error) {
+        console.error('Error loading customer addresses:', error);
+        // Set empty array as fallback
+        setCustomerAddresses([]);
+      }
       
       // Load order history for this business
       if (business?.id) {
-        const orders = await CustomerService.getOrderHistory(user.uid, business.id);
-        setOrderHistory(orders);
+        try {
+          const orders = await CustomerService.getOrderHistory(user.uid, business.id);
+          setOrderHistory(orders);
+        } catch (error) {
+          console.error('Error loading order history:', error);
+          // Set empty array as fallback
+          setOrderHistory([]);
+        }
       }
       
     } catch (error) {
-      console.error('Error loading customer data:', error);
-      toast.error('Failed to load your profile information');
+      console.error('Error in loadCustomerData:', error);
+      toast.error('Some profile information could not be loaded');
     } finally {
       setIsLoading(false);
     }
@@ -177,8 +224,6 @@ export const CustomerProfilePage: React.FC = () => {
         firstName: profileForm.firstName,
         lastName: profileForm.lastName,
         phone: profileForm.phone,
-        dateOfBirth: profileForm.dateOfBirth ? new Date(profileForm.dateOfBirth) : undefined,
-        gender: profileForm.gender,
         preferences: profileForm.preferences
       };
 
@@ -249,7 +294,8 @@ export const CustomerProfilePage: React.FC = () => {
       } else {
         await CustomerService.addAddress({
           ...addressForm,
-          customerId: user.uid
+          customerId: user.uid,
+          country: 'Nigeria' // Default country
         });
         toast.success('Address added successfully!');
       }
@@ -303,8 +349,8 @@ export const CustomerProfilePage: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card className="p-8 text-center">
           <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign In Required</h2>
-          <p className="text-gray-600 mb-6">Please sign in to access your profile.</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Login Required</h2>
+          <p className="text-gray-600 mb-6">Please login to access your profile.</p>
           <Button onClick={() => window.location.href = '/'}>
             Go to Homepage
           </Button>
@@ -328,235 +374,464 @@ export const CustomerProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-8"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Account</h1>
-            <p className="text-gray-600 mt-1">Manage your profile and preferences</p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={handleSignOut}
-            className="text-red-600 border-red-300 hover:bg-red-50"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar Navigation */}
-          <div className="lg:col-span-1">
-            <Card className="p-6">
-              <div className="space-y-1">
-                <button
-                  onClick={() => setActiveTab('profile')}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${
-                    activeTab === 'profile'
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <User className="h-5 w-5" />
-                  <span>Profile</span>
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab('addresses')}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${
-                    activeTab === 'addresses'
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <MapPin className="h-5 w-5" />
-                  <span>Addresses</span>
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab('orders')}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${
-                    activeTab === 'orders'
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <Package className="h-5 w-5" />
-                  <span>Orders</span>
-                </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6 lg:space-y-8"
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 rounded-xl lg:rounded-2xl p-6 lg:p-8 text-white">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h1 className="text-2xl lg:text-3xl font-bold mb-2">Welcome back!</h1>
+                <p className="text-blue-100 text-sm lg:text-lg">
+                  Manage your account, track orders, and update your preferences
+                </p>
               </div>
-            </Card>
+              <div className="hidden lg:flex items-center space-x-4">
+                <div className="text-right">
+                  <p className="text-sm text-blue-100">Account Status</p>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span className="text-sm font-medium">Active</span>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleSignOut}
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
+            </div>
+            
+            {/* Mobile Sign Out */}
+            <div className="lg:hidden mt-6">
+              <Button
+                variant="outline"
+                onClick={handleSignOut}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm w-full"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
           </div>
 
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            {activeTab === 'profile' && (
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Profile Information</h2>
-                  {!isEditing ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsEditing(true)}
-                    >
-                      <Edit3 className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                  ) : (
-                    <div className="flex space-x-2">
-                      <Button
-                        onClick={handleSaveProfile}
-                        disabled={isSaving}
-                        size="sm"
-                      >
-                        <Save className="h-4 w-4 mr-2" />
-                        {isSaving ? 'Saving...' : 'Save'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setIsEditing(false);
-                          // Reset form
-                          if (customerProfile) {
-                            setProfileForm({
-                              displayName: customerProfile.displayName,
-                              firstName: customerProfile.firstName || '',
-                              lastName: customerProfile.lastName || '',
-                              phone: customerProfile.phone || '',
-                              dateOfBirth: customerProfile.dateOfBirth ? customerProfile.dateOfBirth.toISOString().split('T')[0] : '',
-                              gender: customerProfile.gender,
-                              preferences: customerProfile.preferences
-                            });
-                          }
-                        }}
-                        size="sm"
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Cancel
-                      </Button>
+          {/* Mobile Navigation Toggle */}
+          <div className="lg:hidden">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="w-full flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-200"
+            >
+              <div className="flex items-center space-x-3">
+                <Menu className="h-5 w-5 text-gray-600" />
+                <span className="font-medium text-gray-900">
+                  {activeTab === 'profile' && 'Profile'}
+                  {activeTab === 'addresses' && 'Addresses'}
+                  {activeTab === 'orders' && 'Recent Orders'}
+                </span>
+              </div>
+              <ChevronRight className={`h-5 w-5 text-gray-400 transform transition-transform ${isMobileMenuOpen ? 'rotate-90' : ''}`} />
+            </button>
+          </div>
+
+          {/* Mobile Navigation Menu */}
+          <AnimatePresence>
+            {isMobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="lg:hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+              >
+                <div className="p-2">
+                  <button
+                    onClick={() => {
+                      setActiveTab('profile');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200 ${
+                      activeTab === 'profile'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <User className="h-5 w-5" />
+                    <div>
+                      <span className="font-medium">Profile</span>
+                      <p className="text-xs text-gray-500 mt-0.5">Personal information</p>
                     </div>
-                  )}
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setActiveTab('addresses');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200 ${
+                      activeTab === 'addresses'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <MapPin className="h-5 w-5" />
+                    <div>
+                      <span className="font-medium">Addresses</span>
+                      <p className="text-xs text-gray-500 mt-0.5">Delivery locations</p>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setActiveTab('orders');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200 ${
+                      activeTab === 'orders'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Package className="h-5 w-5" />
+                    <div>
+                      <span className="font-medium">Recent Orders</span>
+                      <p className="text-xs text-gray-500 mt-0.5">Latest purchases</p>
+                    </div>
+                  </button>
+                  
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <Link
+                      to="/orders"
+                      className="w-full flex items-center justify-between space-x-3 px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-all duration-200"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Package className="h-5 w-5" />
+                        <div>
+                          <span className="font-medium">Order History</span>
+                          <p className="text-xs text-gray-500 mt-0.5">View all orders</p>
+                        </div>
+                      </div>
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </div>
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                <div className="space-y-6">
-                  {/* Basic Information */}
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input
-                        label="Display Name"
-                        name="displayName"
-                        value={profileForm.displayName}
-                        onChange={handleProfileFormChange}
-                        disabled={!isEditing}
-                      />
-                      <Input
-                        label="Email"
-                        value={user.email || ''}
-                        disabled
-                        className="bg-gray-50"
-                      />
-                      <Input
-                        label="First Name"
-                        name="firstName"
-                        value={profileForm.firstName}
-                        onChange={handleProfileFormChange}
-                        disabled={!isEditing}
-                      />
-                      <Input
-                        label="Last Name"
-                        name="lastName"
-                        value={profileForm.lastName}
-                        onChange={handleProfileFormChange}
-                        disabled={!isEditing}
-                      />
-                      <Input
-                        label="Phone"
-                        name="phone"
-                        value={profileForm.phone}
-                        onChange={handleProfileFormChange}
-                        disabled={!isEditing}
-                      />
-                      <Input
-                        label="Date of Birth"
-                        name="dateOfBirth"
-                        type="date"
-                        value={profileForm.dateOfBirth || ''}
-                        onChange={handleProfileFormChange}
-                        disabled={!isEditing}
-                      />
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
+            {/* Desktop Sidebar Navigation - Hidden on Mobile */}
+            <div className="hidden lg:block lg:col-span-1">
+              <Card className="p-6">
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Account Menu</h3>
+                  <p className="text-sm text-gray-600">Manage your account settings</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setActiveTab('profile')}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${
+                      activeTab === 'profile'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
+                        : 'text-gray-700 hover:bg-gray-50 hover:shadow-sm'
+                    }`}
+                  >
+                    <User className="h-5 w-5" />
+                    <div>
+                      <span className="font-medium">Profile</span>
+                      <p className="text-xs text-gray-500 mt-0.5">Personal information</p>
                     </div>
-                  </div>
-
-                  {/* Gender */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Gender
-                    </label>
-                    <select
-                      name="gender"
-                      value={profileForm.gender || ''}
-                      onChange={handleProfileFormChange}
-                      disabled={!isEditing}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('addresses')}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${
+                      activeTab === 'addresses'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
+                        : 'text-gray-700 hover:bg-gray-50 hover:shadow-sm'
+                    }`}
+                  >
+                    <MapPin className="h-5 w-5" />
+                    <div>
+                      <span className="font-medium">Addresses</span>
+                      <p className="text-xs text-gray-500 mt-0.5">Delivery locations</p>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('orders')}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${
+                      activeTab === 'orders'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
+                        : 'text-gray-700 hover:bg-gray-50 hover:shadow-sm'
+                    }`}
+                  >
+                    <Package className="h-5 w-5" />
+                    <div>
+                      <span className="font-medium">Recent Orders</span>
+                      <p className="text-xs text-gray-500 mt-0.5">Latest purchases</p>
+                    </div>
+                  </button>
+                  
+                  <div className="border-t border-gray-200 pt-3 mt-4">
+                    <Link
+                      to="/orders"
+                      className="w-full flex items-center justify-between space-x-3 px-4 py-3 rounded-xl text-left text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-all duration-200 hover:shadow-sm"
                     >
-                      <option value="">Select gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-
-                  {/* Preferences */}
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Notification Preferences</h3>
-                    <div className="space-y-3">
-                      <label className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          name="preferences.emailNotifications"
-                          checked={profileForm.preferences.emailNotifications}
-                          onChange={handleProfileFormChange}
-                          disabled={!isEditing}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">Email notifications for orders</span>
-                      </label>
-                      
-                      <label className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          name="preferences.smsNotifications"
-                          checked={profileForm.preferences.smsNotifications}
-                          onChange={handleProfileFormChange}
-                          disabled={!isEditing}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">SMS notifications</span>
-                      </label>
-                      
-                      <label className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          name="preferences.promotionalEmails"
-                          checked={profileForm.preferences.promotionalEmails}
-                          onChange={handleProfileFormChange}
-                          disabled={!isEditing}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">Promotional emails and offers</span>
-                      </label>
-                    </div>
+                      <div className="flex items-center space-x-3">
+                        <Package className="h-5 w-5" />
+                        <div>
+                          <span className="font-medium">Order History</span>
+                          <p className="text-xs text-gray-500 mt-0.5">View all orders</p>
+                        </div>
+                      </div>
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
                   </div>
                 </div>
               </Card>
-            )}
+            </div>
+
+            {/* Main Content */}
+            <div className="lg:col-span-3">
+              {activeTab === 'profile' && (
+                <div className="space-y-4 lg:space-y-6">
+                  {/* Profile Header Card */}
+                  <Card className="p-6 lg:p-8">
+                    <div className="flex flex-col lg:flex-row lg:items-start justify-between mb-6 lg:mb-8">
+                      <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6 flex-1">
+                        {/* Profile Avatar */}
+                        <div className="relative mx-auto sm:mx-0">
+                          <div className="w-20 h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xl lg:text-2xl font-bold shadow-lg">
+                            {(profileForm.displayName && profileForm.displayName !== user.email?.split('@')[0]) 
+                              ? profileForm.displayName.charAt(0).toUpperCase() 
+                              : user.displayName 
+                                ? user.displayName.charAt(0).toUpperCase()
+                                : user.email 
+                                  ? user.email.charAt(0).toUpperCase() 
+                                  : 'U'}
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 lg:-bottom-2 lg:-right-2 w-6 h-6 lg:w-8 lg:h-8 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
+                            <div className="w-2 h-2 lg:w-3 lg:h-3 bg-white rounded-full"></div>
+                          </div>
+                        </div>
+                        
+                        {/* Profile Info */}
+                        <div className="flex-1 text-center sm:text-left">
+                          <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-2">
+                            {(profileForm.displayName && profileForm.displayName !== user.email?.split('@')[0])
+                              ? profileForm.displayName
+                              : user.displayName || 'Welcome'}
+                          </h2>
+                          <p className="text-gray-600 mb-3 break-all">{user.email}</p>
+                          <div className="flex flex-col sm:flex-row items-center sm:space-x-4 space-y-2 sm:space-y-0 text-sm">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                              Active Account
+                            </span>
+                            <span className="text-gray-500">
+                              Member since {new Date().getFullYear()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Edit Button */}
+                      <div className="mt-6 lg:mt-0 w-full sm:w-auto">
+                        {!isEditing ? (
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsEditing(true)}
+                            className="bg-white hover:bg-gray-50 border-gray-300 w-full sm:w-auto"
+                          >
+                            <Edit3 className="h-4 w-4 mr-2" />
+                            Edit Profile
+                          </Button>
+                        ) : (
+                          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                            <Button
+                              onClick={handleSaveProfile}
+                              disabled={isSaving}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <Save className="h-4 w-4 mr-2" />
+                              {isSaving ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setIsEditing(false);
+                                // Reset form
+                                if (customerProfile) {
+                                  setProfileForm({
+                                    displayName: customerProfile.displayName,
+                                    firstName: customerProfile.firstName || '',
+                                    lastName: customerProfile.lastName || '',
+                                    phone: customerProfile.phone || '',
+                                    preferences: customerProfile.preferences
+                                  });
+                                }
+                              }}
+                              className="border-gray-300"
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Cancel
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Basic Information Card */}
+                  <Card className="p-6 lg:p-8">
+                    <div className="border-b border-gray-200 pb-4 mb-6">
+                      <h3 className="text-lg lg:text-xl font-semibold text-gray-900 flex items-center">
+                        <User className="h-5 w-5 mr-3 text-blue-600" />
+                        Personal Information
+                      </h3>
+                      <p className="text-gray-600 mt-1 text-sm lg:text-base">Manage your personal details and contact information</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                      <div className="space-y-4 lg:space-y-6">
+                        <div>
+                          <Input
+                            label="Display Name"
+                            name="displayName"
+                            value={profileForm.displayName}
+                            onChange={handleProfileFormChange}
+                            disabled={!isEditing}
+                            className={!isEditing ? "bg-gray-50" : ""}
+                          />
+                          <p className="text-xs text-gray-500 mt-1">This is how your name appears to others</p>
+                        </div>
+                        
+                        <div>
+                          <Input
+                            label="First Name"
+                            name="firstName"
+                            value={profileForm.firstName}
+                            onChange={handleProfileFormChange}
+                            disabled={!isEditing}
+                            className={!isEditing ? "bg-gray-50" : ""}
+                          />
+                        </div>
+                        
+                        <div>
+                          <Input
+                            label="Phone Number"
+                            name="phone"
+                            value={profileForm.phone}
+                            onChange={handleProfileFormChange}
+                            disabled={!isEditing}
+                            placeholder="+234 xxx xxx xxxx"
+                            className={!isEditing ? "bg-gray-50" : ""}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4 lg:space-y-6">
+                        <div>
+                          <Input
+                            label="Email Address"
+                            value={user.email || ''}
+                            disabled
+                            className="bg-gray-50"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Your email cannot be changed</p>
+                        </div>
+                        
+                        <div>
+                          <Input
+                            label="Last Name"
+                            name="lastName"
+                            value={profileForm.lastName}
+                            onChange={handleProfileFormChange}
+                            disabled={!isEditing}
+                            className={!isEditing ? "bg-gray-50" : ""}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Notification Preferences Card */}
+                  <Card className="p-6 lg:p-8">
+                    <div className="border-b border-gray-200 pb-4 mb-6">
+                      <h3 className="text-lg lg:text-xl font-semibold text-gray-900 flex items-center">
+                        <Package className="h-5 w-5 mr-3 text-blue-600" />
+                        Notification Preferences
+                      </h3>
+                      <p className="text-gray-600 mt-1 text-sm lg:text-base">Choose how you want to receive updates about your orders</p>
+                    </div>
+                    
+                    <div className="space-y-4 lg:space-y-6">
+                      <div className="bg-gray-50 rounded-lg p-4 lg:p-6">
+                        <div className="space-y-4">
+                          <label className="flex items-start space-x-4 cursor-pointer">
+                            <div className="flex items-center h-5 mt-0.5">
+                              <input
+                                type="checkbox"
+                                name="preferences.emailNotifications"
+                                checked={profileForm.preferences.emailNotifications}
+                                onChange={handleProfileFormChange}
+                                disabled={!isEditing}
+                                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <span className="text-sm font-medium text-gray-900">Order Email Notifications</span>
+                              <p className="text-xs text-gray-600 mt-1">Receive emails about order confirmations, shipping updates, and delivery status</p>
+                            </div>
+                          </label>
+                          
+                          <label className="flex items-start space-x-4 cursor-pointer">
+                            <div className="flex items-center h-5 mt-0.5">
+                              <input
+                                type="checkbox"
+                                name="preferences.smsNotifications"
+                                checked={profileForm.preferences.smsNotifications}
+                                onChange={handleProfileFormChange}
+                                disabled={!isEditing}
+                                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <span className="text-sm font-medium text-gray-900">SMS Notifications</span>
+                              <p className="text-xs text-gray-600 mt-1">Get text messages for important order updates and delivery notifications</p>
+                            </div>
+                          </label>
+                          
+                          <label className="flex items-start space-x-4 cursor-pointer">
+                            <div className="flex items-center h-5 mt-0.5">
+                              <input
+                                type="checkbox"
+                                name="preferences.promotionalEmails"
+                                checked={profileForm.preferences.promotionalEmails}
+                                onChange={handleProfileFormChange}
+                                disabled={!isEditing}
+                                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <span className="text-sm font-medium text-gray-900">Promotional Emails</span>
+                              <p className="text-xs text-gray-600 mt-1">Receive special offers, discounts, and updates about new products</p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              )}
 
             {activeTab === 'addresses' && (
               <Card className="p-6">
@@ -705,7 +980,7 @@ export const CustomerProfilePage: React.FC = () => {
           </div>
         </div>
       </motion.div>
-
+      
       {/* Address Form Modal */}
       {showAddressForm && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -814,28 +1089,31 @@ export const CustomerProfilePage: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-              </div>
-              
-              <div className="flex space-x-4 mt-6">
-                <Button
-                  type="button"
-                  onClick={handleSaveAddress}
-                  className="flex-1"
-                >
-                  {editingAddressId ? 'Update Address' : 'Save Address'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowAddressForm(false)}
-                >
-                  Cancel
-                </Button>
+
+                <div className="flex space-x-4 mt-6">
+                  <Button
+                    type="button"
+                    onClick={handleSaveAddress}
+                    className="flex-1"
+                  >
+                    {editingAddressId ? 'Update Address' : 'Save Address'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowAddressForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
             </motion.div>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
-};
+}
+
+export default CustomerProfilePage;

@@ -285,10 +285,15 @@ export const EnhancedCheckout: React.FC = () => {
 
     try {
       // Create Firebase Auth account
-      await signUp(formData.email, formData.password, `${formData.firstName} ${formData.lastName}`);
+      await signUp(formData.email, formData.password, `${formData.firstName} ${formData.lastName}`, () => {
+        // Success callback - redirect to profile after a short delay
+        toast.success('Account created successfully! Redirecting to your profile...');
+        setTimeout(() => {
+          navigate('/profile');
+        }, 2000);
+      });
       
       // The useEffect will automatically load the profile after auth state changes
-      toast.success('Account created successfully!');
       return true;
     } catch (error: any) {
       console.error('Error creating account:', error);
@@ -498,7 +503,7 @@ export const EnhancedCheckout: React.FC = () => {
                       Sign in or continue as guest
                     </h3>
                     <p className="text-blue-700 mb-4">
-                      You can place an order as a guest, or sign in for faster checkout and order tracking.
+                      You can place an order as a guest, or login for faster checkout and order tracking.
                     </p>
                     <div className="flex space-x-4 mb-4">
                       <Button
@@ -511,7 +516,7 @@ export const EnhancedCheckout: React.FC = () => {
                         className="bg-blue-600 hover:bg-blue-700"
                       >
                         <User className="h-4 w-4 mr-2" />
-                        Sign In
+                        Login
                       </Button>
                       <Button
                         type="button"
@@ -523,7 +528,7 @@ export const EnhancedCheckout: React.FC = () => {
                         size="sm"
                         className="border-blue-300 text-blue-700 hover:bg-blue-100"
                       >
-                        Create Account
+                        Register
                       </Button>
                     </div>
                     

@@ -301,7 +301,7 @@ export const StorefrontLayout: React.FC = () => {
                         setShowAuthModal(true);
                       }}
                     >
-                      Sign In
+                      Login
                     </Button>
                     <Button
                       variant="outline"
@@ -311,7 +311,7 @@ export const StorefrontLayout: React.FC = () => {
                       }}
                     >
                       <User className="h-4 w-4 mr-2" />
-                      Sign Up
+                      Register
                     </Button>
                   </div>
                 )}

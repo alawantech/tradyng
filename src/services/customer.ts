@@ -63,8 +63,6 @@ export interface CustomerProfile {
   firstName?: string;
   lastName?: string;
   phone?: string;
-  dateOfBirth?: Date;
-  gender?: 'male' | 'female' | 'other';
   preferences: {
     emailNotifications: boolean;
     smsNotifications: boolean;
@@ -105,11 +103,12 @@ export class CustomerService {
         });
       } else {
         // Create new profile
+        const [firstName = '', lastName = ''] = (profileData.displayName || '').split(' ');
         const newCustomer: CustomerProfile = {
           id: profileData.uid,
           displayName: profileData.displayName || '',
-          firstName: profileData.firstName || '',
-          lastName: profileData.lastName || '',
+          firstName: profileData.firstName || firstName,
+          lastName: profileData.lastName || lastName,
           phone: profileData.phone || '',
           preferences: {
             emailNotifications: true,
@@ -144,7 +143,6 @@ export class CustomerService {
           createdAt: data.createdAt?.toDate(),
           updatedAt: data.updatedAt?.toDate(),
           lastLoginAt: data.lastLoginAt?.toDate(),
-          dateOfBirth: data.dateOfBirth?.toDate(),
         } as CustomerProfile;
       }
       
@@ -204,18 +202,23 @@ export class CustomerService {
       const addressesRef = collection(db, 'customer_addresses');
       const q = query(
         addressesRef, 
-        where('customerId', '==', customerId),
-        orderBy('isDefault', 'desc'),
-        orderBy('createdAt', 'desc')
+        where('customerId', '==', customerId)
       );
       
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
+      const addresses = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate(),
         updatedAt: doc.data().updatedAt?.toDate(),
       })) as CustomerAddress[];
+      
+      // Sort in memory - default addresses first, then by creation date
+      return addresses.sort((a, b) => {
+        if (a.isDefault && !b.isDefault) return -1;
+        if (!a.isDefault && b.isDefault) return 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
     } catch (error) {
       console.error('Error getting customer addresses:', error);
       throw error;
@@ -369,7 +372,6 @@ export class CustomerService {
         createdAt: data.createdAt?.toDate(),
         updatedAt: data.updatedAt?.toDate(),
         lastLoginAt: data.lastLoginAt?.toDate(),
-        dateOfBirth: data.dateOfBirth?.toDate(),
       } as CustomerProfile;
     } catch (error) {
       console.error('Error checking customer by email:', error);
@@ -380,24 +382,26 @@ export class CustomerService {
   // Get customer order history for a specific business
   static async getOrderHistory(customerId: string, businessId?: string): Promise<CustomerOrderHistory[]> {
     try {
-      let ordersQuery = query(
-        collection(db, 'orders'),
-        where('customerId', '==', customerId),
-        orderBy('createdAt', 'desc')
-      );
+      let ordersQuery;
       
       if (businessId) {
+        // Query with both customerId and businessId - this might need a simple index
         ordersQuery = query(
           collection(db, 'orders'),
           where('customerId', '==', customerId),
-          where('businessId', '==', businessId),
-          orderBy('createdAt', 'desc')
+          where('businessId', '==', businessId)
+        );
+      } else {
+        // Query only by customerId - single field query, no index needed
+        ordersQuery = query(
+          collection(db, 'orders'),
+          where('customerId', '==', customerId)
         );
       }
       
       const querySnapshot = await getDocs(ordersQuery);
       
-      return querySnapshot.docs.map(doc => {
+      const orders = querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
           orderId: data.orderId || doc.id,
@@ -409,6 +413,9 @@ export class CustomerService {
           businessName: data.businessName
         };
       });
+      
+      // Sort in memory by date descending (newest first)
+      return orders.sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
     } catch (error) {
       console.error('Error getting order history:', error);
       throw error;

@@ -38,6 +38,10 @@ export const CustomerOrdersPage: React.FC = () => {
       setOrders(orderHistory);
     } catch (error) {
       console.error('Error loading orders:', error);
+      // Set empty array as fallback
+      setOrders([]);
+      // Show user-friendly error message
+      // toast.error('Could not load order history. Please try again later.');
     } finally {
       setIsLoading(false);
     }
@@ -111,8 +115,8 @@ export const CustomerOrdersPage: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card className="p-8 text-center">
           <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign In Required</h2>
-          <p className="text-gray-600 mb-6">Please sign in to view your order history.</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Login Required</h2>
+          <p className="text-gray-600 mb-6">Please login to view your order history.</p>
           <Button onClick={() => window.location.href = '/'}>
             Go to Homepage
           </Button>

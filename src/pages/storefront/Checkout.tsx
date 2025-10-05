@@ -182,9 +182,9 @@ export const Checkout: React.FC = () => {
             <div className="flex items-start space-x-3">
               <AlertCircle className="h-6 w-6 text-blue-600 mt-0.5" />
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">Sign in to continue</h3>
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">Login to continue</h3>
                 <p className="text-blue-700 mb-4">
-                  You need to sign in or create an account to place an order. Your information will be saved and you can track your orders.
+                  You need to login or create an account to place an order. Your information will be saved and you can track your orders.
                 </p>
                 <div className="flex space-x-4">
                   <Button
@@ -194,7 +194,7 @@ export const Checkout: React.FC = () => {
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     <User className="h-4 w-4 mr-2" />
-                    Sign In
+                    Login
                   </Button>
                   <Button
                     type="button"
@@ -203,7 +203,7 @@ export const Checkout: React.FC = () => {
                     size="sm"
                     className="border-blue-300 text-blue-700 hover:bg-blue-100"
                   >
-                    Create Account
+                    Register
                   </Button>
                 </div>
               </div>
@@ -405,7 +405,7 @@ export const Checkout: React.FC = () => {
                 disabled={isSubmitting || !user}
               >
                 {!user 
-                  ? 'Sign In to Place Order'
+                  ? 'Login to Place Order'
                   : (isSubmitting ? 'Creating Order...' : 'Place Order')
                 }
               </Button>

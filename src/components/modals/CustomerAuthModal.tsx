@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Eye, EyeOff, User, Mail, Lock, ShoppingBag, Heart, Star, Shield, AlertCircle, Timer, RefreshCw, CheckCircle } from 'lucide-react';
+import { X, Eye, EyeOff, User, Mail, Lock, ShoppingBag, Heart, Star, Shield, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { useStore } from '../../pages/storefront/StorefrontLayout';
-import { OTPService } from '../../services/otpService';
 import toast from 'react-hot-toast';
 
 interface CustomerAuthModalProps {
@@ -19,18 +19,16 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 }) => {
   const { signIn, signUp } = useCustomerAuth();
   const { business } = useStore();
-  const [mode, setMode] = useState<'signin' | 'signup' | 'verify-email'>(initialMode);
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [otpTimer, setOtpTimer] = useState<number>(0);
-  const [isResendingOTP, setIsResendingOTP] = useState(false);
   
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     displayName: '',
     confirmPassword: '',
-    otp: '',
   });
 
   // Sync mode with initialMode when modal opens or initialMode changes
@@ -40,17 +38,6 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       resetForm();
     }
   }, [isOpen, initialMode]);
-
-  // OTP Timer effect
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (otpTimer > 0) {
-      interval = setInterval(() => {
-        setOtpTimer(prev => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [otpTimer]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -65,10 +52,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       password: '',
       displayName: '',
       confirmPassword: '',
-      otp: '',
     });
     setShowPassword(false);
-    setOtpTimer(0);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -76,10 +61,13 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      await signIn(formData.email, formData.password);
-      toast.success(`Welcome back to ${business?.name || 'our store'}! 🛍️`);
-      resetForm();
-      onClose();
+      await signIn(formData.email, formData.password, () => {
+        // Success callback - redirect to profile
+        toast.success(`Welcome back to ${business?.name || 'our store'}! 🛍️`);
+        resetForm();
+        onClose();
+        navigate('/profile');
+      });
     } catch (error: any) {
       console.error('Auth error:', error);
       
@@ -100,7 +88,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     }
   };
 
-  const handleSendOTP = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -122,54 +110,14 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Send OTP for email verification
-      const result = await OTPService.sendOTP(
-        formData.email, 
-        business?.id, 
-        business?.name || 'Store'
-      );
-
-      if (result.success) {
-        toast.success(result.message);
-        setMode('verify-email');
-        setOtpTimer(60); // 1 minute until can resend
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error: any) {
-      console.error('OTP send error:', error);
-      toast.error('Failed to send verification code. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.otp || formData.otp.length !== 6) {
-      toast.error('Please enter the 6-digit verification code');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Verify OTP first
-      const otpResult = await OTPService.verifyOTP(formData.email, formData.otp);
-      
-      if (!otpResult.valid) {
-        toast.error(otpResult.message);
-        setIsLoading(false);
-        return;
-      }
-
-      // If OTP is valid, create the account
-      await signUp(formData.email, formData.password, formData.displayName);
-      toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
-      
-      resetForm();
-      onClose();
+      // Create the account directly without OTP verification
+      await signUp(formData.email, formData.password, formData.displayName, () => {
+        // Success callback - redirect to profile
+        toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
+        resetForm();
+        onClose();
+        navigate('/profile');
+      });
     } catch (error: any) {
       console.error('Signup error:', error);
       
@@ -189,7 +137,6 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
             password: '',
             displayName: '',
             confirmPassword: '',
-            otp: '',
           }));
         }, 2000);
       } else if (error.code === 'auth/weak-password') {
@@ -204,53 +151,9 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     }
   };
 
-  const handleResendOTP = async () => {
-    // Check if rate limit is still active
-    const nextOTPTime = await OTPService.getNextOTPTime(formData.email);
-    if (nextOTPTime && nextOTPTime > new Date()) {
-      const remainingSeconds = Math.ceil((nextOTPTime.getTime() - new Date().getTime()) / 1000);
-      toast.error(`Please wait ${remainingSeconds} seconds before requesting a new code`);
-      return;
-    }
-
-    setIsResendingOTP(true);
-
-    try {
-      const result = await OTPService.resendOTP(
-        formData.email, 
-        business?.id, 
-        business?.name || 'Store'
-      );
-
-      if (result.success) {
-        toast.success('New verification code sent! Both old and new codes will work.');
-        // Reset timer to 1 minute (60 seconds) for next resend
-        setOtpTimer(60);
-        // Don't clear OTP field - let user use old code if they want
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error) {
-      console.error('Resend OTP error:', error);
-      toast.error('Failed to resend verification code. Please try again.');
-    } finally {
-      setIsResendingOTP(false);
-    }
-  };
-
   const switchMode = () => {
-    if (mode === 'verify-email') {
-      setMode('signup');
-    } else {
-      setMode(mode === 'signin' ? 'signup' : 'signin');
-    }
+    setMode(mode === 'signin' ? 'signup' : 'signin');
     resetForm();
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (!isOpen) return null;
@@ -352,16 +255,12 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                 transition={{ delay: 0.2 }}
               >
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  {mode === 'signin' ? 'Welcome Back!' : 
-                   mode === 'signup' ? 'Join Our Community' : 
-                   'Verify Your Email'}
+                  {mode === 'signin' ? 'Login' : 'Register'}
                 </h2>
                 <p className="text-gray-600">
                   {mode === 'signin' 
                     ? `Continue your shopping journey at ${storeName}`
-                    : mode === 'signup' 
-                    ? `Create your account and unlock exclusive benefits`
-                    : `We've sent a verification code to ${formData.email}`
+                    : `Create your account and unlock exclusive benefits`
                   }
                 </p>
               </motion.div>
@@ -505,7 +404,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
               {/* SIGN UP FORM */}
               {mode === 'signup' && (
                 <motion.form 
-                  onSubmit={handleSendOTP} 
+                  onSubmit={handleSignUp} 
                   className="space-y-5"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -528,7 +427,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                             onClick={() => setMode('signin')}
                             className="underline font-medium hover:text-blue-800"
                           >
-                            signing in instead
+                            logging in instead
                           </button>
                           .
                         </p>
@@ -640,7 +539,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                     </div>
                   </motion.div>
 
-                  {/* Send OTP Button */}
+                  {/* Create Account Button */}
                   <motion.div
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -660,145 +559,23 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                             <div className="absolute inset-0 border-2 border-transparent border-t-white/50 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }}></div>
                           </div>
-                          <span className="animate-pulse">Sending verification code...</span>
-                        </div>
-                      ) : (
-                        <span className="relative z-10">Send Verification Code</span>
-                      )}
-                    </button>
-                  </motion.div>
-                </motion.form>
-              )}
-
-              {/* EMAIL VERIFICATION FORM */}
-              {mode === 'verify-email' && (
-                <motion.form 
-                  onSubmit={handleVerifyOTP} 
-                  className="space-y-5"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  {/* Email info */}
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start space-x-3"
-                  >
-                    <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm">
-                      <p className="text-green-800 font-medium">Verification code sent!</p>
-                      <p className="text-green-600">
-                        Please check your inbox at <strong>{formData.email}</strong> and enter the 6-digit code below.
-                      </p>
-                    </div>
-                  </motion.div>
-
-                  {/* Timer display */}
-                  {otpTimer > 0 && (
-                    <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-                      <Timer className="h-4 w-4" />
-                      <span>Code expires in {formatTime(otpTimer)}</span>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Verification Code
-                    </label>
-                    <div className="relative group">
-                      <Shield className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                      <input
-                        type="text"
-                        name="otp"
-                        required
-                        maxLength={6}
-                        value={formData.otp}
-                        onChange={handleChange}
-                        className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50 focus:bg-white auth-input text-center text-lg font-mono tracking-widest"
-                        style={{ 
-                          '--tw-ring-color': primaryColor 
-                        } as React.CSSProperties}
-                        placeholder="000000"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1 text-center">
-                      Enter any 6-digit code we sent you (old or new codes both work)
-                    </p>
-                  </div>
-
-                  {/* Resend OTP */}
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-2">Didn't receive the code?</p>
-                    <button
-                      type="button"
-                      onClick={handleResendOTP}
-                      disabled={isResendingOTP || otpTimer > 0}
-                      className="inline-flex items-center space-x-2 text-sm font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {isResendingOTP ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
-                          <span>Sending...</span>
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4" />
-                          <span>{otpTimer > 0 ? `Resend in ${otpTimer}s` : 'Resend code'}</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Verify Button */}
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <button
-                      type="submit"
-                      disabled={isLoading || formData.otp.length !== 6}
-                      className="w-full py-3.5 px-4 rounded-xl text-white font-semibold text-lg transition-all duration-200 transform focus:outline-none focus:ring-4 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl auth-button shimmer-effect"
-                      style={{ 
-                        backgroundColor: primaryColor,
-                        '--tw-ring-color': `${primaryColor}50`
-                      } as React.CSSProperties}
-                    >
-                      {isLoading ? (
-                        <div className="flex items-center justify-center space-x-3">
-                          <div className="relative">
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            <div className="absolute inset-0 border-2 border-transparent border-t-white/50 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }}></div>
-                          </div>
                           <span className="animate-pulse">Creating your account...</span>
                         </div>
                       ) : (
-                        <span className="relative z-10">Verify & Join {storeName}</span>
+                        <span className="relative z-10">Join {storeName}</span>
                       )}
                     </button>
                   </motion.div>
-
-                  {/* Go back option */}
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={() => setMode('signup')}
-                      className="text-sm text-gray-600 hover:text-gray-800 transition-colors"
-                    >
-                      ← Back to signup form
-                    </button>
-                  </div>
                 </motion.form>
               )}
 
               {/* Mode Switch */}
-              {mode !== 'verify-email' && (
-                <motion.div 
-                  className="mt-8 text-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                >
+              <motion.div 
+                className="mt-8 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+              >
                   <p className="text-sm text-gray-600">
                     {mode === 'signin' ? "New to " + storeName + "? " : "Already shopping with us? "}
                     <button
@@ -807,11 +584,10 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                       className="font-semibold hover:underline transition-colors"
                       style={{ color: primaryColor }}
                     >
-                      {mode === 'signin' ? 'Create your account' : 'Sign in instead'}
+                      {mode === 'signin' ? 'Register now' : 'Login instead'}
                     </button>
                   </p>
                 </motion.div>
-              )}
 
               {/* Trust indicators */}
               <motion.div 

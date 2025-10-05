@@ -5,15 +5,17 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  updateProfile,
   User
 } from 'firebase/auth';
 import { UserService } from '../services/user';
+import { CustomerService } from '../services/customer';
 
 interface CustomerAuthContextType {
   user: User | null;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  signIn: (email: string, password: string, onSuccess?: () => void) => Promise<void>;
+  signUp: (email: string, password: string, displayName: string, onSuccess?: () => void) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -40,25 +42,40 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return unsubscribe;
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, onSuccess?: () => void) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      if (onSuccess) onSuccess();
     } catch (error) {
       throw error;
     }
   };
 
-  const signUp = async (email: string, password: string, displayName: string) => {
+  const signUp = async (email: string, password: string, displayName: string, onSuccess?: () => void) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
-      // Create customer user document
+      // Update Firebase Auth user's displayName
+      await updateProfile(userCredential.user, {
+        displayName: displayName
+      });
+      
+      // Create user document in users collection
       await UserService.createUser({
         uid: userCredential.user.uid,
         email: userCredential.user.email!,
         displayName,
         role: 'customer'
       });
+      
+      // Create customer profile in customers collection
+      await CustomerService.createOrUpdateProfile({
+        uid: userCredential.user.uid,
+        email: userCredential.user.email!,
+        displayName
+      });
+      
+      if (onSuccess) onSuccess();
     } catch (error) {
       throw error;
     }
