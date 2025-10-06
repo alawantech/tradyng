@@ -39,6 +39,10 @@ export interface Business {
     accentColor: string;
     enableNotifications: boolean;
   };
+  branding?: {
+    storeBackgroundColor?: string;
+    heroStyle?: string;
+  };
   bankDetails?: {
     bankName: string;
     accountName: string;

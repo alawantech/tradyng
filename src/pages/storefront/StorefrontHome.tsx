@@ -16,6 +16,76 @@ export const StorefrontHome: React.FC = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
+  // Get hero style based on branding settings
+  const getHeroStyle = () => {
+    const heroStyle = business?.branding?.heroStyle || 'modern'; // Changed default to 'modern'
+    
+    const styles = {
+      default: {
+        background: 'linear-gradient(135deg, #9ca3af 0%, #6b7280 15%, #8b8db5 35%, #a5a8c5 65%, #c5cbe1 85%, #9ca3af 100%)',
+        backgroundSize: '400% 400%',
+        animation: 'gradient 12s ease-in-out infinite'
+      },
+      elegant: {
+        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
+        backgroundSize: '300% 300%',
+        animation: 'gradient 8s ease-in-out infinite'
+      },
+      modern: {
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+        backgroundSize: '200% 200%',
+        animation: 'gradient 10s ease-in-out infinite'
+      },
+      professional: {
+        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%)',
+        backgroundSize: '250% 250%',
+        animation: 'gradient 6s ease-in-out infinite'
+      },
+      romantic: {
+        background: 'linear-gradient(135deg, #fce7f3 0%, #f3e8ff 25%, #fdf2f8 50%, #fef7f0 75%, #fff1f2 100%)',
+        backgroundSize: '300% 300%',
+        animation: 'gradient 15s ease-in-out infinite'
+      },
+      mystical: {
+        background: 'linear-gradient(135deg, #581c87 0%, #7c3aed 50%, #a855f7 100%)',
+        backgroundSize: '250% 250%',
+        animation: 'gradient 10s ease-in-out infinite'
+      },
+      sunset: {
+        background: 'linear-gradient(135deg, #fb7185 0%, #f97316 50%, #fbbf24 100%)',
+        backgroundSize: '300% 300%',
+        animation: 'gradient 8s ease-in-out infinite'
+      },
+      ocean: {
+        background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #67e8f9 100%)',
+        backgroundSize: '250% 250%',
+        animation: 'gradient 12s ease-in-out infinite'
+      },
+      lavender: {
+        background: 'linear-gradient(135deg, #c084fc 0%, #d8b4fe 50%, #f3e8ff 100%)',
+        backgroundSize: '300% 300%',
+        animation: 'gradient 14s ease-in-out infinite'
+      },
+      forest: {
+        background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #6ee7b7 100%)',
+        backgroundSize: '250% 250%',
+        animation: 'gradient 10s ease-in-out infinite'
+      },
+      midnight: {
+        background: 'linear-gradient(135deg, #111827 0%, #1f2937 30%, #581c87 70%, #7c3aed 100%)',
+        backgroundSize: '400% 400%',
+        animation: 'gradient 16s ease-in-out infinite'
+      },
+      coral: {
+        background: 'linear-gradient(135deg, #f472b6 0%, #fb7185 50%, #fbbf24 100%)',
+        backgroundSize: '300% 300%',
+        animation: 'gradient 9s ease-in-out infinite'
+      }
+    };
+    
+    return styles[heroStyle as keyof typeof styles] || styles.default;
+  };
+
   useEffect(() => {
     const loadProducts = async () => {
       if (!business?.id) return;
@@ -94,12 +164,11 @@ export const StorefrontHome: React.FC = () => {
 
   return (
     <div>
-      {/* Hero Section - Elegant Default Design - Color Matched to Store Theme */}
-      <section className="relative text-white overflow-hidden min-h-[400px] flex items-center" style={{
-        background: 'linear-gradient(135deg, #9ca3af 0%, #6b7280 15%, #8b8db5 35%, #a5a8c5 65%, #c5cbe1 85%, #9ca3af 100%)',
-        backgroundSize: '400% 400%',
-        animation: 'gradient 12s ease-in-out infinite'
-      }}>
+      {/* Hero Section - Dynamic Design Based on Branding Settings */}
+      <section 
+        className="relative text-white overflow-hidden min-h-[400px] flex items-center" 
+        style={getHeroStyle()}
+      >
         {/* Animated Geometric Pattern Overlay */}
         <div 
           className="absolute inset-0 opacity-20"

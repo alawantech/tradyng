@@ -28,7 +28,9 @@ export const Settings: React.FC = () => {
   });
 
   const [brandingSettings, setBrandingSettings] = useState({
-    logo: ''
+    logo: '',
+    storeBackgroundColor: '#1c1c1e', // Soft Black as default
+    heroStyle: 'modern' // Modern Black as default
   });
   const [logoUpdated, setLogoUpdated] = useState(false); // Track if logo has been explicitly updated
 
@@ -144,7 +146,9 @@ export const Settings: React.FC = () => {
 
       // Load branding settings
       const newBrandingSettings = {
-        logo: business.logo || ''
+        logo: business.logo || '',
+        storeBackgroundColor: business.branding?.storeBackgroundColor || '#1c1c1e', // Changed to Soft Black
+        heroStyle: business.branding?.heroStyle || 'modern' // Changed to modern (Modern Black)
       };
       
       console.log('🎨 Setting branding data:', newBrandingSettings);
@@ -328,6 +332,11 @@ export const Settings: React.FC = () => {
         settings: {
           currency: storeData.currency || DEFAULT_CURRENCY,
           enableNotifications: business.settings?.enableNotifications || true
+        },
+        // Include branding settings
+        branding: {
+          storeBackgroundColor: brandingSettings.storeBackgroundColor,
+          heroStyle: brandingSettings.heroStyle
         }
       };
 
@@ -1009,7 +1018,8 @@ export const Settings: React.FC = () => {
             )}
           </h2>
           
-          <div className="space-y-6">
+          <div className="space-y-8">
+            {/* Store Logo */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Store Logo
@@ -1030,6 +1040,221 @@ export const Settings: React.FC = () => {
                   <p className="text-xs text-gray-500">
                     Recommended: 512x512px PNG or JPG
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Store Background Color */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Store Background Color
+              </label>
+              <p className="text-sm text-gray-600 mb-4">
+                Choose a professional background color for your entire storefront
+              </p>
+              
+              {/* Beautiful Color Palette */}
+              <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 mb-4">
+                {[
+                  { name: 'Soft Black', color: '#1c1c1e', description: 'Current Default - Bold & Sophisticated' },
+                  { name: 'Light Blue', color: '#c5cbe1', description: 'Previous Default' },
+                  { name: 'Soft Gray', color: '#f1f5f9', description: 'Clean & Modern' },
+                  { name: 'Warm White', color: '#fefefe', description: 'Pure & Minimal' },
+                  { name: 'Cream', color: '#faf9f6', description: 'Warm & Welcoming' },
+                  { name: 'Light Rose', color: '#fdf2f8', description: 'Elegant & Feminine' },
+                  { name: 'Mint', color: '#f0fdfa', description: 'Fresh & Natural' },
+                  { name: 'Sky Blue', color: '#f0f9ff', description: 'Professional & Trust' },
+                  { name: 'Lavender', color: '#faf5ff', description: 'Luxury & Calm' },
+                  { name: 'Peach', color: '#fff7ed', description: 'Friendly & Approachable' },
+                  { name: 'Sage', color: '#f6f7f1', description: 'Natural & Peaceful' },
+                  { name: 'Pearl', color: '#f8fafc', description: 'Sophisticated' },
+                  { name: 'Blush', color: '#fef7f0', description: 'Soft & Inviting' },
+                  { name: 'Purple Mist', color: '#f5f3ff', description: 'Dreamy & Magical' },
+                  { name: 'Orchid', color: '#fdf4ff', description: 'Graceful & Elegant' },
+                  { name: 'Rose Gold', color: '#fef2f2', description: 'Luxurious & Chic' },
+                  { name: 'Champagne', color: '#fffbeb', description: 'Glamorous & Rich' },
+                  { name: 'Mauve', color: '#faf7ff', description: 'Romantic & Vintage' },
+                  { name: 'Powder Blue', color: '#f0f7ff', description: 'Serene & Calming' },
+                  { name: 'Dusty Rose', color: '#fef1f2', description: 'Bohemian & Artistic' },
+                  { name: 'Soft Lilac', color: '#f9f5ff', description: 'Whimsical & Sweet' },
+                  { name: 'Moonstone', color: '#f9fafb', description: 'Mystical & Pure' },
+                  { name: 'Coral Pink', color: '#fff2f1', description: 'Vibrant & Youthful' },
+                  { name: 'Periwinkle', color: '#f0f4ff', description: 'Gentle & Peaceful' },
+                  { name: 'Soft Black', color: '#1c1c1e', description: 'Bold & Sophisticated' },
+                  { name: 'Charcoal', color: '#2c2c2e', description: 'Modern & Sleek' },
+                  { name: 'Deep Purple', color: '#1a1625', description: 'Mysterious & Elegant' },
+                  { name: 'Navy Night', color: '#0f1419', description: 'Professional & Strong' },
+                  { name: 'Burgundy', color: '#2d1b1f', description: 'Rich & Luxurious' }
+                ].map((colorOption) => (
+                  <div key={colorOption.color} className="text-center">
+                    <button
+                      onClick={() => setBrandingSettings({...brandingSettings, storeBackgroundColor: colorOption.color})}
+                      className={`w-12 h-12 rounded-lg border-2 transition-all duration-200 hover:scale-110 ${
+                        brandingSettings.storeBackgroundColor === colorOption.color 
+                          ? 'border-blue-500 ring-2 ring-blue-200' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      style={{ backgroundColor: colorOption.color }}
+                      title={`${colorOption.name} - ${colorOption.description}`}
+                    />
+                    <p className="text-xs text-gray-600 mt-1">{colorOption.name}</p>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Current Selection Display */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div 
+                    className="w-8 h-8 rounded-md border-2 border-white shadow-sm"
+                    style={{ backgroundColor: brandingSettings.storeBackgroundColor }}
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Selected Background Color</p>
+                    <p className="text-xs text-gray-600">{brandingSettings.storeBackgroundColor}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Hero Section Style */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Hero Section Style
+              </label>
+              <p className="text-sm text-gray-600 mb-4">
+                Customize how your hero banner appears to customers
+              </p>
+              
+              {/* Hero Style Options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  {
+                    id: 'modern',
+                    name: 'Modern Black (Default)',
+                    description: 'Sleek black design with geometric shapes',
+                    preview: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+                  },
+                  {
+                    id: 'default',
+                    name: 'Animated Gradient',
+                    description: 'Beautiful moving gradients with floating elements',
+                    preview: 'linear-gradient(135deg, #9ca3af 0%, #6b7280 25%, #8b8db5 50%, #a5a8c5 75%, #c5cbe1 100%)'
+                  },
+                  {
+                    id: 'elegant',
+                    name: 'Elegant Purple',
+                    description: 'Sophisticated purple tones with luxury feel',
+                    preview: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)'
+                  },
+                  {
+                    id: 'professional',
+                    name: 'Professional Blue',
+                    description: 'Business-focused with brand colors',
+                    preview: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)'
+                  },
+                  {
+                    id: 'romantic',
+                    name: 'Romantic Rose',
+                    description: 'Soft pink and rose gold for feminine brands',
+                    preview: 'linear-gradient(135deg, #fce7f3 0%, #f3e8ff 25%, #fdf2f8 50%, #fef7f0 75%, #fff1f2 100%)'
+                  },
+                  {
+                    id: 'mystical',
+                    name: 'Mystical Purple',
+                    description: 'Deep purples with magical atmosphere',
+                    preview: 'linear-gradient(135deg, #581c87 0%, #7c3aed 50%, #a855f7 100%)'
+                  },
+                  {
+                    id: 'sunset',
+                    name: 'Sunset Glow',
+                    description: 'Warm oranges and pinks like a sunset',
+                    preview: 'linear-gradient(135deg, #fb7185 0%, #f97316 50%, #fbbf24 100%)'
+                  },
+                  {
+                    id: 'ocean',
+                    name: 'Ocean Breeze',
+                    description: 'Calming blues and teals like the ocean',
+                    preview: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #67e8f9 100%)'
+                  },
+                  {
+                    id: 'lavender',
+                    name: 'Lavender Dream',
+                    description: 'Soft lavender and lilac for gentle brands',
+                    preview: 'linear-gradient(135deg, #c084fc 0%, #d8b4fe 50%, #f3e8ff 100%)'
+                  },
+                  {
+                    id: 'forest',
+                    name: 'Forest Sage',
+                    description: 'Natural greens for eco-friendly brands',
+                    preview: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #6ee7b7 100%)'
+                  },
+                  {
+                    id: 'midnight',
+                    name: 'Midnight Glam',
+                    description: 'Deep black with purple accents',
+                    preview: 'linear-gradient(135deg, #111827 0%, #1f2937 30%, #581c87 70%, #7c3aed 100%)'
+                  },
+                  {
+                    id: 'coral',
+                    name: 'Coral Blush',
+                    description: 'Vibrant coral and peach tones',
+                    preview: 'linear-gradient(135deg, #f472b6 0%, #fb7185 50%, #fbbf24 100%)'
+                  }
+                ].map((style) => (
+                  <div key={style.id} className="relative">
+                    <button
+                      onClick={() => setBrandingSettings({...brandingSettings, heroStyle: style.id})}
+                      className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+                        brandingSettings.heroStyle === style.id
+                          ? 'border-blue-500 ring-2 ring-blue-200'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {/* Mini Preview */}
+                      <div 
+                        className="w-full h-20 rounded-md mb-3 flex items-center justify-center"
+                        style={{ background: style.preview }}
+                      >
+                        <div className="text-white text-xs font-medium">Hero Preview</div>
+                      </div>
+                      
+                      <div className="text-left">
+                        <h3 className="font-medium text-gray-900">{style.name}</h3>
+                        <p className="text-sm text-gray-600">{style.description}</p>
+                      </div>
+                      
+                      {brandingSettings.heroStyle === style.id && (
+                        <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-1">
+                          <Check className="h-4 w-4" />
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Live Preview Button */}
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-blue-900">Preview Your Changes</h3>
+                    <p className="text-sm text-blue-700">See how your storefront will look with these settings</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      if (storeData.subdomain) {
+                        window.open(`https://${storeData.subdomain}.rady.ng`, '_blank');
+                      } else {
+                        toast.error('Please set a subdomain first to preview your store');
+                      }
+                    }}
+                    className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Preview Store
+                  </Button>
                 </div>
               </div>
             </div>

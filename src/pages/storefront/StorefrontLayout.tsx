@@ -102,6 +102,11 @@ export const StorefrontLayout: React.FC = () => {
               error: null
             });
             
+            // Set dynamic CSS variables for branding
+            if (business.branding?.storeBackgroundColor) {
+              document.documentElement.style.setProperty('--store-background-color', business.branding.storeBackgroundColor);
+            }
+            
             // Load categories for this business
             try {
               const businessCategories = await CategoryService.getCategoriesByBusinessId(detectedSubdomain.businessId);
@@ -200,7 +205,7 @@ export const StorefrontLayout: React.FC = () => {
       setSelectedCategory,
       categories
     }}>
-      <div className="min-h-screen bg-gray-50 storefront-body" style={{ backgroundColor: '#c5cbe1' }}>
+      <div className="min-h-screen bg-gray-50 storefront-body" style={{ backgroundColor: business?.branding?.storeBackgroundColor || '#1c1c1e' }}>
         {/* Header */}
         <header className="bg-white shadow-md sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
