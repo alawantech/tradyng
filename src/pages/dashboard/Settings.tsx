@@ -4,7 +4,6 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
-import { useTheme } from '../../contexts/ThemeContext';
 import { BusinessService } from '../../services/business';
 import { CustomDomainService } from '../../services/customDomain';
 import { CURRENCIES, DEFAULT_CURRENCY, getDefaultCurrencyForCountry } from '../../constants/currencies';
@@ -12,7 +11,6 @@ import toast from 'react-hot-toast';
 
 export const Settings: React.FC = () => {
   const { user, business, loading: authLoading } = useAuth();
-  const { updateTheme, primaryColor, secondaryColor, accentColor } = useTheme();
   const [saving, setSaving] = useState(false);
   const [checkingSubdomain, setCheckingSubdomain] = useState(false);
   const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null);
@@ -30,9 +28,6 @@ export const Settings: React.FC = () => {
   });
 
   const [brandingSettings, setBrandingSettings] = useState({
-    primaryColor: '#3B82F6',
-    secondaryColor: '#1E40AF',
-    accentColor: '#F59E0B',
     logo: ''
   });
   const [logoUpdated, setLogoUpdated] = useState(false); // Track if logo has been explicitly updated
@@ -149,9 +144,6 @@ export const Settings: React.FC = () => {
 
       // Load branding settings
       const newBrandingSettings = {
-        primaryColor: business.settings?.primaryColor || '#3B82F6',
-        secondaryColor: business.settings?.secondaryColor || '#10B981',
-        accentColor: business.settings?.accentColor || '#F59E0B',
         logo: business.logo || ''
       };
       
@@ -312,15 +304,7 @@ export const Settings: React.FC = () => {
         whatsappNumber: storeData.whatsappNumber,
         logo: brandingSettings.logo ? 'Logo present' : 'No logo',
         logoSize: brandingSettings.logo ? brandingSettings.logo.length : 0,
-        logoUpdated: logoUpdated,
-        colors: {
-          primary: brandingSettings.primaryColor,
-          secondary: brandingSettings.secondaryColor,
-          accent: brandingSettings.accentColor,
-          primaryValid: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.primaryColor),
-          secondaryValid: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.secondaryColor),
-          accentValid: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.accentColor)
-        }
+        logoUpdated: logoUpdated
       });
       
       // Check logo size (Firebase has document size limits)
@@ -343,14 +327,7 @@ export const Settings: React.FC = () => {
         state: storeData.state || '',
         settings: {
           currency: storeData.currency || DEFAULT_CURRENCY,
-          enableNotifications: business.settings?.enableNotifications || true,
-          // Validate colors before including them
-          primaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.primaryColor) ? 
-                       brandingSettings.primaryColor : '#3B82F6',
-          secondaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.secondaryColor) ? 
-                         brandingSettings.secondaryColor : '#1E40AF',
-          accentColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.accentColor) ? 
-                      brandingSettings.accentColor : '#F59E0B'
+          enableNotifications: business.settings?.enableNotifications || true
         }
       };
 
@@ -384,80 +361,13 @@ export const Settings: React.FC = () => {
         settingsKeys: updateData.settings ? Object.keys(updateData.settings) : []
       });
 
-      // Log complete data structure for debugging
-      console.log('📋 Complete update data structure:', JSON.stringify(updateData, null, 2));
-
-      // Check each field for potential issues
-      Object.entries(updateData).forEach(([key, value]) => {
-        console.log(`🔍 Field "${key}":`, {
-          type: typeof value,
-          value: key === 'logo' ? `[${(value as string)?.length || 0} chars]` : value,
-          isUndefined: value === undefined,
-          isNull: value === null,
-          isEmpty: value === ''
-        });
-      });
-
-      // Final safety check - ensure no undefined or invalid values
-      if (updateData.logo && (!updateData.logo.startsWith('data:image/') || updateData.logo.length < 100)) {
-        console.error('❌ Invalid logo detected at final check, removing');
-        delete updateData.logo;
-      }
-
-      // Remove any undefined values that might cause Firebase issues
-      Object.keys(updateData).forEach(key => {
-        if (updateData[key] === undefined) {
-          console.warn(`⚠️ Removing undefined field: ${key}`);
-          delete updateData[key];
-        }
-      });
-
-      console.log('🧪 Testing with color-only update first...');
-      
-      // First try a minimal color-only update to isolate the issue
-      try {
-        const colorOnlyUpdate = {
-          settings: {
-            ...business.settings,
-            primaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.primaryColor) ? 
-                         brandingSettings.primaryColor : '#3B82F6',
-            secondaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.secondaryColor) ? 
-                           brandingSettings.secondaryColor : '#1E40AF',
-            accentColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.accentColor) ? 
-                        brandingSettings.accentColor : '#F59E0B'
-          }
-        };
-        
-        console.log('🎨 Color-only update data:', JSON.stringify(colorOnlyUpdate, null, 2));
-        await BusinessService.updateBusiness(business.id, colorOnlyUpdate);
-        console.log('✅ Color-only update successful! Now trying full update...');
-        
-        // If color-only works, try the full update
-        await BusinessService.updateBusiness(business.id, updateData);
-      } catch (colorError: any) {
-        console.error('❌ Color-only update failed:', colorError);
-        // If even color-only fails, the issue is with the color data itself
-        throw new Error(`Color update failed: ${colorError?.message || 'Unknown error'}`);
-      }
-
       // Update the business with new data
-      // await BusinessService.updateBusiness(business.id, updateData);
+      await BusinessService.updateBusiness(business.id, updateData);
 
       // Update the original subdomain to prevent unnecessary checks
       setOriginalSubdomain(storeData.subdomain);
       setSubdomainAvailable(null);
       setLogoUpdated(false); // Reset logo updated flag
-      
-      // Update theme with new colors immediately
-      console.log('🎨 Updating theme with new brand colors...');
-      updateTheme({
-        primaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.primaryColor) ? 
-                     brandingSettings.primaryColor : '#3B82F6',
-        secondaryColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.secondaryColor) ? 
-                       brandingSettings.secondaryColor : '#1E40AF',
-        accentColor: /^#[0-9A-Fa-f]{6}$/.test(brandingSettings.accentColor) ? 
-                    brandingSettings.accentColor : '#F59E0B'
-      });
       
       toast.success('Settings saved successfully!');
     } catch (error: any) {
@@ -1122,205 +1032,6 @@ export const Settings: React.FC = () => {
                   </p>
                 </div>
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Primary Color
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="color"
-                    name="primaryColor"
-                    value={brandingSettings.primaryColor}
-                    onChange={(e) => {
-                      console.log('🎨 Primary color changed to:', e.target.value);
-                      const newColor = e.target.value;
-                      setBrandingSettings({...brandingSettings, primaryColor: newColor});
-                      // Live preview - update theme immediately
-                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
-                        updateTheme({ primaryColor: newColor });
-                      }
-                    }}
-                    className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
-                  />
-                  <Input 
-                    value={brandingSettings.primaryColor} 
-                    onChange={(e) => {
-                      console.log('🎨 Primary color text input changed to:', e.target.value);
-                      const newColor = e.target.value;
-                      setBrandingSettings({...brandingSettings, primaryColor: newColor});
-                      // Live preview - update theme immediately if valid hex
-                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
-                        updateTheme({ primaryColor: newColor });
-                      }
-                    }}
-                    placeholder="#3B82F6"
-                    className="font-mono text-sm"
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Main brand color</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Secondary Color
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="color"
-                    name="secondaryColor"
-                    value={brandingSettings.secondaryColor}
-                    onChange={(e) => {
-                      console.log('🎨 Secondary color changed to:', e.target.value);
-                      const newColor = e.target.value;
-                      setBrandingSettings({...brandingSettings, secondaryColor: newColor});
-                      // Live preview - update theme immediately
-                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
-                        updateTheme({ secondaryColor: newColor });
-                      }
-                    }}
-                    className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
-                  />
-                  <Input 
-                    value={brandingSettings.secondaryColor}
-                    onChange={(e) => {
-                      console.log('🎨 Secondary color text input changed to:', e.target.value);
-                      const newColor = e.target.value;
-                      setBrandingSettings({...brandingSettings, secondaryColor: newColor});
-                      // Live preview - update theme immediately if valid hex
-                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
-                        updateTheme({ secondaryColor: newColor });
-                      }
-                    }}
-                    placeholder="#10B981"
-                    className="font-mono text-sm"
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Supporting color</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Accent Color
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="color"
-                    name="accentColor"
-                    value={brandingSettings.accentColor}
-                    onChange={(e) => {
-                      console.log('🎨 Accent color changed to:', e.target.value);
-                      const newColor = e.target.value;
-                      setBrandingSettings({...brandingSettings, accentColor: newColor});
-                      // Live preview - update theme immediately
-                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
-                        updateTheme({ accentColor: newColor });
-                      }
-                    }}
-                    className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
-                  />
-                  <Input 
-                    value={brandingSettings.accentColor}
-                    onChange={(e) => {
-                      console.log('🎨 Accent color text input changed to:', e.target.value);
-                      const newColor = e.target.value;
-                      setBrandingSettings({...brandingSettings, accentColor: newColor});
-                      // Live preview - update theme immediately if valid hex
-                      if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
-                        updateTheme({ accentColor: newColor });
-                      }
-                    }}
-                    placeholder="#F59E0B"
-                    className="font-mono text-sm"
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Highlight color</p>
-              </div>
-            </div>
-
-            {/* Color Preview */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Color Preview</h3>
-              <div className="space-y-4">
-                {/* Color Swatches */}
-                <div className="flex space-x-4">
-                  <div 
-                    className="w-16 h-16 rounded-lg shadow-sm border-2 border-white flex items-center justify-center"
-                    style={{ backgroundColor: brandingSettings.primaryColor }}
-                  >
-                    <span className="text-white text-xs font-medium">Primary</span>
-                  </div>
-                  <div 
-                    className="w-16 h-16 rounded-lg shadow-sm border-2 border-white flex items-center justify-center"
-                    style={{ backgroundColor: brandingSettings.secondaryColor }}
-                  >
-                    <span className="text-white text-xs font-medium">Secondary</span>
-                  </div>
-                  <div 
-                    className="w-16 h-16 rounded-lg shadow-sm border-2 border-white flex items-center justify-center"
-                    style={{ backgroundColor: brandingSettings.accentColor }}
-                  >
-                    <span className="text-white text-xs font-medium">Accent</span>
-                  </div>
-                </div>
-                
-                {/* Example Usage */}
-                <div className="space-y-3">
-                  <p className="text-xs text-gray-600 font-medium">Example Usage:</p>
-                  <div className="flex space-x-2">
-                    <Button variant="primary" size="sm">Primary Action</Button>
-                    <Button variant="secondary" size="sm">Secondary</Button>
-                    <Button variant="accent" size="sm">Accent</Button>
-                  </div>
-                  <div className="flex items-center space-x-4 text-sm">
-                    <span className="theme-primary-text font-medium">Primary Text</span>
-                    <span className="theme-secondary-text font-medium">Secondary Text</span>
-                    <span className="theme-accent-text font-medium">Accent Text</span>
-                  </div>
-                  
-                  {/* Theme Debug Info */}
-                  <div className="mt-4 p-3 bg-gray-100 rounded text-xs">
-                    <p className="font-medium mb-2">🔍 Current Theme Status:</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <span className="block text-gray-600">Primary:</span>
-                        <div className="flex items-center">
-                          <div 
-                            className="w-4 h-4 rounded mr-2 border" 
-                            style={{ backgroundColor: 'var(--color-primary)' }}
-                          ></div>
-                          <span className="font-mono">{primaryColor}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="block text-gray-600">Secondary:</span>
-                        <div className="flex items-center">
-                          <div 
-                            className="w-4 h-4 rounded mr-2 border" 
-                            style={{ backgroundColor: 'var(--color-secondary)' }}
-                          ></div>
-                          <span className="font-mono">{secondaryColor}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="block text-gray-600">Accent:</span>
-                        <div className="flex items-center">
-                          <div 
-                            className="w-4 h-4 rounded mr-2 border" 
-                            style={{ backgroundColor: 'var(--color-accent)' }}
-                          ></div>
-                          <span className="font-mono">{accentColor}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-gray-600 mt-2">
-                These colors will be used throughout your storefront to match your brand.
-              </p>
             </div>
           </div>
         </Card>
