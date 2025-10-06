@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   User, 
   MapPin, 
@@ -52,6 +52,7 @@ interface AddressFormData {
 export const CustomerProfilePage: React.FC = () => {
   const { user, signOut } = useCustomerAuth();
   const { business } = useStore();
+  const navigate = useNavigate();
   
   // State management
   const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'orders'>('profile');
@@ -338,6 +339,8 @@ export const CustomerProfilePage: React.FC = () => {
     try {
       await signOut();
       toast.success('Signed out successfully');
+      // Redirect to store homepage where user can see products
+      navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
       toast.error('Failed to sign out');
