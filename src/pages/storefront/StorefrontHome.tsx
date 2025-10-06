@@ -5,11 +5,13 @@ import { ShoppingCart, Star } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
+import { useCart } from '../../contexts/CartContext';
 import { ProductService, Product } from '../../services/product';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 
 export const StorefrontHome: React.FC = () => {
   const { business, isLoading: storeLoading, searchTerm, selectedCategory } = useStore();
+  const { addItem } = useCart();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
@@ -36,6 +38,20 @@ export const StorefrontHome: React.FC = () => {
 
     loadProducts();
   }, [business?.id, selectedCategory]);
+
+  // Handle adding product to cart
+  const handleAddToCart = (product: Product) => {
+    if (!product || !business) return;
+    
+    addItem({
+      id: product.id!,
+      name: product.name,
+      price: product.price,
+      quantity: 1,
+      image: product.images?.[0],
+      businessId: business.id!,
+    });
+  };
 
   if (storeLoading) {
     return (
@@ -161,7 +177,11 @@ export const StorefrontHome: React.FC = () => {
                         <Button 
                           size="sm" 
                           className="flex-1 px-2 py-1 rounded font-semibold text-xs bg-blue-600 text-white hover:bg-blue-700 transition-all"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleAddToCart(product);
+                          }}
                         >
                           Add to Cart
                         </Button>
