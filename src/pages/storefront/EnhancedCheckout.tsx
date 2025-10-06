@@ -286,10 +286,10 @@ export const EnhancedCheckout: React.FC = () => {
     try {
       // Create Firebase Auth account
       await signUp(formData.email, formData.password, `${formData.firstName} ${formData.lastName}`, () => {
-        // Success callback - redirect to profile after a short delay
-        toast.success('Account created successfully! Redirecting to your profile...');
+        // Success callback - redirect to homepage after a short delay
+        toast.success('Account created successfully! Welcome to the store!');
         setTimeout(() => {
-          navigate('/profile');
+          navigate('/');
         }, 2000);
       });
       

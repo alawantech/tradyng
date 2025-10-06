@@ -62,11 +62,11 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 
     try {
       await signIn(formData.email, formData.password, () => {
-        // Success callback - redirect to profile
+        // Success callback - redirect to homepage
         toast.success(`Welcome back to ${business?.name || 'our store'}! 🛍️`);
         resetForm();
         onClose();
-        navigate('/profile');
+        navigate('/');
       });
     } catch (error: any) {
       console.error('Auth error:', error);
@@ -112,11 +112,11 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     try {
       // Create the account directly without OTP verification
       await signUp(formData.email, formData.password, formData.displayName, () => {
-        // Success callback - redirect to profile
+        // Success callback - redirect to homepage
         toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
         resetForm();
         onClose();
-        navigate('/profile');
+        navigate('/');
       });
     } catch (error: any) {
       console.error('Signup error:', error);
