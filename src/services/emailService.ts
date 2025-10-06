@@ -43,6 +43,7 @@ interface OTPEmailRequest {
   storeName: string;
   storeColor?: string;
   supportEmail?: string;
+  whatsappNumber?: string;
 }
 
 interface GenericEmailRequest {
@@ -171,7 +172,8 @@ export class EmailService {
         otp: otp,
         storeName: storeBranding.storeName,
         storeColor: storeBranding.primaryColor || '#3B82F6',
-        supportEmail: storeBranding.supportEmail || 'support@rady.ng'
+        supportEmail: storeBranding.supportEmail || 'support@rady.ng',
+        whatsappNumber: storeBranding.whatsappNumber
       };
 
       const result = await EmailService.sendOTPEmailFunction(otpRequest);

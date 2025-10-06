@@ -135,14 +135,14 @@ export const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       const result = await OTPService.resendOTP(email, businessId, businessName);
       
       if (result.success) {
-        toast.success(result.message);
+        toast.success('New code sent! You can use this code or any previous valid code.');
         setOtp(['', '', '', '']);
         setCanResend(false);
         
-        // Reset timer
-        const newExpiryTime = new Date(Date.now() + 3 * 60000); // 3 minutes
+        // Reset timer for 5 minutes
+        const newExpiryTime = new Date(Date.now() + 5 * 60000); // 5 minutes
         setExpiryTime(newExpiryTime);
-        setTimeLeft(180); // 3 minutes in seconds
+        setTimeLeft(300); // 5 minutes in seconds
         
         otpRefs.current[0]?.focus();
       } else {
@@ -258,37 +258,55 @@ export const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
           {/* Resend Section */}
           <div className="text-center">
-            <p className="text-sm text-gray-600 mb-2">
-              Didn't receive the code?
+            <p className="text-sm text-gray-600 mb-3">
+              Didn't receive a code?
             </p>
             <button
               onClick={handleResendOTP}
               disabled={!canResend || isResending}
-              className={`text-sm font-medium transition-colors ${
+              className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 canResend && !isResending
-                  ? 'text-blue-600 hover:text-blue-700'
-                  : 'text-gray-400 cursor-not-allowed'
+                  ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200'
+                  : 'text-gray-400 cursor-not-allowed border border-gray-200'
               }`}
             >
               {isResending ? (
                 <>
-                  <RefreshCw className="h-4 w-4 animate-spin inline mr-1" />
-                  Sending...
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                  Sending new code...
                 </>
               ) : canResend ? (
-                'Send new code'
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Get another code
+                </>
               ) : (
-                `Wait ${formatTime(timeLeft)} to resend`
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  New code in {formatTime(timeLeft)}
+                </>
               )}
             </button>
+            
+            {/* Multiple codes info */}
+            <div className="mt-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+              <p className="text-xs text-green-800 text-center">
+                ✅ <strong>Multiple codes allowed!</strong> You can request several codes and use any valid one.
+              </p>
+            </div>
           </div>
 
-          {/* Help Text */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <p className="text-xs text-blue-800 text-center">
-              💡 <strong>Tip:</strong> You can use any valid code we send you. 
-              Each code expires in 3 minutes, but you can request multiple codes if needed.
-            </p>
+          {/* Enhanced Help Text */}
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+            <div className="text-center">
+              <p className="text-xs text-blue-800 font-medium mb-2">📱 How it works:</p>
+              <div className="text-xs text-blue-700 space-y-1">
+                <p>• Each code works for 5 minutes</p>
+                <p>• You can use any code we send you</p>
+                <p>• Request more codes if needed</p>
+                <p>• Check your email notifications</p>
+              </div>
+            </div>
           </div>
         </motion.div>
       </motion.div>

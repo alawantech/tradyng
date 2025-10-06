@@ -3,6 +3,7 @@ import { db } from '../config/firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, Timestamp, limit } from 'firebase/firestore';
 import { EmailService } from './emailService';
 import DirectEmailService from './directEmailService';
+import { BusinessService } from './business';
 
 export interface OTPRecord {
   email: string;
@@ -16,8 +17,8 @@ export interface OTPRecord {
 }
 
 export class OTPService {
-  private static OTP_EXPIRY_MINUTES = 3; // OTP expires in 3 minutes as requested
-  private static RATE_LIMIT_MINUTES = 1; // Can only request new OTP every minute
+  private static OTP_EXPIRY_MINUTES = 5; // OTP expires in 5 minutes as requested
+  private static RATE_LIMIT_MINUTES = 0.5; // Can request new OTP every 30 seconds (user-friendly)
 
   // Generate 4-digit OTP
   static generateOTP(): string {
@@ -28,6 +29,16 @@ export class OTPService {
   static async sendOTP(email: string, businessId?: string, businessName?: string): Promise<{ success: boolean; message: string }> {
     try {
       const emailLower = email.toLowerCase();
+      
+      // Get business data if businessId is provided
+      let businessData = null;
+      if (businessId) {
+        try {
+          businessData = await BusinessService.getBusinessById(businessId);
+        } catch (error) {
+          console.log('Could not fetch business data:', error);
+        }
+      }
       
       // Check rate limiting - prevent spam (simplified query)
       const recentOTPQuery = query(
@@ -40,18 +51,19 @@ export class OTPService {
       
       // Filter in code to avoid index requirement
       const now = new Date();
-      const oneMinuteAgo = new Date(now.getTime() - this.RATE_LIMIT_MINUTES * 60000);
+      const rateLimitTime = new Date(now.getTime() - this.RATE_LIMIT_MINUTES * 60000);
       
       const recentOTP = recentOTPs.docs.find(doc => {
         const data = doc.data();
         const createdAt = data.createdAt.toDate();
-        return createdAt > oneMinuteAgo;
+        return createdAt > rateLimitTime;
       });
       
       if (recentOTP) {
+        const waitSeconds = Math.ceil(this.RATE_LIMIT_MINUTES * 60);
         return {
           success: false,
-          message: `Please wait ${this.RATE_LIMIT_MINUTES} minute before requesting another OTP`
+          message: `Please wait ${waitSeconds} seconds before requesting another code`
         };
       }
 
@@ -82,10 +94,10 @@ export class OTPService {
 
       // Send OTP email
       const storeBranding = {
-        storeName: businessName || 'Store',
-        primaryColor: '#3B82F6',
-        supportEmail: 'support@rady.ng',
-        whatsappNumber: '+1234567890' // You can make this dynamic
+        storeName: businessData?.name || businessName || 'Store',
+        primaryColor: businessData?.settings?.primaryColor || '#3B82F6',
+        supportEmail: businessData?.email || 'support@rady.ng',
+        whatsappNumber: businessData?.whatsapp || undefined // Include WhatsApp if available
       };
 
       const emailSent = await EmailService.sendRegistrationOTP(
@@ -100,7 +112,8 @@ export class OTPService {
         const directEmailSent = await DirectEmailService.sendOTPEmail(
           email,
           otp,
-          businessName || 'Store'
+          businessData?.name || businessName || 'Store',
+          businessData?.whatsapp // Pass WhatsApp to direct service too
         );
         
         if (directEmailSent) {
@@ -113,7 +126,7 @@ export class OTPService {
       if (emailSent) {
         return {
           success: true,
-          message: `Verification code sent to ${email}. Please check your inbox.`
+          message: `Code sent to ${email}! Check your notifications. You can request more codes if needed.`
         };
       } else {
         return {
