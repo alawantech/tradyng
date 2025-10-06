@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Star } from 'lucide-react';
+import { ShoppingCart, Star, StarHalf } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
 import { useCart } from '../../contexts/CartContext';
 import { ProductService, Product } from '../../services/product';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
+import { generateProductRating, renderStars } from '../../utils/productRatings';
 
 export const StorefrontHome: React.FC = () => {
   const { business, isLoading: storeLoading, searchTerm, selectedCategory } = useStore();
@@ -164,11 +165,15 @@ export const StorefrontHome: React.FC = () => {
                         <p className="text-gray-600 text-xs mb-2 line-clamp-2">{product.description}</p>
                         <div className="flex items-center mb-2">
                           <div className="flex text-yellow-400">
-                            {[...Array(5)].map((_, i) => (
-                              <Star key={i} className="h-4 w-4 fill-current" />
+                            {renderStars(generateProductRating(product.id || '').averageRating).map((starType, index) => (
+                              <span key={index}>
+                                {starType === 'full' && <Star className="h-4 w-4 fill-current" />}
+                                {starType === 'half' && <StarHalf className="h-4 w-4 fill-current" />}
+                                {starType === 'empty' && <Star className="h-4 w-4 text-gray-300" />}
+                              </span>
                             ))}
                           </div>
-                          <span className="text-xs text-gray-500 ml-2">(5.0)</span>
+                          <span className="text-xs text-gray-500 ml-2">({generateProductRating(product.id || '').totalReviews})</span>
                         </div>
                       </div>
                     </Link>

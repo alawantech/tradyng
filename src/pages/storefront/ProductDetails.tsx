@@ -1,14 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ShoppingCart, Share2 } from 'lucide-react';
+import { ShoppingCart, Share2, Star, StarHalf } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
 import { useCart } from '../../contexts/CartContext';
 import { ProductService, Product } from '../../services/product';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
+import { generateProductRating, renderStars } from '../../utils/productRatings';
 import toast from 'react-hot-toast';
+
+// StarRating component
+const StarRating: React.FC<{ rating: number; totalReviews: number }> = ({ rating, totalReviews }) => {
+  const stars = renderStars(rating);
+  
+  return (
+    <div className="flex items-center mb-2">
+      <div className="flex text-yellow-400 text-lg mr-2">
+        {stars.map((starType, index) => (
+          <span key={index}>
+            {starType === 'full' && <Star className="h-5 w-5 fill-current" />}
+            {starType === 'half' && <StarHalf className="h-5 w-5 fill-current" />}
+            {starType === 'empty' && <Star className="h-5 w-5 text-gray-300" />}
+          </span>
+        ))}
+      </div>
+      <span className="font-semibold text-gray-700">{rating}</span>
+      <span className="text-gray-500 ml-2">({totalReviews} reviews)</span>
+    </div>
+  );
+};
 
 export const ProductDetails: React.FC = () => {
   const { id } = useParams();
@@ -241,11 +262,10 @@ export const ProductDetails: React.FC = () => {
             {/* <span className="text-sm bg-red-100 text-red-600 px-2 py-1 rounded font-bold">-20%</span> */}
           </div>
           {/* Ratings & Reviews */}
-          <div className="flex items-center mb-2">
-            <span className="text-yellow-400 text-lg mr-2">★</span>
-            <span className="font-semibold text-gray-700">4.9</span>
-            <span className="text-gray-500 ml-2">(127 reviews)</span>
-          </div>
+          <StarRating 
+            rating={generateProductRating(product.id || '').averageRating}
+            totalReviews={generateProductRating(product.id || '').totalReviews}
+          />
           {/* Seller/Brand Info */}
           <div className="text-sm text-gray-500 mb-4">Sold by <span className="font-semibold text-blue-700 cursor-pointer hover:underline">{business?.name || 'Brand Name'}</span></div>
           {/* Variations (mockup) */}
@@ -404,6 +424,18 @@ export const ProductDetails: React.FC = () => {
                     <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
                       {relatedProduct.name}
                     </h3>
+                    <div className="flex items-center mb-2">
+                      <div className="flex text-yellow-400 text-sm mr-1">
+                        {renderStars(generateProductRating(relatedProduct.id || '').averageRating).map((starType, index) => (
+                          <span key={index}>
+                            {starType === 'full' && <Star className="h-3 w-3 fill-current" />}
+                            {starType === 'half' && <StarHalf className="h-3 w-3 fill-current" />}
+                            {starType === 'empty' && <Star className="h-3 w-3 text-gray-300" />}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-xs text-gray-500">({generateProductRating(relatedProduct.id || '').totalReviews})</span>
+                    </div>
                     <p className="text-lg font-bold text-gray-900">
                       {formatCurrency(relatedProduct.price, DEFAULT_CURRENCY)}
                     </p>
