@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, ShoppingCart, Heart, Share2, Truck, Shield, RotateCcw } from 'lucide-react';
+import { ShoppingCart, Share2 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
@@ -19,6 +19,7 @@ export const ProductDetails: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -28,12 +29,22 @@ export const ProductDetails: React.FC = () => {
         setIsLoading(true);
         const fetchedProduct = await ProductService.getProductById(business.id, id);
         setProduct(fetchedProduct);
+        
         // Show video first if it exists
         if (fetchedProduct && fetchedProduct.video) {
           setSelectedMedia('video');
         } else {
           setSelectedMedia('image');
         }
+
+        // Fetch related products (other products from the same store)
+        const allProducts = await ProductService.getProductsByBusinessId(business.id);
+        // Filter out current product and get up to 4 related products
+        const filteredProducts = allProducts
+          .filter(p => p.id !== id && p.isActive)
+          .slice(0, 4);
+        setRelatedProducts(filteredProducts);
+        
       } catch (error) {
         console.error('Error loading product:', error);
         setProduct(null);
@@ -362,34 +373,47 @@ export const ProductDetails: React.FC = () => {
         </Card>
       </div>
 
-      {/* Reviews Section */}
-      <div className="mt-10">
-        <Card className="p-6 rounded-2xl shadow-md">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Reviews</h2>
-          <div className="space-y-6">
-            {[
-              { name: 'John D.', rating: 5, comment: 'Excellent product! Exceeded my expectations.', date: '2024-01-15' },
-              { name: 'Sarah M.', rating: 4, comment: 'Great quality and fast shipping. Very satisfied.', date: '2024-01-10' },
-              { name: 'Mike R.', rating: 5, comment: 'Perfect! Exactly what I was looking for.', date: '2024-01-08' }
-            ].map((review, index) => (
-              <div key={index} className="border-b border-gray-200 pb-6 last:border-b-0">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium text-gray-900">{review.name}</span>
-                    <div className="flex text-yellow-400">
-                      {[...Array(review.rating)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 fill-current" />
-                      ))}
-                    </div>
+      {/* Related Products Section */}
+      {relatedProducts.length > 0 && (
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">More Products</h2>
+            <Link 
+              to="/" 
+              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+            >
+              View All Products →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {relatedProducts.map((relatedProduct) => (
+              <Link 
+                key={relatedProduct.id} 
+                to={`/product/${relatedProduct.id}`}
+                className="group"
+              >
+                <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                  <div className="aspect-square overflow-hidden">
+                    <img
+                      src={relatedProduct.images?.[0] || '/placeholder-image.jpg'}
+                      alt={relatedProduct.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
                   </div>
-                  <span className="text-sm text-gray-500">{review.date}</span>
-                </div>
-                <p className="text-gray-700">{review.comment}</p>
-              </div>
+                  <div className="p-4">
+                    <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
+                      {relatedProduct.name}
+                    </h3>
+                    <p className="text-lg font-bold text-gray-900">
+                      {formatCurrency(relatedProduct.price, DEFAULT_CURRENCY)}
+                    </p>
+                  </div>
+                </Card>
+              </Link>
             ))}
           </div>
-        </Card>
-      </div>
+        </div>
+      )}
     </div>
   );
 };
