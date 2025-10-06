@@ -44,6 +44,7 @@ interface OTPEmailRequest {
   storeColor?: string;
   supportEmail?: string;
   whatsappNumber?: string;
+  isPasswordReset?: boolean;
 }
 
 interface GenericEmailRequest {
@@ -246,6 +247,35 @@ export class EmailService {
         }, 8000);
       }
       
+      return false;
+    }
+  }
+
+  // Send password reset OTP email (reusing the same function but with different branding)
+  static async sendPasswordResetOTP(
+    email: string, 
+    otp: string, 
+    storeBranding: StoreBranding
+  ): Promise<boolean> {
+    try {
+      console.log('📧 Sending password reset OTP email via Firebase Functions...');
+      
+      const otpRequest: OTPEmailRequest = {
+        email: email,
+        otp: otp,
+        storeName: storeBranding.storeName,
+        storeColor: storeBranding.primaryColor || '#3B82F6',
+        supportEmail: storeBranding.supportEmail || 'support@rady.ng',
+        whatsappNumber: storeBranding.whatsappNumber,
+        isPasswordReset: true // Flag this as a password reset email
+      };
+
+      const result = await EmailService.sendOTPEmailFunction(otpRequest);
+      console.log('✅ Password reset OTP email sent successfully:', result.data);
+      
+      return true;
+    } catch (error: any) {
+      console.error('❌ Password reset OTP email sending failed:', error);
       return false;
     }
   }

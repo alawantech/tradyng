@@ -6,6 +6,7 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   updateProfile,
+  updatePassword as firebaseUpdatePassword,
   User
 } from 'firebase/auth';
 import { UserService } from '../services/user';
@@ -17,6 +18,7 @@ interface CustomerAuthContextType {
   signIn: (email: string, password: string, onSuccess?: () => void) => Promise<void>;
   signUp: (email: string, password: string, displayName: string, onSuccess?: () => void) => Promise<void>;
   signOut: () => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<boolean>;
 }
 
 const CustomerAuthContext = createContext<CustomerAuthContextType | undefined>(undefined);
@@ -89,6 +91,20 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  const updatePassword = async (newPassword: string): Promise<boolean> => {
+    try {
+      if (!user) {
+        throw new Error('No user logged in');
+      }
+      
+      await firebaseUpdatePassword(user, newPassword);
+      return true;
+    } catch (error) {
+      console.error('Error updating password:', error);
+      return false;
+    }
+  };
+
   return (
     <CustomerAuthContext.Provider 
       value={{
@@ -97,6 +113,7 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
         signIn,
         signUp,
         signOut,
+        updatePassword,
       }}
     >
       {children}

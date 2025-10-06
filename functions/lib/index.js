@@ -115,15 +115,18 @@ exports.sendOTPEmail = functions.https.onCall(async (request, response) => {
         }
         const primaryColor = data.storeColor || '#3B82F6';
         const fromEmail = 'noreply@rady.ng';
+        const isPasswordReset = data.isPasswordReset || false;
         // Create simple, concise OTP email template that shows code immediately
-        const subject = `${data.otp} - ${data.storeName} verification code`;
+        const subject = isPasswordReset
+            ? `${data.otp} - ${data.storeName} password reset code`
+            : `${data.otp} - ${data.storeName} verification code`;
         const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Verification Code</title>
+        <title>${isPasswordReset ? 'Password Reset Code' : 'Verification Code'}</title>
       </head>
       <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f5f5f5;">
         <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 10px; padding: 30px; text-align: center;">
@@ -131,9 +134,14 @@ exports.sendOTPEmail = functions.https.onCall(async (request, response) => {
           <!-- Store Name/Logo -->
           <h1 style="margin: 0 0 20px; color: ${primaryColor}; font-size: 24px; font-weight: bold;">${data.storeName}</h1>
           
+          ${isPasswordReset ? `
+          <!-- Password Reset Notice -->
+          <p style="margin: 0 0 20px; color: #666; font-size: 16px;">Password Reset Request</p>
+          ` : ''}
+          
           <!-- OTP Code - Large and Prominent -->
           <div style="background: ${primaryColor}; color: white; border-radius: 8px; padding: 20px; margin: 20px 0;">
-            <p style="margin: 0 0 10px; font-size: 14px;">Your verification code:</p>
+            <p style="margin: 0 0 10px; font-size: 14px;">${isPasswordReset ? 'Your password reset code:' : 'Your verification code:'}</p>
             <div style="font-size: 36px; font-weight: bold; letter-spacing: 4px; font-family: monospace;">
               ${data.otp}
             </div>
@@ -141,7 +149,7 @@ exports.sendOTPEmail = functions.https.onCall(async (request, response) => {
           
           <!-- Simple Instructions -->
           <p style="margin: 20px 0 0; color: #666; font-size: 14px;">
-            Enter this code to complete registration. Expires in 5 minutes.
+            ${isPasswordReset ? 'Enter this code to reset your password. Expires in 5 minutes.' : 'Enter this code to complete registration. Expires in 5 minutes.'}
           </p>
           
           ${data.whatsappNumber ? `
@@ -162,7 +170,7 @@ exports.sendOTPEmail = functions.https.onCall(async (request, response) => {
       </body>
       </html>
     `;
-        const text = `${data.storeName}\n\nYour verification code: ${data.otp}\n\nExpires in 5 minutes.${data.whatsappNumber ? `\n\nNeed help? WhatsApp: ${data.whatsappNumber}` : ''}`;
+        const text = `${data.storeName}\n\n${isPasswordReset ? 'Password Reset Request\n\n' : ''}Your ${isPasswordReset ? 'password reset' : 'verification'} code: ${data.otp}\n\nExpires in 5 minutes.${data.whatsappNumber ? `\n\nNeed help? WhatsApp: ${data.whatsappNumber}` : ''}`;
         // Send email via SendGrid
         const msg = {
             to: data.email,

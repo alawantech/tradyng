@@ -6,6 +6,8 @@ import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { useStore } from '../../pages/storefront/StorefrontLayout';
 import { OTPService } from '../../services/otpService';
 import { OTPVerificationModal } from './OTPVerificationModal';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
+import { PasswordResetModal } from './PasswordResetModal';
 import toast from 'react-hot-toast';
 
 interface CustomerAuthModalProps {
@@ -33,6 +35,11 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     password: string;
     displayName: string;
   } | null>(null);
+  
+  // Forgot password states
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
   
   const [formData, setFormData] = useState({
     email: '',
@@ -204,6 +211,17 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     setShowOTPModal(false);
     setPendingRegistration(null);
     setIsLoading(false);
+  };
+
+  // Handle forgot password flow
+  const handleResetInitiated = (email: string) => {
+    setResetEmail(email);
+    setShowPasswordResetModal(true);
+  };
+
+  const handlePasswordResetModalClose = () => {
+    setShowPasswordResetModal(false);
+    setResetEmail('');
   };
 
   const switchMode = () => {
@@ -415,11 +433,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                       <button
                         type="button"
                         className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
-                        onClick={() => {
-                          toast.error('Password reset feature coming soon!', {
-                            icon: '🔄',
-                          });
-                        }}
+                        onClick={() => setShowForgotPasswordModal(true)}
                       >
                         Forgot password?
                       </button>
@@ -675,6 +689,20 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
         email={pendingRegistration?.email || ''}
         businessName={business?.name}
         businessId={business?.id}
+      />
+      
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        onResetInitiated={handleResetInitiated}
+      />
+      
+      {/* Password Reset Modal */}
+      <PasswordResetModal
+        isOpen={showPasswordResetModal}
+        onClose={handlePasswordResetModalClose}
+        email={resetEmail}
       />
     </AnimatePresence>
   );
