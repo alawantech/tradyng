@@ -16,8 +16,11 @@ export function generateProductRating(productId: string): ProductRating {
   // Use absolute value to ensure positive number
   const seed = Math.abs(hash);
   
-  // Generate rating between 3.5 and 5.0 (realistic good ratings)
-  const ratingVariations = [3.8, 4.0, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0];
+  // Generate rating with realistic distribution (more 4-4.5 stars, fewer 5 stars)
+  const ratingVariations = [
+    3.7, 3.8, 3.9, 4.0, 4.0, 4.1, 4.1, 4.2, 4.2, 4.3, 4.3, 4.4, 4.4, 
+    4.5, 4.5, 4.5, 4.6, 4.6, 4.7, 4.7, 4.8, 4.9, 5.0
+  ];
   const averageRating = ratingVariations[seed % ratingVariations.length];
   
   // Generate base review count between 15 and 150

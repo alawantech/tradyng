@@ -11,6 +11,7 @@ import {
   orderBy,
   Timestamp
 } from 'firebase/firestore';
+import { generateProductRating } from '../utils/productRatings';
 
 export interface Product {
   id?: string;
@@ -34,11 +35,14 @@ export interface Product {
   };
   sizes?: string[];
   colors?: string[];
+  // Auto-generated rating fields
+  averageRating?: number;
+  totalReviews?: number;
 }
 
 export class ProductService {
   // Create a new product for a business
-  static async createProduct(businessId: string, productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  static async createProduct(businessId: string, productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'averageRating' | 'totalReviews'>): Promise<string> {
     try {
       const now = Timestamp.now();
       const docRef = await addDoc(collection(db, 'businesses', businessId, 'products'), {
@@ -46,8 +50,44 @@ export class ProductService {
         createdAt: now,
         updatedAt: now
       });
-      return docRef.id;
+      
+      // Generate automatic rating for the new product using its ID
+      const productId = docRef.id;
+      const rating = generateProductRating(productId);
+      
+      // Update the product with the generated rating
+      await updateDoc(docRef, {
+        averageRating: rating.averageRating,
+        totalReviews: rating.totalReviews,
+        updatedAt: now
+      });
+      
+      return productId;
     } catch (error) {
+      throw error;
+    }
+  }
+
+  // Utility method to backfill ratings for existing products
+  static async backfillProductRatings(businessId: string): Promise<void> {
+    try {
+      const products = await this.getProductsByBusinessId(businessId);
+      const updatePromises = products
+        .filter(product => !product.averageRating || !product.totalReviews)
+        .map(async (product) => {
+          if (product.id) {
+            const rating = generateProductRating(product.id);
+            await updateDoc(doc(db, 'businesses', businessId, 'products', product.id), {
+              averageRating: rating.averageRating,
+              totalReviews: rating.totalReviews,
+              updatedAt: Timestamp.now()
+            });
+          }
+        });
+      
+      await Promise.all(updatePromises);
+    } catch (error) {
+      console.error('Error backfilling product ratings:', error);
       throw error;
     }
   }

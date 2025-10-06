@@ -263,8 +263,8 @@ export const ProductDetails: React.FC = () => {
           </div>
           {/* Ratings & Reviews */}
           <StarRating 
-            rating={generateProductRating(product.id || '').averageRating}
-            totalReviews={generateProductRating(product.id || '').totalReviews}
+            rating={product.averageRating || generateProductRating(product.id || '').averageRating}
+            totalReviews={product.totalReviews || generateProductRating(product.id || '').totalReviews}
           />
           {/* Seller/Brand Info */}
           <div className="text-sm text-gray-500 mb-4">Sold by <span className="font-semibold text-blue-700 cursor-pointer hover:underline">{business?.name || 'Brand Name'}</span></div>
@@ -426,7 +426,7 @@ export const ProductDetails: React.FC = () => {
                     </h3>
                     <div className="flex items-center mb-2">
                       <div className="flex text-yellow-400 text-sm mr-1">
-                        {renderStars(generateProductRating(relatedProduct.id || '').averageRating).map((starType, index) => (
+                        {renderStars(relatedProduct.averageRating || generateProductRating(relatedProduct.id || '').averageRating).map((starType, index) => (
                           <span key={index}>
                             {starType === 'full' && <Star className="h-3 w-3 fill-current" />}
                             {starType === 'half' && <StarHalf className="h-3 w-3 fill-current" />}
@@ -434,7 +434,7 @@ export const ProductDetails: React.FC = () => {
                           </span>
                         ))}
                       </div>
-                      <span className="text-xs text-gray-500">({generateProductRating(relatedProduct.id || '').totalReviews})</span>
+                      <span className="text-xs text-gray-500">({relatedProduct.totalReviews || generateProductRating(relatedProduct.id || '').totalReviews})</span>
                     </div>
                     <p className="text-lg font-bold text-gray-900">
                       {formatCurrency(relatedProduct.price, DEFAULT_CURRENCY)}

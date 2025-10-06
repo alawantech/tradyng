@@ -165,7 +165,7 @@ export const StorefrontHome: React.FC = () => {
                         <p className="text-gray-600 text-xs mb-2 line-clamp-2">{product.description}</p>
                         <div className="flex items-center mb-2">
                           <div className="flex text-yellow-400">
-                            {renderStars(generateProductRating(product.id || '').averageRating).map((starType, index) => (
+                            {renderStars(product.averageRating || generateProductRating(product.id || '').averageRating).map((starType, index) => (
                               <span key={index}>
                                 {starType === 'full' && <Star className="h-4 w-4 fill-current" />}
                                 {starType === 'half' && <StarHalf className="h-4 w-4 fill-current" />}
@@ -173,7 +173,7 @@ export const StorefrontHome: React.FC = () => {
                               </span>
                             ))}
                           </div>
-                          <span className="text-xs text-gray-500 ml-2">({generateProductRating(product.id || '').totalReviews})</span>
+                          <span className="text-xs text-gray-500 ml-2">({product.totalReviews || generateProductRating(product.id || '').totalReviews})</span>
                         </div>
                       </div>
                     </Link>
