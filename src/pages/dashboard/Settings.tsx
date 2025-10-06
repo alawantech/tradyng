@@ -30,7 +30,8 @@ export const Settings: React.FC = () => {
   const [brandingSettings, setBrandingSettings] = useState({
     logo: '',
     storeBackgroundColor: '#1c1c1e', // Soft Black as default
-    heroStyle: 'modern' // Modern Black as default
+    heroStyle: 'modern', // Modern Black as default
+    heroBannerImage: '' // Hero banner image
   });
   const [logoUpdated, setLogoUpdated] = useState(false); // Track if logo has been explicitly updated
 
@@ -148,7 +149,8 @@ export const Settings: React.FC = () => {
       const newBrandingSettings = {
         logo: business.logo || '',
         storeBackgroundColor: business.branding?.storeBackgroundColor || '#1c1c1e', // Changed to Soft Black
-        heroStyle: business.branding?.heroStyle || 'modern' // Changed to modern (Modern Black)
+        heroStyle: business.branding?.heroStyle || 'modern', // Changed to modern (Modern Black)
+        heroBannerImage: business.branding?.heroBannerImage || ''
       };
       
       console.log('🎨 Setting branding data:', newBrandingSettings);
@@ -336,7 +338,8 @@ export const Settings: React.FC = () => {
         // Include branding settings
         branding: {
           storeBackgroundColor: brandingSettings.storeBackgroundColor,
-          heroStyle: brandingSettings.heroStyle
+          heroStyle: brandingSettings.heroStyle,
+          heroBannerImage: brandingSettings.heroBannerImage
         }
       };
 
@@ -1255,6 +1258,96 @@ export const Settings: React.FC = () => {
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Preview Store
                   </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Hero Banner Image Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Custom Hero Banner Image
+              </label>
+              <p className="text-sm text-gray-600 mb-4">
+                Upload a custom banner image to replace the hero section text and gradient. Your image will be professionally styled and responsive.
+              </p>
+              
+              {/* Current Banner Preview */}
+              {brandingSettings.heroBannerImage && (
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-32 h-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                      <img 
+                        src={brandingSettings.heroBannerImage} 
+                        alt="Hero banner preview" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900 mb-1">Current Hero Banner</h4>
+                      <p className="text-sm text-gray-600 mb-2">
+                        This image will replace the text content in your hero section
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setBrandingSettings({...brandingSettings, heroBannerImage: ''})}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        Remove Banner Image
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Upload Button */}
+              <div className="space-y-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = async (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        // Validate file size (max 5MB)
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error('Image size must be less than 5MB');
+                          return;
+                        }
+                        
+                        // Validate file type
+                        if (!file.type.startsWith('image/')) {
+                          toast.error('Please select an image file');
+                          return;
+                        }
+                        
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          const result = e.target?.result as string;
+                          setBrandingSettings({...brandingSettings, heroBannerImage: result});
+                          toast.success('Hero banner image uploaded successfully!');
+                        };
+                        reader.onerror = () => {
+                          toast.error('Failed to read the image file');
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    };
+                    input.click();
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {brandingSettings.heroBannerImage ? 'Change Hero Banner' : 'Upload Hero Banner'}
+                </Button>
+                
+                <div className="text-xs text-gray-500 space-y-1">
+                  <p>• Recommended size: 1920x600px or similar aspect ratio</p>
+                  <p>• Supported formats: JPG, PNG, WebP</p>
+                  <p>• Maximum file size: 5MB</p>
+                  <p>• Image will be automatically optimized for all devices</p>
                 </div>
               </div>
             </div>

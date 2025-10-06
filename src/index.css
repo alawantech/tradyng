@@ -477,3 +477,89 @@ html {
     filter: hue-rotate(-5deg);
   }
 }
+
+/* Hero Banner Image Styling - Fixed height within hero section */
+.hero-banner-image {
+  transition: transform 0.3s ease-in-out;
+  max-height: 400px !important;
+  height: 400px !important;
+  object-fit: cover;
+}
+
+.hero-banner-image:hover {
+  transform: scale(1.01);
+}
+
+/* Hero Banner Container - Keep within bounds */
+.hero-banner-container {
+  max-height: 400px !important;
+  height: 400px !important;
+  overflow: hidden;
+}
+
+/* Hero Banner Overlay Animation */
+@keyframes overlay-pulse {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.1;
+  }
+}
+
+/* Professional Business Name Animations */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 0%;
+    transform: scale(1);
+  }
+  25% {
+    background-position: 100% 0%;
+    transform: scale(1.02);
+  }
+  50% {
+    background-position: 100% 100%;
+    transform: scale(1);
+  }
+  75% {
+    background-position: 0% 100%;
+    transform: scale(1.01);
+  }
+  100% {
+    background-position: 0% 0%;
+    transform: scale(1);
+  }
+}
+
+@keyframes textGlow {
+  0% {
+    filter: drop-shadow(0 0 5px rgba(255,255,255,0.3)) brightness(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 15px rgba(255,255,255,0.6)) brightness(1.1);
+  }
+  100% {
+    filter: drop-shadow(0 0 5px rgba(255,255,255,0.3)) brightness(1);
+  }
+}
+
+/* Button Animations */
+@keyframes buttonPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1), 0 0 20px rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15), 0 0 30px rgba(255, 255, 255, 0.2);
+  }
+}
+
+@keyframes buttonGlow {
+  0% {
+    filter: brightness(1) drop-shadow(0 0 5px rgba(59, 130, 246, 0.3));
+  }
+  100% {
+    filter: brightness(1.05) drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
+  }
+}

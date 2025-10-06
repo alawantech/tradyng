@@ -164,11 +164,46 @@ export const StorefrontHome: React.FC = () => {
 
   return (
     <div>
-      {/* Hero Section - Dynamic Design Based on Branding Settings */}
+      {/* Hero Section - Dynamic Design Based on Branding Settings - Fixed Height */}
       <section 
-        className="relative text-white overflow-hidden min-h-[400px] flex items-center" 
-        style={getHeroStyle()}
+        className="hero-section relative text-white overflow-hidden h-[400px] flex items-center" 
+        style={{
+          ...(business?.branding?.heroBannerImage ? {} : getHeroStyle()),
+          height: '400px',
+          maxHeight: '400px',
+          minHeight: '400px'
+        }}
       >
+        {/* Custom Hero Background Image (replaces gradient background) */}
+        {business?.branding?.heroBannerImage && (
+          <div className="absolute inset-0 w-full h-full overflow-hidden">
+            <img 
+              src={business.branding.heroBannerImage}
+              alt={`${business.name} hero background`}
+              className="w-full h-full object-cover object-center"
+              onError={(e) => {
+                console.error('Hero banner image failed to load, falling back to gradient');
+                // Hide the image and show gradient background
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+              onLoad={() => {
+                // Image loaded successfully, hide all overlays for clear image visibility
+                const geometricOverlay = document.querySelector('.hero-section .absolute.inset-0.opacity-20');
+                if (geometricOverlay) {
+                  (geometricOverlay as HTMLElement).style.display = 'none';
+                }
+                
+                // Hide floating orbs when image is present
+                const floatingOrbs = document.querySelectorAll('.hero-section .absolute.w-28, .hero-section .absolute.w-20, .hero-section .absolute.w-16, .hero-section .absolute.w-12');
+                floatingOrbs.forEach(orb => {
+                  (orb as HTMLElement).style.display = 'none';
+                });
+              }}
+            />
+            {/* NO OVERLAY - Image shows completely clear */}
+          </div>
+        )}
+
         {/* Animated Geometric Pattern Overlay */}
         <div 
           className="absolute inset-0 opacity-20"
@@ -210,7 +245,7 @@ export const StorefrontHome: React.FC = () => {
           }} 
         />
         
-        {/* Main Content - Professional styling */}
+        {/* Main Content - Always visible on top with enhanced visibility */}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
             <motion.div
@@ -219,17 +254,39 @@ export const StorefrontHome: React.FC = () => {
               transition={{ duration: 0.8 }}
               className="mb-4"
             >
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight">
+              <h1 
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight px-6 py-3 rounded-xl inline-block"
+                style={{
+                  color: '#ffffff',
+                  textShadow: business?.branding?.heroBannerImage 
+                    ? '0 1px 2px rgba(0,0,0,0.3), 0 0 4px rgba(0,0,0,0.2)'
+                    : '0 1px 2px rgba(0,0,0,0.1)',
+                  backgroundColor: business?.branding?.heroBannerImage 
+                    ? 'rgba(0, 0, 0, 0.015)' 
+                    : 'rgba(0, 0, 0, 0.008)',
+                  backdropFilter: business?.branding?.heroBannerImage ? 'blur(20px)' : 'blur(8px)',
+                  border: 'none',
+                  boxShadow: business?.branding?.heroBannerImage
+                    ? '0 0 2px rgba(0, 0, 0, 0.01)'
+                    : 'none'
+                }}
+              >
                 Welcome to{' '}
                 <span className="relative inline-block">
                   <span 
-                    className="font-extrabold drop-shadow-lg"
+                    className="font-extrabold"
                     style={{
-                      background: 'linear-gradient(90deg, #ffffff 0%, #f3f4f6 25%, #ffffff 50%, #e5e7eb 75%, #ffffff 100%)',
+                      background: business?.branding?.heroBannerImage 
+                        ? 'white'
+                        : 'linear-gradient(90deg, #ffffff 0%, #f3f4f6 25%, #ffffff 50%, #e5e7eb 75%, #ffffff 100%)',
                       backgroundSize: '200% 100%',
                       WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      animation: 'shimmer 3s ease-in-out infinite'
+                      WebkitTextFillColor: business?.branding?.heroBannerImage ? 'white' : 'transparent',
+                      animation: business?.branding?.heroBannerImage ? 'none' : 'shimmer 3s ease-in-out infinite',
+                      textShadow: business?.branding?.heroBannerImage 
+                        ? '3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.8)'
+                        : 'none',
+                      WebkitTextStroke: business?.branding?.heroBannerImage ? '1px black' : 'none'
                     }}
                   >
                     {business.name}
@@ -250,9 +307,25 @@ export const StorefrontHome: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-base sm:text-lg md:text-xl mb-6 max-w-2xl mx-auto text-white/95 leading-relaxed drop-shadow-sm"
+              className="text-base sm:text-lg md:text-xl mb-6 max-w-2xl mx-auto leading-relaxed px-6 py-3 rounded-xl"
+              style={{
+                color: '#ffffff',
+                textShadow: business?.branding?.heroBannerImage 
+                  ? '0 2px 8px rgba(0,0,0,0.8), 0 0 16px rgba(0,0,0,0.6)'
+                  : '0 1px 4px rgba(0,0,0,0.3)',
+                backgroundColor: business?.branding?.heroBannerImage 
+                  ? 'rgba(0, 0, 0, 0.45)' 
+                  : 'rgba(0, 0, 0, 0.25)',
+                backdropFilter: business?.branding?.heroBannerImage ? 'blur(8px)' : 'blur(2px)',
+                border: business?.branding?.heroBannerImage 
+                  ? '1px solid rgba(255, 255, 255, 0.1)' 
+                  : '1px solid rgba(255, 255, 255, 0.05)',
+                boxShadow: business?.branding?.heroBannerImage
+                  ? '0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                  : '0 2px 10px rgba(0, 0, 0, 0.1)'
+              }}
             >
-              {business.description || `Discover premium quality products curated just for you. Experience exceptional service and satisfaction.`}
+              {business.description || `Discover amazing products from ${business.name}. Quality guaranteed, fast shipping.`}
             </motion.p>
             
             <motion.div
@@ -263,17 +336,34 @@ export const StorefrontHome: React.FC = () => {
             >
               <button 
                 onClick={scrollToProducts}
-                className="relative bg-white text-gray-700 font-semibold px-6 py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg border border-gray-200 overflow-hidden cursor-pointer"
+                className="relative font-semibold px-6 py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg border overflow-hidden cursor-pointer"
                 style={{
-                  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1), 0 0 20px rgba(255, 255, 255, 0.1)'
+                  backgroundColor: business?.branding?.heroBannerImage ? 'rgba(255, 255, 255, 0.95)' : 'white',
+                  color: business?.branding?.heroBannerImage ? '#1f2937' : '#374151',
+                  borderColor: business?.branding?.heroBannerImage ? 'rgba(255, 255, 255, 0.8)' : '#e5e7eb',
+                  boxShadow: business?.branding?.heroBannerImage 
+                    ? '0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                    : '0 4px 15px rgba(0, 0, 0, 0.1), 0 0 20px rgba(255, 255, 255, 0.1)',
+                  backdropFilter: business?.branding?.heroBannerImage ? 'blur(8px)' : 'none',
+                  animation: 'buttonPulse 3s ease-in-out infinite, buttonGlow 2s ease-in-out infinite alternate'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(45deg, #f8fafc, #f1f5f9)';
-                  e.currentTarget.style.color = '#374151';
+                  if (business?.branding?.heroBannerImage) {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.4), 0 0 25px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4)';
+                  } else {
+                    e.currentTarget.style.background = 'linear-gradient(45deg, #f8fafc, #f1f5f9)';
+                    e.currentTarget.style.color = '#374151';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'white';
-                  e.currentTarget.style.color = '#374151';
+                  if (business?.branding?.heroBannerImage) {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                  } else {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.color = '#374151';
+                  }
                 }}
               >
                 Shop Now

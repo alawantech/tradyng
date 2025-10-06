@@ -42,6 +42,7 @@ export interface Business {
   branding?: {
     storeBackgroundColor?: string;
     heroStyle?: string;
+    heroBannerImage?: string;
   };
   bankDetails?: {
     bankName: string;
