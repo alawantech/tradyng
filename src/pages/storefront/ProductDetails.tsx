@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Star, ShoppingCart, Heart, Share2, Truck, Shield, RotateCcw } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 
 export const ProductDetails: React.FC = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { business, isLoading: storeLoading } = useStore();
   const { addItem } = useCart();
   const [selectedMedia, setSelectedMedia] = useState<'image' | 'video'>('image');
@@ -100,8 +101,10 @@ export const ProductDetails: React.FC = () => {
 
   const handleBuyNow = () => {
     handleAddToCart();
-    // Navigate to checkout - we'll implement this later
-    toast.success('Redirecting to checkout...');
+    toast.success('Product added to cart! Redirecting to checkout...');
+    setTimeout(() => {
+      navigate('/checkout');
+    }, 1000);
   };
 
   return (
