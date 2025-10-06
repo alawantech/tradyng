@@ -114,83 +114,41 @@ exports.sendOTPEmail = functions.https.onCall(async (request, response) => {
             throw new functions.https.HttpsError('failed-precondition', 'Email service not configured. Please set up SendGrid API key.');
         }
         const primaryColor = data.storeColor || '#3B82F6';
-        const supportEmail = data.supportEmail || 'support@rady.ng';
         const fromEmail = 'noreply@rady.ng';
-        // Create beautiful OTP email template
-        const subject = `Verify your email - ${data.storeName}`;
+        // Create simple, concise OTP email template that shows code immediately
+        const subject = `${data.otp} - ${data.storeName} verification code`;
         const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Email Verification</title>
+        <title>Verification Code</title>
       </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+      <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+        <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 10px; padding: 30px; text-align: center;">
           
-          <!-- Header -->
-          <div style="background: linear-gradient(135deg, ${primaryColor} 0%, #1E40AF 100%); padding: 40px 30px; text-align: center;">
-            <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 15px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 24px;">🛍️</div>
-            <h1 style="margin: 0; color: white; font-size: 28px; font-weight: bold;">${data.storeName}</h1>
-            <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">Verify Your Email Address</p>
-          </div>
-
-          <!-- Content -->
-          <div style="padding: 40px 30px;">
-            <h2 style="margin: 0 0 20px; color: #1F2937; font-size: 24px; font-weight: bold;">Welcome to ${data.storeName}! 🎉</h2>
-            
-            <p style="margin: 0 0 25px; color: #6B7280; font-size: 16px; line-height: 1.6;">
-              Thanks for signing up! To complete your registration and start shopping, please verify your email address with the code below:
-            </p>
-
-            <!-- OTP Code -->
-            <div style="background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%); border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0; border: 2px dashed ${primaryColor};">
-              <p style="margin: 0 0 15px; color: #6B7280; font-size: 14px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</p>
-              <div style="font-size: 32px; font-weight: bold; color: ${primaryColor}; letter-spacing: 6px; font-family: 'Courier New', monospace; background: white; padding: 15px 25px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                ${data.otp}
-              </div>
-              <p style="margin: 15px 0 0; color: #9CA3AF; font-size: 12px;">This code expires in 10 minutes</p>
+          <!-- Store Name/Logo -->
+          <h1 style="margin: 0 0 20px; color: ${primaryColor}; font-size: 24px; font-weight: bold;">${data.storeName}</h1>
+          
+          <!-- OTP Code - Large and Prominent -->
+          <div style="background: ${primaryColor}; color: white; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <p style="margin: 0 0 10px; font-size: 14px;">Your verification code:</p>
+            <div style="font-size: 36px; font-weight: bold; letter-spacing: 4px; font-family: monospace;">
+              ${data.otp}
             </div>
-
-            <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px 20px; border-radius: 0 8px 8px 0; margin: 25px 0;">
-              <p style="margin: 0; color: #92400E; font-size: 14px;">
-                <strong>Security tip:</strong> Never share this code with anyone. We'll never ask for it over the phone or email.
-              </p>
-            </div>
-
-            <p style="margin: 25px 0 0; color: #6B7280; font-size: 14px; line-height: 1.6;">
-              If you didn't create an account with ${data.storeName}, you can safely ignore this email.
-            </p>
           </div>
-
-          <!-- Footer -->
-          <div style="background: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
-            <p style="margin: 0 0 15px; color: #6B7280; font-size: 14px;">
-              Questions? Contact our support team
-            </p>
-            <div style="margin: 15px 0;">
-              <a href="mailto:${supportEmail}" style="color: ${primaryColor}; text-decoration: none; margin: 0 15px;">📧 ${supportEmail}</a>
-            </div>
-            <p style="margin: 15px 0 0; color: #9CA3AF; font-size: 12px;">
-              © 2025 ${data.storeName}. All rights reserved.
-            </p>
-          </div>
+          
+          <!-- Simple Instructions -->
+          <p style="margin: 20px 0 0; color: #666; font-size: 14px;">
+            Enter this code to complete registration. Expires in 3 minutes.
+          </p>
+          
         </div>
       </body>
       </html>
     `;
-        const text = `
-      Welcome to ${data.storeName}!
-      
-      Your verification code is: ${data.otp}
-      
-      This code expires in 10 minutes.
-      
-      If you didn't create an account, you can safely ignore this email.
-      
-      Contact us: ${supportEmail}
-    `;
+        const text = `${data.storeName}\n\nYour verification code: ${data.otp}\n\nExpires in 3 minutes.`;
         // Send email via SendGrid
         const msg = {
             to: data.email,
