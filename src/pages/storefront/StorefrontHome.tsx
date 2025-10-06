@@ -57,7 +57,7 @@ export const StorefrontHome: React.FC = () => {
   if (storeLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-rose-400"></div>
       </div>
     );
   }
@@ -84,10 +84,12 @@ export const StorefrontHome: React.FC = () => {
   return (
     <div>
       {/* Hero Section - Beautiful, compact, visually impressive */}
-      <section className="relative bg-gradient-to-br from-blue-600 via-blue-400 to-purple-500 text-white overflow-hidden">
+      <section className="relative text-white overflow-hidden" style={{
+        background: 'linear-gradient(135deg, #be185d 0%, #ec4899 25%, #f97316 50%, #f59e0b 75%, #eab308 100%)'
+      }}>
         {/* Decorative blurred circles */}
-        <div className="absolute top-0 left-0 w-72 h-72 bg-purple-400 opacity-30 rounded-full blur-2xl -z-10" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-300 opacity-20 rounded-full blur-2xl -z-10" />
+        <div className="absolute top-0 left-0 w-72 h-72 opacity-30 rounded-full blur-2xl -z-10" style={{backgroundColor: '#fce7f3'}} />
+        <div className="absolute bottom-0 right-0 w-96 h-96 opacity-20 rounded-full blur-2xl -z-10" style={{backgroundColor: '#fef3c7'}} />
         <div className="max-w-3xl mx-auto px-4 sm:px-8 py-16 md:py-20 flex flex-col items-center justify-center text-center">
           <motion.h1
             initial={{ opacity: 0, y: 30 }}

@@ -78,7 +78,7 @@ function App() {
   return (
     <ThemeProvider>
       <Router>
-        <div className="App">
+        <div className="App min-h-screen bg-gray-50">
           {subdomainInfo?.isSubdomain ? (
             // Store routes - only show storefront for subdomains
             <CustomerAuthProvider>

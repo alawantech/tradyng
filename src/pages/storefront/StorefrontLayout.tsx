@@ -153,10 +153,12 @@ export const StorefrontLayout: React.FC = () => {
 
   if (storeData.isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center relative">
+      <div className="min-h-screen flex items-center justify-center relative" style={{
+        background: 'linear-gradient(135deg, #fdf2f8 0%, #fef7f0 25%, #f8fafc 50%, #fdf4f3 75%, #fef2f2 100%)'
+      }}>
         <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,255,255,0.3)_1px,_transparent_0)] bg-[length:20px_20px] pointer-events-none"></div>
         <div className="text-center relative z-10">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-rose-400 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading store...</p>
         </div>
       </div>
@@ -171,7 +173,9 @@ export const StorefrontLayout: React.FC = () => {
     
     // Default error handling for other cases
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center relative">
+      <div className="min-h-screen flex items-center justify-center relative" style={{
+        background: 'linear-gradient(135deg, #fdf2f8 0%, #fef7f0 25%, #f8fafc 50%, #fdf4f3 75%, #fef2f2 100%)'
+      }}>
         <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,255,255,0.3)_1px,_transparent_0)] bg-[length:20px_20px] pointer-events-none"></div>
         <div className="text-center relative z-10">
           <Store className="h-24 w-24 text-gray-400 mx-auto mb-4" />
@@ -196,7 +200,7 @@ export const StorefrontLayout: React.FC = () => {
       setSelectedCategory,
       categories
     }}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 storefront-body" style={{ backgroundColor: '#c5cbe1' }}>
         {/* Header */}
         <header className="bg-white shadow-md sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -529,9 +533,7 @@ export const StorefrontLayout: React.FC = () => {
           </div>
         )}
 
-        <main className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen relative">
-          {/* Subtle pattern overlay */}
-          <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,255,255,0.3)_1px,_transparent_0)] bg-[length:20px_20px] pointer-events-none"></div>
+        <main className="min-h-screen relative">
           <div className="relative z-10">
             <Outlet />
           </div>

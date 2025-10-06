@@ -5,6 +5,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global body background for the entire store - with important to override Tailwind */
+body {
+  background-color: #c5cbe1 !important; /* Light blue-gray */
+}
+
+html, body, #root {
+  background-color: #c5cbe1 !important; /* Light blue-gray */
+}
+
+/* Storefront specific background */
+.storefront-body {
+  background-color: #c5cbe1 !important; /* Light blue-gray */
+  min-height: 100vh;
+}
+
 /* Smooth scrolling behavior */
 html {
   scroll-behavior: smooth;
