@@ -178,14 +178,14 @@ export const ProductDetails: React.FC = () => {
                 src={product.video}
                 controls
                 autoPlay
-                className="w-full h-full object-cover rounded-2xl bg-black"
+                className="w-full h-full object-contain rounded-2xl bg-black"
                 poster={product.images?.[0]}
               />
             ) : (
               <img
                 src={product.images?.[selectedImage] || '/api/placeholder/400/300'}
                 alt={product.name}
-                className="w-full h-full object-cover object-center rounded-2xl transition-transform duration-300 group-hover:scale-105 bg-gray-100"
+                className="w-full h-full object-contain object-center rounded-2xl transition-transform duration-300 group-hover:scale-105 bg-gray-100"
                 style={{boxShadow: '0 4px 16px rgba(0,0,0,0.08)'}}
                 onError={e => (e.target as HTMLImageElement).src = '/api/placeholder/400/300'}
               />
