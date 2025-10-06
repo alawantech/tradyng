@@ -97,7 +97,7 @@ export class OTPService {
         storeName: businessData?.name || businessName || 'Store',
         primaryColor: businessData?.settings?.primaryColor || '#3B82F6',
         supportEmail: businessData?.email || 'support@rady.ng',
-        whatsappNumber: businessData?.whatsapp || undefined // Include WhatsApp if available
+        whatsappNumber: businessData?.whatsapp || '+2348123456789' // Always include WhatsApp - use business WhatsApp or default support
       };
 
       const emailSent = await EmailService.sendRegistrationOTP(
@@ -113,7 +113,7 @@ export class OTPService {
           email,
           otp,
           businessData?.name || businessName || 'Store',
-          businessData?.whatsapp // Pass WhatsApp to direct service too
+          businessData?.whatsapp || '+2348123456789' // Always include WhatsApp
         );
         
         if (directEmailSent) {

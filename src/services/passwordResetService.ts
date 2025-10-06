@@ -97,7 +97,7 @@ export class PasswordResetService {
         storeName: businessData?.name || businessName || 'Store',
         primaryColor: businessData?.settings?.primaryColor || '#3B82F6',
         supportEmail: businessData?.email || 'support@rady.ng',
-        whatsappNumber: businessData?.whatsapp || undefined
+        whatsappNumber: businessData?.whatsapp || '+2348123456789' // Always include WhatsApp
       };
 
       const emailSent = await EmailService.sendPasswordResetOTP(
@@ -113,7 +113,7 @@ export class PasswordResetService {
           email,
           otp,
           businessData?.name || businessName || 'Store',
-          businessData?.whatsapp
+          businessData?.whatsapp || '+2348123456789' // Always include WhatsApp
         );
         
         if (directEmailSent) {

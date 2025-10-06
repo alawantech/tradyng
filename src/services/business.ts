@@ -22,7 +22,7 @@ export interface Business {
   ownerId: string;
   email: string;
   phone?: string;
-  whatsapp?: string; // WhatsApp number for customer support
+  whatsapp: string; // WhatsApp number for customer support - REQUIRED for all businesses
   address?: string;
   country?: string;
   state?: string;
@@ -99,7 +99,7 @@ export class BusinessService {
         ownerId: 'demo-owner',
         email: 'demo@example.com',
         phone: '+1 (555) 123-4567',
-        whatsapp: '+1234567890', // WhatsApp number for demo store
+        whatsapp: '+2348123456789', // Real Nigerian WhatsApp number format
         address: '123 Beauty Lane',
         country: 'United States',
         state: 'California',
