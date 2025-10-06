@@ -146,7 +146,7 @@ export const ProductDetails: React.FC = () => {
       {/* Main Section: Responsive Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* LEFT: Product Media */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center">
+        <div className="rounded-2xl shadow-lg p-6 flex flex-col items-center" style={{ backgroundColor: '#f9f9f9' }}>
           {/* Main Image/Video Viewer */}
           <div className="relative w-full h-80 mb-4 group overflow-hidden rounded-2xl"
             style={{ maxHeight: '320px' }}
@@ -255,7 +255,7 @@ export const ProductDetails: React.FC = () => {
         </div>
 
         {/* RIGHT: Product Info */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 flex flex-col justify-between">
+        <div className="rounded-2xl shadow-lg p-8 flex flex-col justify-between" style={{ backgroundColor: '#f9f9f9' }}>
           {/* Title */}
           <h1 className="text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
           {/* Price Section */}
@@ -336,7 +336,8 @@ export const ProductDetails: React.FC = () => {
           <div className="flex flex-col gap-3 mb-6">
             <Button 
               onClick={handleAddToCart} 
-              className="w-full py-4 text-lg rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md transition-all"
+              className="w-full py-4 text-lg rounded-full text-white font-bold shadow-md transition-all hover:bg-gray-800"
+              style={{ backgroundColor: 'black' }}
               disabled={!product.isActive}
             >
               <ShoppingCart className="h-5 w-5 mr-2" />
@@ -416,19 +417,19 @@ export const ProductDetails: React.FC = () => {
                 to={`/product/${relatedProduct.id}`}
                 className="group"
               >
-                <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                  <div className="aspect-square overflow-hidden">
+                <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300" style={{ backgroundColor: '#f9f9f9' }}>
+                  <div className="aspect-square overflow-hidden p-2">
                     <img
                       src={relatedProduct.images?.[0] || '/placeholder-image.jpg'}
                       alt={relatedProduct.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 rounded"
                     />
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
+                  <div className="p-4" style={{ backgroundColor: '#f9f9f9' }}>
+                    <h3 className="font-medium text-black mb-2 line-clamp-2" style={{ backgroundColor: '#f9f9f9' }}>
                       {relatedProduct.name}
                     </h3>
-                    <div className="flex items-center mb-2">
+                    <div className="flex items-center mb-2" style={{ backgroundColor: '#f9f9f9' }}>
                       <div className="flex text-yellow-400 text-sm mr-1">
                         {renderStars(relatedProduct.averageRating || generateProductRating(relatedProduct.id || '').averageRating).map((starType, index) => (
                           <span key={index}>
@@ -440,7 +441,7 @@ export const ProductDetails: React.FC = () => {
                       </div>
                       <span className="text-xs text-gray-500">({relatedProduct.totalReviews || generateProductRating(relatedProduct.id || '').totalReviews})</span>
                     </div>
-                    <p className="text-lg font-bold text-gray-900">
+                    <p className="text-lg font-bold text-black" style={{ backgroundColor: '#f9f9f9' }}>
                       {formatCurrency(relatedProduct.price, DEFAULT_CURRENCY)}
                     </p>
                   </div>

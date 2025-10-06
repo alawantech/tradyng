@@ -99,10 +99,10 @@ export const formatCurrency = (amount: number, currencyCode: string): string => 
     return `${amount} ${currencyCode}`;
   }
 
-  // Format number with thousand separators
+  // Format number with thousand separators, no decimal places
   const formattedAmount = amount.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
   });
 
   return `${currency.symbol}${formattedAmount}`;

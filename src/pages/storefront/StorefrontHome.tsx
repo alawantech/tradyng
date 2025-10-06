@@ -149,23 +149,23 @@ export const StorefrontHome: React.FC = () => {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   className="flex justify-center"
                 >
-                  <Card className="bg-white border border-gray-200 shadow-sm w-full max-w-xs flex flex-col p-0 hover:shadow-md transition-shadow duration-200">
+                  <Card className="border border-gray-200 shadow-sm w-full max-w-xs flex flex-col p-0 hover:shadow-md transition-shadow duration-200" style={{ backgroundColor: '#f9f9f9' }}>
                     <Link to={`/product/${product.id}`} className="flex flex-col flex-1">
-                      <div className="w-full aspect-square overflow-hidden">
+                      <div className="w-full aspect-square overflow-hidden p-2">
                         <img
                           src={product.images?.[0] || '/api/placeholder/400/300'}
                           alt={product.name}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105 rounded"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
                           }}
                         />
                       </div>
-                      <div className="flex flex-col px-4 py-3 flex-1">
-                        <h3 className="text-base font-semibold text-gray-900 mb-1 truncate">{product.name}</h3>
-                        <span className="text-lg font-bold text-blue-600 mb-2">{formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}</span>
+                      <div className="flex flex-col px-4 py-3 flex-1" style={{ backgroundColor: '#f9f9f9' }}>
+                        <h3 className="text-base font-semibold text-black mb-1 truncate" style={{ backgroundColor: '#f9f9f9' }}>{product.name}</h3>
+                        <span className="text-lg font-bold text-black mb-2" style={{ backgroundColor: '#f9f9f9' }}>{formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}</span>
                         <p className="text-gray-600 text-xs mb-2 line-clamp-2">{product.description}</p>
-                        <div className="flex items-center mb-2">
+                        <div className="flex items-center mb-2" style={{ backgroundColor: '#f9f9f9' }}>
                           <div className="flex text-yellow-400">
                             {renderStars(product.averageRating || generateProductRating(product.id || '').averageRating).map((starType, index) => (
                               <span key={index}>
@@ -179,11 +179,12 @@ export const StorefrontHome: React.FC = () => {
                         </div>
                       </div>
                     </Link>
-                    <div className="px-4 pb-3">
+                    <div className="px-4 pb-3" style={{ backgroundColor: '#f9f9f9' }}>
                       <div className="flex gap-2">
                         <Button 
                           size="sm" 
-                          className="flex-1 px-2 py-1 rounded font-semibold text-xs bg-blue-600 text-white hover:bg-blue-700 transition-all"
+                          className="flex-1 px-1 py-1 rounded font-semibold text-xs text-white hover:bg-gray-800 transition-all whitespace-nowrap"
+                          style={{ backgroundColor: 'black', fontSize: '10px' }}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -193,7 +194,7 @@ export const StorefrontHome: React.FC = () => {
                           Add to Cart
                         </Button>
                         <Link to={`/product/${product.id}`} className="flex-1">
-                          <Button size="sm" className="w-full px-2 py-1 rounded font-semibold text-xs bg-white border border-blue-400 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all">View Details</Button>
+                          <Button size="sm" className="w-full px-1 py-1 rounded font-semibold text-xs text-white hover:bg-gray-800 transition-all whitespace-nowrap" style={{ backgroundColor: 'black', fontSize: '10px' }}>View Details</Button>
                         </Link>
                       </div>
                     </div>
