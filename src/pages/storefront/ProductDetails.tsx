@@ -409,7 +409,7 @@ export const ProductDetails: React.FC = () => {
               View All Products →
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {relatedProducts.map((relatedProduct) => (
               <Link 
                 key={relatedProduct.id} 
