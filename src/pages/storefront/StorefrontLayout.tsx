@@ -1,7 +1,7 @@
 import React, { useEffect, useState, createContext, useContext, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Link, useNavigate } from 'react-router-dom';
-import { Store, ShoppingCart, User, Search, ChevronDown, UserCircle, Package, LogOut } from 'lucide-react';
+import { Store, ShoppingCart, User, Search, ChevronDown, UserCircle, Package, LogOut, Menu, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { SubdomainService, SubdomainInfo } from '../../services/subdomain';
 import { BusinessService, Business } from '../../services/business';
@@ -45,7 +45,9 @@ export const StorefrontLayout: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const [storeData, setStoreData] = useState<Omit<StoreContextType, 'searchTerm' | 'setSearchTerm' | 'selectedCategory' | 'setSelectedCategory' | 'categories'>>({
     business: null,
     isLoading: true,
@@ -56,19 +58,34 @@ export const StorefrontLayout: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subdomainInfo, setSubdomainInfo] = useState<SubdomainInfo | null>(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdown/mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
         setShowUserDropdown(false);
       }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setShowMobileMenu(false);
+      }
     };
 
-    if (showUserDropdown) {
+    if (showUserDropdown || showMobileMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showUserDropdown]);
+  }, [showUserDropdown, showMobileMenu]);
+
+  // Close mobile menu on screen resize to larger than 781px
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 782) {
+        setShowMobileMenu(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const loadStoreData = async () => {
@@ -193,7 +210,15 @@ export const StorefrontLayout: React.FC = () => {
                   )}
                   <span className="text-xl font-bold text-gray-900">{storeName}</span>
                 </Link>
-                {/* Mobile search icon (optional) */}
+                
+                {/* Hamburger Menu Button - shown on 781px and below */}
+                <button
+                  onClick={() => setShowMobileMenu(!showMobileMenu)}
+                  className="min-[782px]:hidden p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                  aria-label="Toggle menu"
+                >
+                  {showMobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                </button>
               </div>
 
               {/* Search bar: always visible, full width on mobile/tablet, centered on desktop */}
@@ -227,7 +252,7 @@ export const StorefrontLayout: React.FC = () => {
                   </Button>
                 </Link>
                 {user ? (
-                  <div className="relative" ref={userDropdownRef}>
+                  <div className="relative hidden min-[782px]:block" ref={userDropdownRef}>
                     <Button 
                       variant="outline" 
                       className="flex items-center"
@@ -321,8 +346,8 @@ export const StorefrontLayout: React.FC = () => {
             </div>
           </div>
 
-          {/* Navigation */}
-          <div className="border-t">
+          {/* Navigation - hidden on mobile */}
+          <div className="border-t hidden min-[782px]:block">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <nav className="flex space-x-6 py-4 overflow-x-auto">
                 <button
@@ -352,6 +377,134 @@ export const StorefrontLayout: React.FC = () => {
             </div>
           </div>
         </header>
+
+        {/* Mobile Menu - shown on 781px and below */}
+        {showMobileMenu && (
+          <div ref={mobileMenuRef} className="min-[782px]:hidden bg-white border-t border-gray-200 shadow-lg">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              {/* Categories Section */}
+              <div className="py-4 border-b border-gray-200">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Categories</h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setSelectedCategory('');
+                      setShowMobileMenu(false);
+                    }}
+                    className={`block w-full text-left px-3 py-2 rounded-md text-sm ${
+                      selectedCategory === '' 
+                        ? 'bg-blue-100 text-blue-600 font-medium' 
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => {
+                        setSelectedCategory(category.name);
+                        setShowMobileMenu(false);
+                      }}
+                      className={`block w-full text-left px-3 py-2 rounded-md text-sm ${
+                        selectedCategory === category.name 
+                          ? 'bg-blue-100 text-blue-600 font-medium' 
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* User Section - only show if user is logged in */}
+              {user && (
+                <div className="py-4">
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">Account</h3>
+                  <div className="space-y-2">
+                    <div className="px-3 py-2 bg-gray-50 rounded-md">
+                      <p className="text-sm font-medium text-gray-900">
+                        {user.displayName || 'Customer'}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {user.email}
+                      </p>
+                    </div>
+                    
+                    <Link
+                      to="/profile"
+                      className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      <UserCircle className="h-4 w-4 mr-3" />
+                      My Profile
+                    </Link>
+                    
+                    <Link
+                      to="/orders"
+                      className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      <Package className="h-4 w-4 mr-3" />
+                      Order History
+                    </Link>
+                    
+                    <button
+                      onClick={async () => {
+                        setShowMobileMenu(false);
+                        try {
+                          await signOut();
+                          toast.success('Signed out successfully');
+                          navigate('/');
+                        } catch (error) {
+                          console.error('Error signing out:', error);
+                          toast.error('Failed to sign out');
+                        }
+                      }}
+                      className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md"
+                    >
+                      <LogOut className="h-4 w-4 mr-3" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Login/Register - only show if user is not logged in */}
+              {!user && (
+                <div className="py-4">
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">Account</h3>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        setAuthModalMode('signin');
+                        setShowAuthModal(true);
+                        setShowMobileMenu(false);
+                      }}
+                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
+                    >
+                      <User className="h-4 w-4 mr-3" />
+                      Sign In
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setAuthModalMode('signup');
+                        setShowAuthModal(true);
+                        setShowMobileMenu(false);
+                      }}
+                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
+                    >
+                      <User className="h-4 w-4 mr-3" />
+                      Register
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <main className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen relative">
           {/* Subtle pattern overlay */}
