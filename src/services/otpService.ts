@@ -16,7 +16,7 @@ export interface OTPRecord {
 }
 
 export class OTPService {
-  private static OTP_EXPIRY_MINUTES = 10; // OTP expires in 10 minutes
+  private static OTP_EXPIRY_MINUTES = 3; // OTP expires in 3 minutes as requested
   private static RATE_LIMIT_MINUTES = 1; // Can only request new OTP every minute
 
   // Generate 4-digit OTP
