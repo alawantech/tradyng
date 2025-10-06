@@ -83,7 +83,9 @@ export const ProductDetails: React.FC = () => {
         <div className="animate-pulse">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div className="space-y-4">
-              <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-lg h-96"></div>
+              <div className="w-full h-80 bg-gray-200 rounded-lg"
+                style={{ maxHeight: '320px' }}
+              ></div>
               <div className="flex space-x-2">
                 {[...Array(3)].map((_, index) => (
                   <div key={index} className="w-20 h-20 bg-gray-200 rounded-lg"></div>
@@ -146,7 +148,9 @@ export const ProductDetails: React.FC = () => {
         {/* LEFT: Product Media */}
         <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center">
           {/* Main Image/Video Viewer */}
-          <div className="relative w-full aspect-w-1 aspect-h-1 mb-4 group">
+          <div className="relative w-full h-80 mb-4 group overflow-hidden rounded-2xl"
+            style={{ maxHeight: '320px' }}
+          >
             {/* Slideshow arrows */}
             <button
               className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white bg-opacity-70 rounded-full p-2 shadow hover:bg-blue-100"
