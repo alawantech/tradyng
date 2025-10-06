@@ -54,6 +54,17 @@ export const StorefrontHome: React.FC = () => {
     });
   };
 
+  // Scroll to products section
+  const scrollToProducts = () => {
+    const productsSection = document.getElementById('products-section');
+    if (productsSection) {
+      productsSection.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
   if (storeLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -83,36 +94,135 @@ export const StorefrontHome: React.FC = () => {
 
   return (
     <div>
-      {/* Hero Section - Beautiful, compact, visually impressive */}
-      <section className="relative text-white overflow-hidden" style={{
-        background: 'linear-gradient(135deg, #be185d 0%, #ec4899 25%, #f97316 50%, #f59e0b 75%, #eab308 100%)'
+      {/* Hero Section - Elegant Default Design - Color Matched to Store Theme */}
+      <section className="relative text-white overflow-hidden min-h-[400px] flex items-center" style={{
+        background: 'linear-gradient(135deg, #9ca3af 0%, #6b7280 15%, #8b8db5 35%, #a5a8c5 65%, #c5cbe1 85%, #9ca3af 100%)',
+        backgroundSize: '400% 400%',
+        animation: 'gradient 12s ease-in-out infinite'
       }}>
-        {/* Decorative blurred circles */}
-        <div className="absolute top-0 left-0 w-72 h-72 opacity-30 rounded-full blur-2xl -z-10" style={{backgroundColor: '#fce7f3'}} />
-        <div className="absolute bottom-0 right-0 w-96 h-96 opacity-20 rounded-full blur-2xl -z-10" style={{backgroundColor: '#fef3c7'}} />
-        <div className="max-w-3xl mx-auto px-4 sm:px-8 py-16 md:py-20 flex flex-col items-center justify-center text-center">
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 drop-shadow-lg"
-            style={{letterSpacing: '0.01em'}}
-          >
-            Welcome to <span className="bg-white bg-opacity-20 px-2 rounded text-shadow-lg">{business.name}</span>
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.2 }}
-            className="text-lg sm:text-xl md:text-2xl mb-6 max-w-xl mx-auto text-white/90"
-          >
-            {business.description || `Discover amazing products from ${business.name}. Quality guaranteed, fast shipping.`}
-          </motion.p>
+        {/* Animated Geometric Pattern Overlay */}
+        <div 
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.6'%3E%3Ccircle cx='40' cy='40' r='3'/%3E%3Ccircle cx='20' cy='20' r='2'/%3E%3Ccircle cx='60' cy='20' r='2'/%3E%3Ccircle cx='20' cy='60' r='2'/%3E%3Ccircle cx='60' cy='60' r='2'/%3E%3Crect x='38' y='18' width='4' height='4' rx='2'/%3E%3Crect x='18' y='38' width='4' height='4' rx='2'/%3E%3Crect x='58' y='38' width='4' height='4' rx='2'/%3E%3Crect x='38' y='58' width='4' height='4' rx='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundSize: '80px 80px',
+            animation: 'float 8s ease-in-out infinite'
+          }}
+        />
+        
+        {/* Enhanced Floating Orbs with Continuous Animation */}
+        <div 
+          className="absolute top-10 left-10 w-28 h-28 rounded-full blur-xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 70%)',
+            animation: 'float 6s ease-in-out infinite, pulse-glow 4s ease-in-out infinite'
+          }}
+        />
+        <div 
+          className="absolute top-20 right-20 w-20 h-20 rounded-full blur-lg"
+          style={{ 
+            background: 'radial-gradient(circle, rgba(200, 200, 220, 0.4) 0%, rgba(180, 190, 210, 0.2) 70%)',
+            animationDelay: '2s',
+            animation: 'float 8s ease-in-out infinite 2s, pulse-glow 5s ease-in-out infinite 1s'
+          }} 
+        />
+        <div 
+          className="absolute bottom-16 left-1/4 w-16 h-16 rounded-full blur-lg"
+          style={{ 
+            background: 'radial-gradient(circle, rgba(180, 200, 230, 0.3) 0%, rgba(160, 180, 210, 0.15) 70%)',
+            animation: 'float 7s ease-in-out infinite 1s, pulse-glow 6s ease-in-out infinite 3s'
+          }} 
+        />
+        <div 
+          className="absolute top-1/2 right-10 w-12 h-12 rounded-full blur-md"
+          style={{ 
+            background: 'radial-gradient(circle, rgba(220, 225, 240, 0.35) 0%, rgba(200, 210, 230, 0.18) 70%)',
+            animation: 'float 5s ease-in-out infinite 3s, pulse-glow 7s ease-in-out infinite 2s'
+          }} 
+        />
+        
+        {/* Main Content - Professional styling */}
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="mb-4"
+            >
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight">
+                Welcome to{' '}
+                <span className="relative inline-block">
+                  <span 
+                    className="font-extrabold drop-shadow-lg"
+                    style={{
+                      background: 'linear-gradient(90deg, #ffffff 0%, #f3f4f6 25%, #ffffff 50%, #e5e7eb 75%, #ffffff 100%)',
+                      backgroundSize: '200% 100%',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      animation: 'shimmer 3s ease-in-out infinite'
+                    }}
+                  >
+                    {business.name}
+                  </span>
+                  <div 
+                    className="absolute -bottom-1 left-0 w-full h-0.5 rounded-full"
+                    style={{
+                      background: 'linear-gradient(90deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.8) 100%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'shimmer 3s ease-in-out infinite'
+                    }}
+                  />
+                </span>
+              </h1>
+            </motion.div>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="text-base sm:text-lg md:text-xl mb-6 max-w-2xl mx-auto text-white/95 leading-relaxed drop-shadow-sm"
+            >
+              {business.description || `Discover premium quality products curated just for you. Experience exceptional service and satisfaction.`}
+            </motion.p>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="flex flex-col sm:flex-row gap-3 justify-center items-center"
+            >
+              <button 
+                onClick={scrollToProducts}
+                className="relative bg-white text-gray-700 font-semibold px-6 py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg border border-gray-200 overflow-hidden cursor-pointer"
+                style={{
+                  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1), 0 0 20px rgba(255, 255, 255, 0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(45deg, #f8fafc, #f1f5f9)';
+                  e.currentTarget.style.color = '#374151';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'white';
+                  e.currentTarget.style.color = '#374151';
+                }}
+              >
+                Shop Now
+              </button>
+            </motion.div>
+          </div>
+        </div>
+        
+        {/* Bottom Wave - Seamless transition to store background */}
+        <div className="absolute bottom-0 left-0 w-full">
+          <svg viewBox="0 0 1200 80" preserveAspectRatio="none" className="relative block w-full h-12">
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="#c5cbe1"></path>
+          </svg>
         </div>
       </section>
 
       {/* Featured Products */}
-      <section className="py-16">
+      <section id="products-section" className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Dynamic section title based on category */}
           {selectedCategory && (
