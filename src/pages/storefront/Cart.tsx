@@ -7,16 +7,20 @@ import { Button } from '../../components/ui/Button';
 import { useCart } from '../../contexts/CartContext';
 import { useStore } from './StorefrontLayout';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
+import { useColorScheme } from '../../hooks/useColorScheme';
 
 export const Cart: React.FC = () => {
   const { items, total, itemCount, updateQuantity, removeItem, clearCart } = useCart();
   const { business } = useStore();
 
+  // Get color scheme based on business background color
+  const colorScheme = useColorScheme(business?.branding?.storeBackgroundColor);
+
   if (!business) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
+          <h1 className={`text-2xl font-bold ${colorScheme.text.primary}`}>Loading...</h1>
         </div>
       </div>
     );
@@ -30,9 +34,9 @@ export const Cart: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <ShoppingCart className="h-24 w-24 text-gray-400 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h1>
-          <p className="text-gray-600 mb-8">
+          <ShoppingCart className={`h-24 w-24 ${colorScheme.icon.default} mx-auto mb-6`} />
+          <h1 className={`text-3xl font-bold ${colorScheme.text.primary} mb-4`}>Your cart is empty</h1>
+          <p className={`${colorScheme.text.secondary} mb-8`}>
             Add some products from {business.name} to get started.
           </p>
           <Link to="/products">
@@ -56,8 +60,8 @@ export const Cart: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
-            <p className="text-gray-600 mt-1">{itemCount} items</p>
+            <h1 className={`text-3xl font-bold ${colorScheme.text.primary}`}>Shopping Cart</h1>
+            <p className={`${colorScheme.text.secondary} mt-1`}>{itemCount} items</p>
           </div>
           <Link to="/products">
             <Button variant="outline">

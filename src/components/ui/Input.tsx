@@ -4,13 +4,23 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   icon?: React.ReactNode;
+  labelClassName?: string;
+  borderClassName?: string;
 }
 
-export const Input: React.FC<InputProps> = ({ label, error, icon, className = '', ...props }) => {
+export const Input: React.FC<InputProps> = ({ 
+  label, 
+  error, 
+  icon, 
+  className = '', 
+  labelClassName = '', 
+  borderClassName = '',
+  ...props 
+}) => {
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-bold text-white mb-1 drop-shadow-lg">
+        <label className={`block text-sm font-bold mb-1 ${labelClassName || 'text-gray-900'}`}>
           {label}
         </label>
       )}
@@ -23,7 +33,7 @@ export const Input: React.FC<InputProps> = ({ label, error, icon, className = ''
           </div>
         )}
         <input
-          className={`w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2 border border-gray-600 rounded-lg shadow-lg focus:outline-none theme-focus text-black placeholder-gray-400 font-semibold ${
+          className={`w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2 border ${borderClassName || 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-500 ${
             error ? 'border-red-500' : ''
           } ${className}`}
           {...props}

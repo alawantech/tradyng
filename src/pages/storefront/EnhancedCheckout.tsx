@@ -8,7 +8,6 @@ import {
   User, 
   AlertCircle, 
   Plus,
-  MapPin,
   Edit3,
   Trash2,
   Check
@@ -21,11 +20,10 @@ import { useStore } from './StorefrontLayout';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
+import { useColorScheme } from '../../hooks/useColorScheme';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { OrderService } from '../../services/order';
 import { CustomerService, CustomerAddress, CustomerProfile } from '../../services/customer';
-import { EmailService } from '../../services/emailService';
-import { OTPService } from '../../services/otpService';
 import toast from 'react-hot-toast';
 
 interface CheckoutFormData {
@@ -36,7 +34,7 @@ interface CheckoutFormData {
   address: string;
   city: string;
   state: string;
-  zipCode?: string;
+  country: string;
   paymentMethod: 'manual' | 'card';
   notes?: string;
   createAccount?: boolean;
@@ -52,15 +50,18 @@ interface AddressFormData {
   street: string;
   city: string;
   state: string;
-  zipCode?: string;
+  country: string;
   isDefault: boolean;
 }
 
 export const EnhancedCheckout: React.FC = () => {
   const { items, total, itemCount, clearCart } = useCart();
   const { business } = useStore();
-  const { user, signUp, signIn } = useCustomerAuth();
+  const { user, signUp } = useCustomerAuth();
   const navigate = useNavigate();
+  
+  // Get color scheme based on business background color
+  const colorScheme = useColorScheme(business?.branding?.storeBackgroundColor);
   
   // State management
   const [formData, setFormData] = useState<CheckoutFormData>({
@@ -71,6 +72,7 @@ export const EnhancedCheckout: React.FC = () => {
     address: '',
     city: '',
     state: '',
+    country: 'Nigeria',
     paymentMethod: 'manual',
     notes: '',
     createAccount: false
@@ -84,7 +86,6 @@ export const EnhancedCheckout: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   // Address form for adding/editing addresses
   const [addressForm, setAddressForm] = useState<AddressFormData>({
@@ -95,7 +96,7 @@ export const EnhancedCheckout: React.FC = () => {
     street: '',
     city: '',
     state: '',
-    zipCode: '',
+    country: 'Nigeria',
     isDefault: false
   });
 
@@ -113,7 +114,6 @@ export const EnhancedCheckout: React.FC = () => {
   const loadCustomerData = async () => {
     if (!user) return;
     
-    setIsLoadingProfile(true);
     try {
       // Load or create customer profile
       let profile = await CustomerService.getProfile(user.uid);
@@ -154,8 +154,6 @@ export const EnhancedCheckout: React.FC = () => {
     } catch (error) {
       console.error('Error loading customer data:', error);
       toast.error('Failed to load your profile information');
-    } finally {
-      setIsLoadingProfile(false);
     }
   };
 
@@ -168,7 +166,7 @@ export const EnhancedCheckout: React.FC = () => {
       address: address.street,
       city: address.city,
       state: address.state,
-      zipCode: address.zipCode || ''
+      country: address.country
     }));
   };
 
@@ -190,9 +188,20 @@ export const EnhancedCheckout: React.FC = () => {
 
   const handleAddressSelect = (addressId: string) => {
     setSelectedAddressId(addressId);
-    const address = customerAddresses.find(addr => addr.id === addressId);
-    if (address) {
-      fillFormWithAddress(address);
+    if (addressId === 'new') {
+      // Clear form for new address entry
+      setFormData(prev => ({
+        ...prev,
+        address: '',
+        city: '',
+        state: '',
+        country: 'Nigeria'
+      }));
+    } else {
+      const address = customerAddresses.find(addr => addr.id === addressId);
+      if (address) {
+        fillFormWithAddress(address);
+      }
     }
   };
 
@@ -206,7 +215,7 @@ export const EnhancedCheckout: React.FC = () => {
       street: '',
       city: '',
       state: '',
-      zipCode: '',
+      country: 'Nigeria',
       isDefault: customerAddresses.length === 0
     });
     setShowAddressForm(true);
@@ -222,7 +231,7 @@ export const EnhancedCheckout: React.FC = () => {
       street: address.street,
       city: address.city,
       state: address.state,
-      zipCode: address.zipCode || '',
+      country: address.country,
       isDefault: address.isDefault
     });
     setShowAddressForm(true);
@@ -343,8 +352,7 @@ export const EnhancedCheckout: React.FC = () => {
           street: formData.address,
           city: formData.city,
           state: formData.state,
-          zipCode: formData.zipCode || '',
-          country: 'Nigeria'
+          country: formData.country
         },
         items: items.map(item => ({
           productId: item.id,
@@ -366,8 +374,8 @@ export const EnhancedCheckout: React.FC = () => {
       // Create order in database
       const orderId = await OrderService.createOrder(business.id, orderData);
       
-      // Save address if user is logged in and it's not already saved
-      if (currentUser && !selectedAddressId) {
+      // Save address if user is logged in and it's a new address
+      if (currentUser && (selectedAddressId === 'new' || !selectedAddressId)) {
         try {
           await CustomerService.addAddress({
             customerId: currentUser.uid,
@@ -379,45 +387,33 @@ export const EnhancedCheckout: React.FC = () => {
             street: formData.address,
             city: formData.city,
             state: formData.state,
-            zipCode: formData.zipCode || '',
-            country: 'Nigeria'
+            country: formData.country
           });
         } catch (error) {
           console.error('Error saving address:', error);
         }
       }
 
-      // Send email notifications
-      if (business) {
-        try {
-          const storeBranding = {
-            storeName: business.name,
-            storeUrl: `https://${business.subdomain}.rady.ng`,
-            logoUrl: business.logo,
-            primaryColor: business.settings?.primaryColor || '#3B82F6',
-            supportEmail: business.email,
-            phone: business.phone,
-            customFromName: `${business.name} Team`
-          };
+      // Send email notifications (commented out until methods are available)
+      // if (business) {
+      //   try {
+      //     const storeBranding = {
+      //       storeName: business.name,
+      //       storeUrl: `https://${business.subdomain}.rady.ng`,
+      //       logoUrl: business.logo,
+      //       primaryColor: business.settings?.primaryColor || '#3B82F6',
+      //       supportEmail: business.email,
+      //       phone: business.phone,
+      //       customFromName: `${business.name} Team`
+      //     };
 
-          // Send order confirmation to customer
-          await EmailService.sendOrderPlacedConfirmation(
-            { id: orderId, ...orderData },
-            { email: formData.email, name: `${formData.firstName} ${formData.lastName}` },
-            storeBranding
-          );
-
-          // Send notification to store owner
-          await EmailService.sendOrderNotificationToOwner(
-            { id: orderId, ...orderData },
-            { email: formData.email, name: `${formData.firstName} ${formData.lastName}` },
-            storeBranding
-          );
-        } catch (emailError) {
-          console.error('Error sending emails:', emailError);
-          // Don't fail the order if email fails
-        }
-      }
+      //     // TODO: Send order confirmation to customer
+      //     // TODO: Send notification to store owner
+      //   } catch (emailError) {
+      //     console.error('Error sending emails:', emailError);
+      //     // Don't fail the order if email fails
+      //   }
+      // }
       
       // Clear cart and redirect to payment
       clearCart();
@@ -441,7 +437,7 @@ export const EnhancedCheckout: React.FC = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
+          <h1 className={`text-2xl font-bold ${colorScheme.text.primary}`}>Loading...</h1>
         </div>
       </div>
     );
@@ -455,8 +451,8 @@ export const EnhancedCheckout: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h1>
-          <p className="text-gray-600 mb-8">Add some products to proceed with checkout.</p>
+          <h1 className={`text-3xl font-bold ${colorScheme.text.primary} mb-4`}>Your cart is empty</h1>
+          <p className={`${colorScheme.text.secondary} mb-8`}>Add some products to proceed with checkout.</p>
           <Link to="/products">
             <Button size="lg">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -478,8 +474,8 @@ export const EnhancedCheckout: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
-            <p className="text-gray-600 mt-1">{itemCount} items • {formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+            <h1 className={`text-3xl font-bold ${colorScheme.text.primary}`}>Checkout</h1>
+            <p className={`${colorScheme.text.secondary} mt-1`}>{itemCount} items • {formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
           </div>
           <Link to="/cart">
             <Button variant="outline">
@@ -499,10 +495,10 @@ export const EnhancedCheckout: React.FC = () => {
                 <div className="flex items-start space-x-3">
                   <AlertCircle className="h-6 w-6 text-blue-600 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                    <h3 className={`text-lg font-semibold ${colorScheme.text.info} mb-2`}>
                       Sign in or continue as guest
                     </h3>
-                    <p className="text-blue-700 mb-4">
+                    <p className={`${colorScheme.text.info} mb-4`}>
                       You can place an order as a guest, or login for faster checkout and order tracking.
                     </p>
                     <div className="flex space-x-4 mb-4">
@@ -526,7 +522,7 @@ export const EnhancedCheckout: React.FC = () => {
                           setShowAuthModal(true);
                         }}
                         size="sm"
-                        className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                        className={`border-blue-300 ${colorScheme.text.info} hover:bg-blue-100`}
                       >
                         Register
                       </Button>
@@ -540,9 +536,9 @@ export const EnhancedCheckout: React.FC = () => {
                           name="createAccount"
                           checked={formData.createAccount}
                           onChange={handleInputChange}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
-                        <span className="text-sm text-blue-700">
+                        <span className={`text-sm ${colorScheme.text.primary}`}>
                           Create an account during checkout (optional)
                         </span>
                       </label>
@@ -557,6 +553,8 @@ export const EnhancedCheckout: React.FC = () => {
                             onChange={handleInputChange}
                             placeholder="Enter password"
                             required={formData.createAccount}
+                            labelClassName={colorScheme.text.primary}
+                            borderClassName={colorScheme.border.default}
                           />
                           <Input
                             label="Confirm Password"
@@ -566,6 +564,8 @@ export const EnhancedCheckout: React.FC = () => {
                             onChange={handleInputChange}
                             placeholder="Confirm password"
                             required={formData.createAccount}
+                            labelClassName={colorScheme.text.primary}
+                            borderClassName={colorScheme.border.default}
                           />
                         </div>
                       )}
@@ -578,10 +578,10 @@ export const EnhancedCheckout: React.FC = () => {
                 <div className="flex items-start space-x-3">
                   <Check className="h-6 w-6 text-green-600 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-green-900 mb-2">
+                    <h3 className={`text-lg font-semibold ${colorScheme.text.success} mb-2`}>
                       Signed in as {customerProfile?.displayName || user.email}
                     </h3>
-                    <p className="text-green-700">
+                    <p className={`${colorScheme.text.success}`}>
                       Your information will be saved and you can track your orders.
                     </p>
                   </div>
@@ -590,8 +590,8 @@ export const EnhancedCheckout: React.FC = () => {
             )}
 
             {/* Customer Information */}
-            <Card className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Customer Information</h2>
+            <Card className="p-6 bg-white border border-gray-200">
+              <h2 className="text-xl font-bold text-black mb-6">Customer Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="First Name"
@@ -600,6 +600,8 @@ export const EnhancedCheckout: React.FC = () => {
                   value={formData.firstName}
                   onChange={handleInputChange}
                   placeholder="Kemi"
+                  labelClassName="text-black"
+                  borderClassName="border-gray-300"
                 />
                 <Input
                   label="Last Name"
@@ -608,6 +610,8 @@ export const EnhancedCheckout: React.FC = () => {
                   value={formData.lastName}
                   onChange={handleInputChange}
                   placeholder="Adeyemi"
+                  labelClassName="text-black"
+                  borderClassName="border-gray-300"
                 />
                 <Input
                   label="Email"
@@ -617,6 +621,8 @@ export const EnhancedCheckout: React.FC = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="kemi@gmail.com"
+                  labelClassName="text-black"
+                  borderClassName="border-gray-300"
                 />
                 <Input
                   label="Phone"
@@ -626,15 +632,17 @@ export const EnhancedCheckout: React.FC = () => {
                   value={formData.phone}
                   onChange={handleInputChange}
                   placeholder="+234 901 234 5678"
+                  labelClassName="text-black"
+                  borderClassName="border-gray-300"
                 />
               </div>
             </Card>
 
             {/* Saved Addresses (for logged in users) */}
             {user && customerAddresses.length > 0 && (
-              <Card className="p-6">
+              <Card className={`p-6 ${colorScheme.background.card}`}>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Saved Addresses</h2>
+                  <h2 className={`text-xl font-bold ${colorScheme.text.primary}`}>Choose Delivery Address</h2>
                   <Button
                     type="button"
                     variant="outline"
@@ -642,39 +650,58 @@ export const EnhancedCheckout: React.FC = () => {
                     onClick={handleAddAddress}
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add New
+                    Add New Address
                   </Button>
                 </div>
                 
                 <div className="space-y-3">
+                  {/* Create New Address Option */}
+                  <div
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      selectedAddressId === 'new'
+                        ? 'border-blue-500 bg-blue-50'
+                        : `${colorScheme.border.default} hover:${colorScheme.border.light}`
+                    }`}
+                    onClick={() => handleAddressSelect('new')}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Plus className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <span className={`font-medium ${colorScheme.text.primary}`}>Use New Address</span>
+                        <p className={`text-sm ${colorScheme.text.secondary}`}>Enter a different delivery address below</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Saved Addresses */}
                   {customerAddresses.map((address) => (
                     <div
                       key={address.id}
                       className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                         selectedAddressId === address.id
                           ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : `${colorScheme.border.default} hover:${colorScheme.border.light}`
                       }`}
                       onClick={() => handleAddressSelect(address.id!)}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
-                            <span className="font-medium text-gray-900">{address.label}</span>
+                            <span className={`font-medium ${colorScheme.text.primary}`}>{address.label}</span>
                             {address.isDefault && (
                               <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                                 Default
                               </span>
                             )}
                           </div>
-                          <p className="text-gray-600 text-sm">
+                          <p className={`${colorScheme.text.secondary} text-sm`}>
                             {address.firstName} {address.lastName}
                           </p>
-                          <p className="text-gray-600 text-sm">{address.street}</p>
-                          <p className="text-gray-600 text-sm">
-                            {address.city}, {address.state} {address.zipCode}
+                          <p className={`${colorScheme.text.secondary} text-sm`}>{address.street}</p>
+                          <p className={`${colorScheme.text.secondary} text-sm`}>
+                            {address.city}, {address.state}, {address.country}
                           </p>
-                          <p className="text-gray-600 text-sm">{address.phone}</p>
+                          <p className={`${colorScheme.text.secondary} text-sm`}>{address.phone}</p>
                         </div>
                         <div className="flex items-center space-x-2">
                           <button
@@ -683,7 +710,7 @@ export const EnhancedCheckout: React.FC = () => {
                               e.stopPropagation();
                               handleEditAddress(address);
                             }}
-                            className="p-1 text-gray-400 hover:text-gray-600"
+                            className={`p-1 ${colorScheme.icon.default} ${colorScheme.hover.secondary}`}
                           >
                             <Edit3 className="h-4 w-4" />
                           </button>
@@ -693,7 +720,7 @@ export const EnhancedCheckout: React.FC = () => {
                               e.stopPropagation();
                               handleDeleteAddress(address.id!);
                             }}
-                            className="p-1 text-gray-400 hover:text-red-600"
+                            className={`p-1 ${colorScheme.icon.default} hover:text-red-600`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -706,9 +733,9 @@ export const EnhancedCheckout: React.FC = () => {
             )}
 
             {/* Shipping Address */}
-            <Card className="p-6">
+            <Card className="p-6 bg-white border border-gray-200">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Delivery Address</h2>
+                <h2 className="text-xl font-bold text-black">Delivery Address</h2>
                 {user && (
                   <Button
                     type="button"
@@ -730,68 +757,79 @@ export const EnhancedCheckout: React.FC = () => {
                   value={formData.address}
                   onChange={handleInputChange}
                   placeholder="No. 23 Opebi Road, Ikeja"
+                  labelClassName="text-black"
+                  borderClassName="border-gray-300"
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
-                    label="City"
-                    name="city"
-                    value={formData.city}
+                    label="Country"
+                    name="country"
+                    required
+                    value={formData.country || 'Nigeria'}
                     onChange={handleInputChange}
-                    placeholder="Lagos"
+                    placeholder="Nigeria"
+                    labelClassName="text-black"
+                    borderClassName="border-gray-300"
                   />
                   <Input
                     label="State"
                     name="state"
+                    required
                     value={formData.state}
                     onChange={handleInputChange}
                     placeholder="Lagos"
+                    labelClassName="text-black"
+                    borderClassName="border-gray-300"
                   />
                   <Input
-                    label="ZIP Code (Optional)"
-                    name="zipCode"
-                    value={formData.zipCode || ''}
+                    label="City"
+                    name="city"
+                    required
+                    value={formData.city}
                     onChange={handleInputChange}
-                    placeholder="100001"
+                    placeholder="Lagos"
+                    labelClassName="text-black"
+                    borderClassName="border-gray-300"
                   />
                 </div>
               </div>
             </Card>
 
             {/* Payment Method */}
-            <Card className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Payment Method</h2>
+            <Card className={`p-6 bg-white border border-gray-200`}>
+              <h2 className="text-xl font-bold text-black mb-6">Payment Method</h2>
               <div className="space-y-4">
-                <label className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <label className={`flex items-center space-x-3 p-4 border border-gray-300 rounded-lg cursor-pointer transition-colors hover:border-gray-400 ${formData.paymentMethod === 'manual' ? 'border-blue-500 bg-blue-50' : 'bg-white'}`}>
                   <input
                     type="radio"
                     name="paymentMethod"
                     value="manual"
                     checked={formData.paymentMethod === 'manual'}
                     onChange={handleInputChange}
-                    className="text-blue-600"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500"
                   />
                   <div className="flex items-center space-x-3">
                     <CreditCard className="h-5 w-5 text-gray-600" />
                     <div>
-                      <p className="font-medium">Manual Payment</p>
-                      <p className="text-sm text-gray-600">Pay via bank transfer</p>
+                      <p className="font-medium text-black">Manual Payment</p>
+                      <p className="text-sm text-gray-700">Pay via bank transfer</p>
                     </div>
                   </div>
                 </label>
                 
-                <label className="flex items-center space-x-3 p-4 border rounded-lg cursor-not-allowed opacity-50">
+                <label className="flex items-center space-x-3 p-4 border border-gray-300 rounded-lg cursor-not-allowed opacity-50 bg-gray-50">
                   <input
                     type="radio"
                     name="paymentMethod"
                     value="card"
                     disabled
-                    className="text-blue-600"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500"
                   />
                   <div className="flex items-center space-x-3">
                     <CreditCard className="h-5 w-5 text-gray-600" />
                     <div>
-                      <p className="font-medium">Credit/Debit Card</p>
-                      <p className="text-sm text-gray-600">Coming soon...</p>
+                      <p className="font-medium text-black">Credit/Debit Card</p>
+                      <p className="text-sm text-gray-700">Coming soon...</p>
                     </div>
                   </div>
                 </label>
@@ -799,23 +837,23 @@ export const EnhancedCheckout: React.FC = () => {
             </Card>
 
             {/* Order Notes */}
-            <Card className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Order Notes (Optional)</h2>
+            <Card className={`p-6 ${colorScheme.background.card}`}>
+              <h2 className={`text-xl font-bold ${colorScheme.text.primary} mb-6`}>Order Notes (Optional)</h2>
               <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleInputChange}
                 placeholder="Any special instructions for your order..."
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className={`w-full px-3 py-2 border ${colorScheme.border.default} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${colorScheme.text.primary} placeholder-gray-400`}
               />
             </Card>
           </div>
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <Card className="p-6 sticky top-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
+            <Card className={`p-6 sticky top-8 ${colorScheme.background.card}`}>
+              <h2 className={`text-xl font-bold ${colorScheme.text.primary} mb-6`}>Order Summary</h2>
               
               {/* Order Items */}
               <div className="space-y-4 mb-6">
@@ -827,8 +865,8 @@ export const EnhancedCheckout: React.FC = () => {
                       className="w-12 h-12 object-cover rounded-lg"
                     />
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{item.name}</p>
-                      <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
+                      <p className={`font-medium text-sm ${colorScheme.text.primary}`}>{item.name}</p>
+                      <p className={`${colorScheme.text.secondary} text-sm`}>Qty: {item.quantity}</p>
                     </div>
                     <p className="font-medium">{formatCurrency(item.price * item.quantity, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
                   </div>
@@ -837,11 +875,11 @@ export const EnhancedCheckout: React.FC = () => {
 
               <div className="space-y-3 mb-6 border-t pt-4">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal</span>
+                  <span className={`${colorScheme.text.secondary}`}>Subtotal</span>
                   <span className="font-medium">{formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Shipping</span>
+                  <span className={`${colorScheme.text.secondary}`}>Shipping</span>
                   <span className="font-medium">Free</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-3">
@@ -860,7 +898,7 @@ export const EnhancedCheckout: React.FC = () => {
               </Button>
 
               {/* Security Features */}
-              <div className="space-y-3 text-sm text-gray-600">
+              <div className={`space-y-3 text-sm ${colorScheme.text.secondary}`}>
                 <div className="flex items-center space-x-2">
                   <Truck className="h-4 w-4" />
                   <span>Free shipping</span>
@@ -873,10 +911,10 @@ export const EnhancedCheckout: React.FC = () => {
 
               {/* Store Info */}
               <div className="mt-6 pt-6 border-t">
-                <h3 className="font-semibold text-gray-900 mb-2">Order from</h3>
-                <p className="text-gray-600">{business.name}</p>
+                <h3 className={`font-semibold ${colorScheme.text.primary} mb-2`}>Order from</h3>
+                <p className={`${colorScheme.text.secondary}`}>{business.name}</p>
                 {business.phone && (
-                  <p className="text-sm text-gray-500 mt-1">📞 {business.phone}</p>
+                  <p className={`text-sm ${colorScheme.text.tertiary} mt-1`}>📞 {business.phone}</p>
                 )}
               </div>
             </Card>
@@ -901,9 +939,9 @@ export const EnhancedCheckout: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="relative w-full max-w-lg transform bg-white p-6 text-left shadow-xl transition-all sm:my-8 sm:p-8 rounded-lg"
+                className={`relative w-full max-w-lg transform ${colorScheme.background.card} p-6 text-left shadow-xl transition-all sm:my-8 sm:p-8 rounded-lg`}
               >
-                <h3 className="text-lg font-bold text-gray-900 mb-6">
+                <h3 className={`text-lg font-bold ${colorScheme.text.primary} mb-6`}>
                   {editingAddressId ? 'Edit Address' : 'Add New Address'}
                 </h3>
                 
@@ -915,6 +953,8 @@ export const EnhancedCheckout: React.FC = () => {
                       value={addressForm.label}
                       onChange={handleAddressFormChange}
                       placeholder="Home, Work, etc."
+                      labelClassName={colorScheme.text.primary}
+                      borderClassName={colorScheme.border.default}
                     />
                     <div className="flex items-center pt-6">
                       <label className="flex items-center space-x-2">
@@ -923,9 +963,9 @@ export const EnhancedCheckout: React.FC = () => {
                           name="isDefault"
                           checked={addressForm.isDefault}
                           onChange={handleAddressFormChange}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
-                        <span className="text-sm">Set as default</span>
+                        <span className={`text-sm ${colorScheme.text.primary}`}>Set as default</span>
                       </label>
                     </div>
                   </div>
@@ -936,12 +976,16 @@ export const EnhancedCheckout: React.FC = () => {
                       name="firstName"
                       value={addressForm.firstName}
                       onChange={handleAddressFormChange}
+                      labelClassName={colorScheme.text.primary}
+                      borderClassName={colorScheme.border.default}
                     />
                     <Input
                       label="Last Name"
                       name="lastName"
                       value={addressForm.lastName}
                       onChange={handleAddressFormChange}
+                      labelClassName={colorScheme.text.primary}
+                      borderClassName={colorScheme.border.default}
                     />
                   </div>
                   
@@ -950,6 +994,8 @@ export const EnhancedCheckout: React.FC = () => {
                     name="phone"
                     value={addressForm.phone}
                     onChange={handleAddressFormChange}
+                    labelClassName={colorScheme.text.primary}
+                    borderClassName={colorScheme.border.default}
                   />
                   
                   <Input
@@ -957,6 +1003,8 @@ export const EnhancedCheckout: React.FC = () => {
                     name="street"
                     value={addressForm.street}
                     onChange={handleAddressFormChange}
+                    labelClassName={colorScheme.text.primary}
+                    borderClassName={colorScheme.border.default}
                   />
                   
                   <div className="grid grid-cols-3 gap-4">
@@ -965,18 +1013,24 @@ export const EnhancedCheckout: React.FC = () => {
                       name="city"
                       value={addressForm.city}
                       onChange={handleAddressFormChange}
+                      labelClassName={colorScheme.text.primary}
+                      borderClassName={colorScheme.border.default}
                     />
                     <Input
                       label="State"
                       name="state"
                       value={addressForm.state}
                       onChange={handleAddressFormChange}
+                      labelClassName={colorScheme.text.primary}
+                      borderClassName={colorScheme.border.default}
                     />
                     <Input
-                      label="ZIP Code"
-                      name="zipCode"
-                      value={addressForm.zipCode || ''}
+                      label="Country"
+                      name="country"
+                      value={addressForm.country}
                       onChange={handleAddressFormChange}
+                      labelClassName={colorScheme.text.primary}
+                      borderClassName={colorScheme.border.default}
                     />
                   </div>
                 </div>

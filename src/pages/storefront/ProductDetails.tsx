@@ -8,10 +8,11 @@ import { useCart } from '../../contexts/CartContext';
 import { ProductService, Product } from '../../services/product';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { generateProductRating, renderStars } from '../../utils/productRatings';
+import { useColorScheme } from '../../hooks/useColorScheme';
 import toast from 'react-hot-toast';
 
 // StarRating component
-const StarRating: React.FC<{ rating: number; totalReviews: number }> = ({ rating, totalReviews }) => {
+const StarRating: React.FC<{ rating: number; totalReviews: number; colorScheme: any }> = ({ rating, totalReviews, colorScheme }) => {
   const stars = renderStars(rating);
   
   return (
@@ -21,12 +22,12 @@ const StarRating: React.FC<{ rating: number; totalReviews: number }> = ({ rating
           <span key={index}>
             {starType === 'full' && <Star className="h-5 w-5 fill-current" />}
             {starType === 'half' && <StarHalf className="h-5 w-5 fill-current" />}
-            {starType === 'empty' && <Star className="h-5 w-5 text-gray-300" />}
+            {starType === 'empty' && <Star className={`h-5 w-5 ${colorScheme.icon.muted}`} />}
           </span>
         ))}
       </div>
-      <span className="font-semibold text-gray-700">{rating}</span>
-      <span className="text-gray-500 ml-2">({totalReviews} reviews)</span>
+      <span className={`font-semibold ${colorScheme.text.secondary}`}>{rating}</span>
+      <span className={`${colorScheme.text.tertiary} ml-2`}>({totalReviews} reviews)</span>
     </div>
   );
 };
@@ -42,6 +43,9 @@ export const ProductDetails: React.FC = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Get color scheme based on business background color
+  const colorScheme = useColorScheme(business?.branding?.storeBackgroundColor);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -112,8 +116,8 @@ export const ProductDetails: React.FC = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Product not found</h1>
-          <p className="text-gray-600 mb-4">The product you're looking for doesn't exist or is no longer available.</p>
+          <h1 className={`text-2xl font-bold ${colorScheme.text.primary} mb-4`}>Product not found</h1>
+          <p className={`${colorScheme.text.secondary} mb-4`}>The product you're looking for doesn't exist or is no longer available.</p>
           <Button onClick={() => window.history.back()}>Go Back</Button>
         </div>
       </div>
@@ -257,7 +261,7 @@ export const ProductDetails: React.FC = () => {
         {/* RIGHT: Product Info */}
         <div className="rounded-2xl shadow-lg p-8 flex flex-col justify-between" style={{ backgroundColor: '#f9f9f9' }}>
           {/* Title */}
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
+          <h1 className={`text-4xl font-bold ${colorScheme.text.primary} mb-2`}>{product.name}</h1>
           {/* Price Section */}
           <div className="flex items-center mb-4">
             <span className="text-3xl font-bold text-blue-600 mr-3">{formatCurrency(product.price, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
@@ -269,13 +273,14 @@ export const ProductDetails: React.FC = () => {
           <StarRating 
             rating={product.averageRating || generateProductRating(product.id || '').averageRating}
             totalReviews={product.totalReviews || generateProductRating(product.id || '').totalReviews}
+            colorScheme={colorScheme}
           />
           {/* Seller/Brand Info */}
-          <div className="text-sm text-gray-500 mb-4">Sold by <span className="font-semibold text-blue-700 cursor-pointer hover:underline">{business?.name || 'Brand Name'}</span></div>
+          <div className={`text-sm ${colorScheme.text.tertiary} mb-4`}>Sold by <span className="font-semibold text-blue-700 cursor-pointer hover:underline">{business?.name || 'Brand Name'}</span></div>
           {/* Variations (mockup) */}
           {product.sizes && product.sizes.length > 0 && (
             <div className="mb-4">
-              <div className="mb-2 text-xs text-gray-600">Size:</div>
+              <div className={`mb-2 text-xs ${colorScheme.text.secondary}`}>Size:</div>
               <div className="flex space-x-2">
                 {product.sizes.map(size => (
                   <button key={size} className="px-4 py-2 rounded-lg border border-gray-300 bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition-all font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300">{size}</button>

@@ -9,12 +9,16 @@ import { useCart } from '../../contexts/CartContext';
 import { ProductService, Product } from '../../services/product';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { generateProductRating, renderStars } from '../../utils/productRatings';
+import { useColorScheme } from '../../hooks/useColorScheme';
 
 export const StorefrontHome: React.FC = () => {
   const { business, isLoading: storeLoading, searchTerm, selectedCategory } = useStore();
   const { addItem } = useCart();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+
+  // Get color scheme based on business background color
+  const colorScheme = useColorScheme(business?.branding?.storeBackgroundColor);
 
   // Get hero style based on branding settings
   const getHeroStyle = () => {
@@ -147,8 +151,8 @@ export const StorefrontHome: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Store Not Found</h1>
-          <p className="text-gray-600">This store does not exist or is not available.</p>
+          <h1 className={`text-2xl font-bold ${colorScheme.text.primary} mb-2`}>Store Not Found</h1>
+          <p className={colorScheme.text.secondary}>This store does not exist or is not available.</p>
         </div>
       </div>
     );
@@ -386,10 +390,10 @@ export const StorefrontHome: React.FC = () => {
           {/* Dynamic section title based on category */}
           {selectedCategory && (
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              <h2 className={`text-3xl font-bold ${colorScheme.text.primary} mb-4`}>
                 {selectedCategory}
               </h2>
-              <p className="text-gray-600">
+              <p className={colorScheme.text.secondary}>
                 {filteredFeaturedProducts.length} product{filteredFeaturedProducts.length !== 1 ? 's' : ''} in this category
               </p>
             </div>
@@ -431,20 +435,20 @@ export const StorefrontHome: React.FC = () => {
                         />
                       </div>
                       <div className="flex flex-col px-4 py-3 flex-1" style={{ backgroundColor: '#f9f9f9' }}>
-                        <h3 className="text-base font-semibold text-black mb-1 truncate" style={{ backgroundColor: '#f9f9f9' }}>{product.name}</h3>
-                        <span className="text-lg font-bold text-black mb-2" style={{ backgroundColor: '#f9f9f9' }}>{formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}</span>
-                        <p className="text-gray-600 text-xs mb-2 line-clamp-2">{product.description}</p>
+                        <h3 className={`text-base font-semibold ${colorScheme.text.primary} mb-1 truncate`} style={{ backgroundColor: '#f9f9f9' }}>{product.name}</h3>
+                        <span className={`text-lg font-bold ${colorScheme.text.primary} mb-2`} style={{ backgroundColor: '#f9f9f9' }}>{formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}</span>
+                        <p className={`${colorScheme.text.secondary} text-xs mb-2 line-clamp-2`}>{product.description}</p>
                         <div className="flex items-center mb-2" style={{ backgroundColor: '#f9f9f9' }}>
                           <div className="flex text-yellow-400">
                             {renderStars(product.averageRating || generateProductRating(product.id || '').averageRating).map((starType, index) => (
                               <span key={index}>
                                 {starType === 'full' && <Star className="h-4 w-4 fill-current" />}
                                 {starType === 'half' && <StarHalf className="h-4 w-4 fill-current" />}
-                                {starType === 'empty' && <Star className="h-4 w-4 text-gray-300" />}
+                                {starType === 'empty' && <Star className={`h-4 w-4 ${colorScheme.icon.muted}`} />}
                               </span>
                             ))}
                           </div>
-                          <span className="text-xs text-gray-500 ml-2">({product.totalReviews || generateProductRating(product.id || '').totalReviews})</span>
+                          <span className={`text-xs ${colorScheme.text.tertiary} ml-2`}>({product.totalReviews || generateProductRating(product.id || '').totalReviews})</span>
                         </div>
                       </div>
                     </Link>
@@ -473,13 +477,13 @@ export const StorefrontHome: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-12">
-              <div className="text-gray-400 mb-4">
+              <div className={`${colorScheme.icon.default} mb-4`}>
                 <ShoppingCart className="h-16 w-16 mx-auto" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <h3 className={`text-xl font-semibold ${colorScheme.text.primary} mb-2`}>
                 {searchTerm || selectedCategory ? 'No Products Found' : 'No Products Yet'}
               </h3>
-              <p className="text-gray-600">
+              <p className={colorScheme.text.secondary}>
                 {searchTerm && selectedCategory
                   ? `No products match "${searchTerm}" in ${selectedCategory}. Try a different search term or category.`
                   : searchTerm

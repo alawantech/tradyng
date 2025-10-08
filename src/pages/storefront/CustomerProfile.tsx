@@ -22,6 +22,7 @@ import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { useStore } from './StorefrontLayout';
 import { CustomerService, CustomerProfile, CustomerAddress, CustomerOrderHistory } from '../../services/customer';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
+import { useColorScheme } from '../../hooks/useColorScheme';
 import toast from 'react-hot-toast';
 
 interface ProfileFormData {
@@ -44,7 +45,7 @@ interface AddressFormData {
   street: string;
   city: string;
   state: string;
-  zipCode?: string;
+  country: string;
   isDefault: boolean;
   notes?: string;
 }
@@ -53,6 +54,9 @@ export const CustomerProfilePage: React.FC = () => {
   const { user, signOut } = useCustomerAuth();
   const { business } = useStore();
   const navigate = useNavigate();
+  
+  // Get color scheme based on business background color
+  const colorScheme = useColorScheme(business?.branding?.storeBackgroundColor);
   
   // State management
   const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'orders'>('profile');
@@ -88,7 +92,7 @@ export const CustomerProfilePage: React.FC = () => {
     street: '',
     city: '',
     state: '',
-    zipCode: '',
+    country: 'Nigeria',
     isDefault: false,
     notes: ''
   });
@@ -258,7 +262,7 @@ export const CustomerProfilePage: React.FC = () => {
       street: '',
       city: '',
       state: '',
-      zipCode: '',
+      country: 'Nigeria',
       isDefault: customerAddresses.length === 0,
       notes: ''
     });
@@ -275,7 +279,7 @@ export const CustomerProfilePage: React.FC = () => {
       street: address.street,
       city: address.city,
       state: address.state,
-      zipCode: address.zipCode || '',
+      country: address.country,
       isDefault: address.isDefault,
       notes: address.notes || ''
     });
@@ -878,7 +882,7 @@ export const CustomerProfilePage: React.FC = () => {
                             </p>
                             <p className="text-gray-600 text-sm">{address.street}</p>
                             <p className="text-gray-600 text-sm">
-                              {address.city}, {address.state} {address.zipCode}
+                              {address.city}, {address.state}, {address.country}
                             </p>
                             <p className="text-gray-600 text-sm">{address.phone}</p>
                             {address.notes && (
@@ -1072,9 +1076,9 @@ export const CustomerProfilePage: React.FC = () => {
                     onChange={handleAddressFormChange}
                   />
                   <Input
-                    label="ZIP Code"
-                    name="zipCode"
-                    value={addressForm.zipCode || ''}
+                    label="Country"
+                    name="country"
+                    value={addressForm.country}
                     onChange={handleAddressFormChange}
                   />
                 </div>

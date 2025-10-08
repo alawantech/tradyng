@@ -21,7 +21,7 @@ interface CheckoutFormData {
   address: string;
   city: string;
   state: string;
-  zipCode?: string;
+  country: string;
   paymentMethod: 'manual' | 'card';
   notes?: string;
 }
@@ -40,6 +40,7 @@ export const Checkout: React.FC = () => {
     address: '',
     city: '',
     state: '',
+    country: 'Nigeria',
     paymentMethod: 'manual',
     notes: ''
   });
@@ -112,8 +113,7 @@ export const Checkout: React.FC = () => {
           street: formData.address,
           city: formData.city,
           state: formData.state,
-          zipCode: formData.zipCode || '',
-          country: 'Nigeria'
+          country: formData.country
         },
         items: items.map(item => ({
           productId: item.id,
@@ -283,18 +283,29 @@ export const Checkout: React.FC = () => {
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
-                    label="City (Optional)"
-                    name="city"
+                    label="Country"
+                    name="country"
+                    required
                     disabled={!user}
-                    value={formData.city}
+                    value={formData.country}
+                    onChange={handleInputChange}
+                    placeholder="Nigeria"
+                  />
+                  <Input
+                    label="State"
+                    name="state"
+                    required
+                    disabled={!user}
+                    value={formData.state}
                     onChange={handleInputChange}
                     placeholder="Lagos"
                   />
                   <Input
-                    label="State (Optional)"
-                    name="state"
+                    label="City"
+                    name="city"
+                    required
                     disabled={!user}
-                    value={formData.state}
+                    value={formData.city}
                     onChange={handleInputChange}
                     placeholder="Lagos"
                   />
