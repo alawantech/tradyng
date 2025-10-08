@@ -139,19 +139,35 @@ export const Payment: React.FC = () => {
       // For now, simulate the upload process
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Update order status to 'paid' and payment status to 'completed'
+      // For manual payment, set status to 'pending' and paymentStatus to 'pending'
       if (order.id) {
         await OrderService.updateOrder(businessId, order.id, {
-          status: 'paid',
-          paymentStatus: 'completed',
+          status: 'pending',
+          paymentStatus: 'pending',
           notes: order.notes ? `${order.notes}\n\nPayment receipt uploaded` : 'Payment receipt uploaded'
         });
       }
-      
-      toast.success('Payment receipt uploaded successfully! Your order is now being processed.');
-      
-      // Redirect to order confirmation or home page
-      navigate('/', { state: { orderSubmitted: true, orderId: order.orderId } });
+
+      // Send confirmation email to customer
+      try {
+        const { sendEmail } = await import('../../services/emailService');
+        await sendEmail({
+          to: order.customerEmail,
+          from: business.email || 'noreply@rady.ng',
+          subject: `Order ${order.orderId} Created - Awaiting Approval`,
+          html: `<h2>Order Created Successfully</h2>
+            <p>Hi ${order.customerName},</p>
+            <p>Your order <b>${order.orderId}</b> has been created and is awaiting admin approval.</p>
+            <p>Once your payment is verified, your order will be processed and shipped.</p>
+            <p>Thank you for shopping with ${business.name}!</p>`
+        });
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+      }
+
+      toast.success('Payment receipt uploaded successfully! Your order is now awaiting admin approval.');
+      // Redirect to order history page and pass orderId in state
+      navigate('/orders', { state: { orderSubmitted: true, orderId: order.orderId } });
       
     } catch (error) {
       console.error('Error processing payment:', error);
