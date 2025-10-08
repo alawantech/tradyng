@@ -435,8 +435,13 @@ export const StorefrontHome: React.FC = () => {
                         />
                       </div>
                       <div className="flex flex-col px-4 py-3 flex-1" style={{ backgroundColor: '#f9f9f9' }}>
-                        <h3 className={`text-base font-semibold ${colorScheme.text.primary} mb-1 truncate`} style={{ backgroundColor: '#f9f9f9' }}>{product.name}</h3>
-                        <span className={`text-lg font-bold ${colorScheme.text.primary} mb-2`} style={{ backgroundColor: '#f9f9f9' }}>{formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}</span>
+                        <h3 className="text-base font-semibold text-black mb-1 truncate" style={{ backgroundColor: '#f9f9f9' }}>{product.name}</h3>
+                        {/* Price - always black */}
+                        <span className="text-lg font-bold text-black mb-2" style={{ backgroundColor: '#f9f9f9' }}>{formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}</span>
+                        {/* Category - always black, if available */}
+                        {product.category && (
+                          <span className="text-xs font-semibold text-black mb-1" style={{ backgroundColor: '#f9f9f9' }}>{product.category}</span>
+                        )}
                         <p className={`${colorScheme.text.secondary} text-xs mb-2 line-clamp-2`}>{product.description}</p>
                         <div className="flex items-center mb-2" style={{ backgroundColor: '#f9f9f9' }}>
                           <div className="flex text-yellow-400">
@@ -448,7 +453,8 @@ export const StorefrontHome: React.FC = () => {
                               </span>
                             ))}
                           </div>
-                          <span className={`text-xs ${colorScheme.text.tertiary} ml-2`}>({product.totalReviews || generateProductRating(product.id || '').totalReviews})</span>
+                          {/* Count - lighter shade, not fully black */}
+                          <span className="text-xs text-gray-700 ml-2">({product.totalReviews || generateProductRating(product.id || '').totalReviews})</span>
                         </div>
                       </div>
                     </Link>
