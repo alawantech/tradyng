@@ -640,14 +640,15 @@ export const EnhancedCheckout: React.FC = () => {
 
             {/* Saved Addresses (for logged in users) */}
             {user && customerAddresses.length > 0 && (
-              <Card className={`p-6 ${colorScheme.background.card}`}>
+              <Card className="p-6 bg-white border border-gray-200">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className={`text-xl font-bold ${colorScheme.text.primary}`}>Choose Delivery Address</h2>
+                  <h2 className="text-xl font-bold text-black">Choose Delivery Address</h2>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={handleAddAddress}
+                    className="border-blue-500 text-blue-600 hover:bg-blue-50"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add New Address
@@ -656,98 +657,129 @@ export const EnhancedCheckout: React.FC = () => {
                 
                 <div className="space-y-3">
                   {/* Create New Address Option */}
-                  <div
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                  <label className={`block p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
                       selectedAddressId === 'new'
-                        ? 'border-blue-500 bg-blue-50'
-                        : `${colorScheme.border.default} hover:${colorScheme.border.light}`
-                    }`}
-                    onClick={() => handleAddressSelect('new')}
-                  >
+                        ? 'border-blue-500 bg-blue-50 shadow-sm'
+                        : 'border-gray-300 hover:border-gray-400 bg-white'
+                    }`}>
                     <div className="flex items-center space-x-3">
-                      <Plus className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <span className={`font-medium ${colorScheme.text.primary}`}>Use New Address</span>
-                        <p className={`text-sm ${colorScheme.text.secondary}`}>Enter a different delivery address below</p>
+                      <input
+                        type="radio"
+                        name="deliveryAddress"
+                        value="new"
+                        checked={selectedAddressId === 'new'}
+                        onChange={() => handleAddressSelect('new')}
+                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <Plus className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="font-medium text-black">Use New Address</span>
+                        <p className="text-sm text-gray-600 mt-1">Enter a different delivery address below</p>
                       </div>
                     </div>
-                  </div>
+                  </label>
                   
                   {/* Saved Addresses */}
                   {customerAddresses.map((address) => (
-                    <div
+                    <label
                       key={address.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      className={`block p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
                         selectedAddressId === address.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : `${colorScheme.border.default} hover:${colorScheme.border.light}`
+                          ? 'border-blue-500 bg-blue-50 shadow-sm'
+                          : 'border-gray-300 hover:border-gray-400 bg-white'
                       }`}
-                      onClick={() => handleAddressSelect(address.id!)}
                     >
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className={`font-medium ${colorScheme.text.primary}`}>{address.label}</span>
+                        <div className="flex items-start space-x-3 flex-1">
+                          <input
+                            type="radio"
+                            name="deliveryAddress"
+                            value={address.id}
+                            checked={selectedAddressId === address.id}
+                            onChange={() => handleAddressSelect(address.id!)}
+                            className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 mt-1"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="font-medium text-black">{address.label}</span>
                             {address.isDefault && (
-                              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
                                 Default
                               </span>
                             )}
                           </div>
-                          <p className={`${colorScheme.text.secondary} text-sm`}>
-                            {address.firstName} {address.lastName}
-                          </p>
-                          <p className={`${colorScheme.text.secondary} text-sm`}>{address.street}</p>
-                          <p className={`${colorScheme.text.secondary} text-sm`}>
-                            {address.city}, {address.state}, {address.country}
-                          </p>
-                          <p className={`${colorScheme.text.secondary} text-sm`}>{address.phone}</p>
+                          <div className="space-y-1">
+                            <p className="text-sm text-gray-700 font-medium">
+                              {address.firstName} {address.lastName}
+                            </p>
+                            <p className="text-sm text-gray-600">{address.street}</p>
+                            <p className="text-sm text-gray-600">
+                              {address.city}, {address.state}, {address.country}
+                            </p>
+                            <p className="text-sm text-gray-600">{address.phone}</p>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        </div>
+                        <div className="flex items-start space-x-1 ml-3 pt-1">
                           <button
                             type="button"
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
                               handleEditAddress(address);
                             }}
-                            className={`p-1 ${colorScheme.icon.default} ${colorScheme.hover.secondary}`}
+                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                            title="Edit Address"
                           >
                             <Edit3 className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
                               handleDeleteAddress(address.id!);
                             }}
-                            className={`p-1 ${colorScheme.icon.default} hover:text-red-600`}
+                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            title="Delete Address"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
-                    </div>
+                    </label>
                   ))}
                 </div>
               </Card>
             )}
 
-            {/* Shipping Address */}
-            <Card className="p-6 bg-white border border-gray-200">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-black">Delivery Address</h2>
-                {user && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddAddress}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Address
-                  </Button>
-                )}
-              </div>
+            {/* Shipping Address - Show when no saved addresses OR "Use New Address" is selected */}
+            {(!user || customerAddresses.length === 0 || selectedAddressId === 'new') && (
+              <Card className="p-6 bg-white border border-gray-200">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-black">
+                      {selectedAddressId === 'new' ? 'Enter New Delivery Address' : 'Delivery Address'}
+                    </h2>
+                    {selectedAddressId === 'new' && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        This address will be saved to your account for future orders
+                      </p>
+                    )}
+                  </div>
+                  {user && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddAddress}
+                      className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Save Address
+                    </Button>
+                  )}
+                </div>
               
               <div className="space-y-4">
                 <Input
@@ -794,6 +826,7 @@ export const EnhancedCheckout: React.FC = () => {
                 </div>
               </div>
             </Card>
+            )}
 
             {/* Payment Method */}
             <Card className={`p-6 bg-white border border-gray-200`}>
