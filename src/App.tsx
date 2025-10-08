@@ -28,7 +28,7 @@ import { ProductDetails } from './pages/storefront/ProductDetails';
 import { Cart } from './pages/storefront/Cart';
 import { EnhancedCheckout } from './pages/storefront/EnhancedCheckout';
 import { CustomerProfilePage } from './pages/storefront/CustomerProfile';
-import { CustomerOrdersPage } from './pages/storefront/CustomerOrders';
+import OrderHistory from './pages/storefront/OrderHistory';
 import { Payment } from './pages/storefront/Payment';
 
 // Demo
@@ -90,7 +90,7 @@ function App() {
                     <Route path="cart" element={<Cart />} />
                     <Route path="checkout" element={<EnhancedCheckout />} />
                     <Route path="profile" element={<CustomerProfilePage />} />
-                    <Route path="orders" element={<CustomerOrdersPage />} />
+                    <Route path="orders" element={<OrderHistory />} />
                     <Route path="payment" element={<Payment />} />
                   </Route>
                   {/* Redirect any other routes to the store home */}
