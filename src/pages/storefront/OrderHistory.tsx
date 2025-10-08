@@ -88,10 +88,10 @@ const OrderHistory: React.FC = () => {
                     <div key={item.productId} className="flex items-center gap-4 bg-gray-50 rounded-lg p-3 border border-gray-100">
                       <div className="w-16 h-16 flex items-center justify-center bg-white rounded-lg overflow-hidden border border-gray-200">
                         <img
-                          src={item.image || '/api/placeholder/100/100'}
+                          src={item.image || '/logo.png'}
                           alt={item.productName}
                           className="w-full h-full object-cover"
-                          onError={e => (e.currentTarget.src = '/api/placeholder/100/100')}
+                          onError={e => (e.currentTarget.src = '/logo.png')}
                         />
                       </div>
                       <div className="flex-1">
