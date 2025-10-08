@@ -7,12 +7,16 @@ import { useStore } from './StorefrontLayout';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { OrderService, Order } from '../../services/order';
+import { useColorScheme } from '../../hooks/useColorScheme';
 import toast from 'react-hot-toast';
 
 export const Payment: React.FC = () => {
   const { business } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Get color scheme based on business background color
+  const colorScheme = useColorScheme(business?.branding?.storeBackgroundColor);
   
   // Get order ID and business ID from location state
   const { orderId, businessId } = location.state || {};
@@ -59,7 +63,7 @@ export const Payment: React.FC = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
+          <h1 className="text-2xl font-bold text-white">Loading...</h1>
         </div>
       </div>
     );
@@ -69,7 +73,7 @@ export const Payment: React.FC = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Loading order...</h1>
+          <h1 className={`text-2xl font-bold ${colorScheme.text.primary}`}>Loading order...</h1>
         </div>
       </div>
     );
@@ -83,8 +87,8 @@ export const Payment: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Order Not Found</h1>
-          <p className="text-gray-600 mb-8">No order data found. Please start a new order.</p>
+          <h1 className={`text-3xl font-bold ${colorScheme.text.primary} mb-4`}>Order Not Found</h1>
+          <p className={`${colorScheme.text.secondary} mb-8`}>No order data found. Please start a new order.</p>
           <Link to="/products">
             <Button size="lg">
               Continue Shopping
@@ -167,8 +171,8 @@ export const Payment: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Complete Payment</h1>
-            <p className="text-gray-600 mt-1">Manual payment for {formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+            <h1 className={`text-3xl font-bold ${colorScheme.text.primary}`}>Complete Payment</h1>
+            <p className={`${colorScheme.text.secondary} mt-1`}>Manual payment for {formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
           </div>
           <Link to="/checkout">
             <Button variant="outline">
@@ -201,11 +205,6 @@ export const Payment: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-700">Account Number</p>
                   <p className="text-lg font-mono font-semibold text-gray-900">{business.bankDetails?.accountNumber || '1234567890'}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Routing Number</p>
-                  <p className="text-lg font-mono font-semibold text-gray-900">{business.bankDetails?.routingNumber || '123456789'}</p>
                 </div>
                 
                 <div>
