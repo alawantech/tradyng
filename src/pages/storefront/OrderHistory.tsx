@@ -15,18 +15,9 @@ const OrderHistory: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
     if (business?.id && user?.email) {
       loadOrders();
-      // Timeout fallback: show error if loading takes too long
-      timeout = setTimeout(() => {
-        setLoading(false);
-        if (orders.length === 0) {
-          setOrders([]);
-        }
-      }, 8000);
     }
-    return () => clearTimeout(timeout);
   }, [business?.id, user?.email]);
 
   const loadOrders = async () => {
