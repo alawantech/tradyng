@@ -120,7 +120,8 @@ export const Checkout: React.FC = () => {
           productName: item.name,
           quantity: item.quantity,
           price: item.price,
-          total: item.price * item.quantity
+          total: item.price * item.quantity,
+          image: item.image
         })),
         subtotal: total,
         tax: 0, // Add tax calculation if needed

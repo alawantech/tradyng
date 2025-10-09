@@ -327,9 +327,11 @@ export const Payment: React.FC = () => {
               <div className="space-y-4 mb-6">
                 {order?.items.map((item) => (
                   <div key={item.productId} className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <span className="text-xs text-gray-500">IMG</span>
-                    </div>
+                    <img
+                      src={item.image || '/api/placeholder/50/50'}
+                      alt={item.productName}
+                      className="w-12 h-12 object-cover rounded-lg"
+                    />
                     <div className="flex-1">
                       <p className="font-medium text-sm">{item.productName}</p>
                       <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>

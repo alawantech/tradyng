@@ -32,6 +32,7 @@ export interface Order {
     quantity: number;
     price: number;
     total: number;
+    image?: string;
   }>;
   subtotal: number;
   tax: number;
