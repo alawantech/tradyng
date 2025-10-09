@@ -149,12 +149,12 @@ const OrderHistory: React.FC = () => {
         />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="space-y-8"
+          className="space-y-6 sm:space-y-8"
         >
           {/* Header */}
           <motion.div
@@ -164,24 +164,24 @@ const OrderHistory: React.FC = () => {
             className="relative"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-white/80 to-white/60 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20" />
-            <div className="relative p-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
+            <div className="relative p-4 sm:p-6 lg:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
+                <div className="flex items-center space-x-3 sm:space-x-4">
                   <motion.div
                     animate={{ rotate: [0, 10, -10, 0] }}
                     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                     className="flex-shrink-0"
                   >
-                    <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <History className="w-8 h-8 text-white" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <History className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                     </div>
                   </motion.div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <motion.h1
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.6, delay: 0.2 }}
-                      className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2"
+                      className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-1 sm:mb-2"
                     >
                       Order History
                     </motion.h1>
@@ -189,7 +189,7 @@ const OrderHistory: React.FC = () => {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.6, delay: 0.3 }}
-                      className="text-gray-700 text-lg font-medium"
+                      className="text-gray-700 text-sm sm:text-base lg:text-lg font-medium"
                     >
                       Track your purchases and order status
                     </motion.p>
@@ -199,14 +199,14 @@ const OrderHistory: React.FC = () => {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: 0.4 }}
-                  className="flex items-center space-x-2"
+                  className="flex items-center justify-center sm:justify-end space-x-3 sm:space-x-2"
                 >
-                  <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
-                    <ShoppingBag className="w-6 h-6 text-white" />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                    <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">Total Orders</p>
-                    <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+                  <div className="text-center sm:text-right">
+                    <p className="text-xs sm:text-sm text-gray-600">Total Orders</p>
+                    <p className="text-xl sm:text-2xl font-bold text-gray-900">{orders.length}</p>
                   </div>
                 </motion.div>
               </div>
@@ -218,34 +218,34 @@ const OrderHistory: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex items-center justify-center py-16"
+              className="flex items-center justify-center py-12 sm:py-16"
             >
-              <div className="text-center">
+              <div className="text-center px-4">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full mx-auto mb-4"
+                  className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-purple-200 border-t-purple-600 rounded-full mx-auto mb-4"
                 />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading Your Orders</h3>
-                <p className="text-gray-600">Please wait while we fetch your order history...</p>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Loading Your Orders</h3>
+                <p className="text-gray-600 text-sm sm:text-base">Please wait while we fetch your order history...</p>
               </div>
             </motion.div>
           ) : error ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center py-16"
+              className="text-center py-12 sm:py-16 px-4"
             >
-              <div className="w-20 h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <Package className="w-10 h-10 text-white" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
+                <Package className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Oops! Something went wrong</h3>
-              <p className="text-red-600 font-medium mb-6">{error}</p>
+              <h3 className="text-lg sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Oops! Something went wrong</h3>
+              <p className="text-red-600 font-medium mb-4 sm:mb-6 text-sm sm:text-base">{error}</p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={loadOrders}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl shadow-lg font-semibold"
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-xl shadow-lg font-semibold text-sm sm:text-base min-h-[44px] touch-manipulation"
               >
                 Try Again
               </motion.button>
@@ -254,26 +254,26 @@ const OrderHistory: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center py-16"
+              className="text-center py-12 sm:py-16 px-4"
             >
-              <div className="w-24 h-24 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
-                <Star className="w-12 h-12 text-white" />
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8 shadow-2xl">
+                <Star className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
               </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              <h3 className="text-xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                 No Orders Yet
               </h3>
-              <p className="text-gray-600 mb-8 text-lg">Start shopping to see your order history here!</p>
+              <p className="text-gray-600 mb-6 sm:mb-8 text-sm sm:text-lg">Start shopping to see your order history here!</p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-xl shadow-xl font-semibold text-lg"
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl shadow-xl font-semibold text-sm sm:text-lg min-h-[44px] touch-manipulation"
               >
-                <ShoppingBag className="w-5 h-5 mr-2 inline" />
+                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 mr-2 inline" />
                 Start Shopping
               </motion.button>
             </motion.div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <AnimatePresence>
                 {orders.map((order, index) => (
                   <motion.div
@@ -285,84 +285,86 @@ const OrderHistory: React.FC = () => {
                   >
                     <Card className="relative overflow-hidden shadow-2xl border-0">
                       <div className="absolute inset-0 bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-xl" />
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-purple-400/30 to-transparent rounded-full -translate-y-16 translate-x-16" />
-                      <div className="relative p-8">
+                      <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-bl from-purple-400/30 to-transparent rounded-full -translate-y-12 sm:-translate-y-16 translate-x-12 sm:translate-x-16" />
+                      <div className="relative p-4 sm:p-6 lg:p-8">
                         {/* Order Header */}
-                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
-                          <div className="flex items-center space-x-4">
-                            <motion.div
-                              whileHover={{ scale: 1.1 }}
-                              className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg"
-                            >
-                              <Package className="w-6 h-6 text-white" />
-                            </motion.div>
-                            <div>
-                              <h3 className="text-2xl font-bold text-gray-900">
-                                Order #{order.orderId}
-                              </h3>
-                              <div className="flex items-center space-x-2 mt-1">
-                                <Calendar className="w-4 h-4 text-gray-500" />
-                                <span className="text-sm text-gray-600">
-                                  {order.createdAt?.seconds ? new Date(order.createdAt.seconds * 1000).toLocaleDateString('en-US', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  }) : 'N/A'}
-                                </span>
+                        <div className="flex flex-col space-y-4 mb-4 sm:mb-6">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                            <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
+                              <motion.div
+                                whileHover={{ scale: 1.1 }}
+                                className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
+                              >
+                                <Package className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                              </motion.div>
+                              <div className="min-w-0 flex-1">
+                                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
+                                  Order #{order.orderId}
+                                </h3>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
+                                  <span className="text-xs sm:text-sm text-gray-600 truncate">
+                                    {order.createdAt?.seconds ? new Date(order.createdAt.seconds * 1000).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    }) : 'N/A'}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          <div className="flex items-center space-x-4">
-                            {/* Status Badge */}
-                            <motion.div
-                              initial={{ scale: 0.9 }}
-                              animate={{ scale: 1 }}
-                              className={`px-4 py-2 rounded-full text-white text-sm font-semibold shadow-lg bg-gradient-to-r ${getStatusColor(order.status)} flex items-center space-x-2`}
-                            >
-                              {getStatusIcon(order.status)}
-                              <span>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
-                            </motion.div>
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+                              {/* Status Badge */}
+                              <motion.div
+                                initial={{ scale: 0.9 }}
+                                animate={{ scale: 1 }}
+                                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-white text-xs sm:text-sm font-semibold shadow-lg bg-gradient-to-r ${getStatusColor(order.status)} flex items-center justify-center space-x-1.5 sm:space-x-2 w-fit`}
+                              >
+                                {getStatusIcon(order.status)}
+                                <span className="whitespace-nowrap">{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
+                              </motion.div>
 
-                            {/* Expand/Collapse Button */}
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => setExpandedOrderId(expandedOrderId === order.orderId ? null : order.orderId)}
-                              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-xl shadow-lg font-semibold flex items-center space-x-2"
-                            >
-                              {expandedOrderId === order.orderId ? (
-                                <>
-                                  <EyeOff className="w-4 h-4" />
-                                  <span>Hide Details</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Eye className="w-4 h-4" />
-                                  <span>View Details</span>
-                                </>
-                              )}
-                            </motion.button>
+                              {/* Expand/Collapse Button */}
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setExpandedOrderId(expandedOrderId === order.orderId ? null : order.orderId)}
+                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-xl shadow-lg font-semibold flex items-center justify-center space-x-1.5 sm:space-x-2 text-sm sm:text-base w-full sm:w-auto min-h-[44px] touch-manipulation"
+                              >
+                                {expandedOrderId === order.orderId ? (
+                                  <>
+                                    <EyeOff className="w-4 h-4 flex-shrink-0" />
+                                    <span className="whitespace-nowrap">Hide Details</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Eye className="w-4 h-4 flex-shrink-0" />
+                                    <span className="whitespace-nowrap">View Details</span>
+                                  </>
+                                )}
+                              </motion.button>
+                            </div>
                           </div>
                         </div>
 
                         {/* Order Summary */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
                           <motion.div
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.1 }}
-                            className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200/50"
+                            className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 sm:p-4 rounded-xl border border-green-200/50"
                           >
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
-                                <CreditCard className="w-5 h-5 text-white" />
+                            <div className="flex items-center space-x-2 sm:space-x-3">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                               </div>
-                              <div>
-                                <p className="text-sm text-gray-600 font-medium">Payment Status</p>
-                                <p className="text-lg font-bold text-gray-900">{order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}</p>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">Payment Status</p>
+                                <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 truncate">{order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}</p>
                               </div>
                             </div>
                           </motion.div>
@@ -371,15 +373,15 @@ const OrderHistory: React.FC = () => {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.2 }}
-                            className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200/50"
+                            className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 sm:p-4 rounded-xl border border-blue-200/50"
                           >
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
-                                <Package className="w-5 h-5 text-white" />
+                            <div className="flex items-center space-x-2 sm:space-x-3">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                               </div>
-                              <div>
-                                <p className="text-sm text-gray-600 font-medium">Items</p>
-                                <p className="text-lg font-bold text-gray-900">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</p>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">Items</p>
+                                <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</p>
                               </div>
                             </div>
                           </motion.div>
@@ -388,15 +390,15 @@ const OrderHistory: React.FC = () => {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.3 }}
-                            className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200/50"
+                            className="bg-gradient-to-r from-purple-50 to-pink-50 p-3 sm:p-4 rounded-xl border border-purple-200/50 sm:col-span-2 lg:col-span-1"
                           >
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                                <Star className="w-5 h-5 text-white" />
+                            <div className="flex items-center space-x-2 sm:space-x-3">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Star className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                               </div>
-                              <div>
-                                <p className="text-sm text-gray-600 font-medium">Total Amount</p>
-                                <p className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">Total Amount</p>
+                                <p className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent truncate">
                                   {formatCurrency(order.total, business?.settings?.currency || DEFAULT_CURRENCY)}
                                 </p>
                               </div>
@@ -409,13 +411,13 @@ const OrderHistory: React.FC = () => {
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: 0.4 }}
-                          className="mb-6"
+                          className="mb-4 sm:mb-6"
                         >
-                          <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                            <ShoppingBag className="w-5 h-5 mr-2 text-purple-600" />
+                          <h4 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                            <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-purple-600 flex-shrink-0" />
                             Order Items
                           </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                             {order.items.map((item, itemIndex) => (
                               <motion.div
                                 key={item.productId}
@@ -423,20 +425,20 @@ const OrderHistory: React.FC = () => {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.3, delay: itemIndex * 0.1 }}
                                 whileHover={{ scale: 1.02 }}
-                                className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-white/20 shadow-sm hover:shadow-lg transition-all duration-300"
+                                className="bg-white/50 backdrop-blur-sm p-3 sm:p-4 rounded-xl border border-white/20 shadow-sm hover:shadow-lg transition-all duration-300"
                               >
-                                <div className="flex items-center space-x-3">
+                                <div className="flex items-center space-x-2 sm:space-x-3">
                                   <motion.img
                                     whileHover={{ scale: 1.1 }}
                                     src={item.image || productImages[item.productId] || '/logo.png'}
                                     alt={item.productName}
-                                    className="w-12 h-12 object-cover rounded-lg shadow-md"
+                                    className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded-lg shadow-md flex-shrink-0"
                                     onError={(e) => (e.currentTarget.src = '/logo.png')}
                                   />
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-gray-900 text-sm truncate">{item.productName}</p>
+                                    <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{item.productName}</p>
                                     <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
-                                    <p className="text-sm font-bold text-purple-600">{formatCurrency(item.price, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+                                    <p className="text-xs sm:text-sm font-bold text-purple-600 truncate">{formatCurrency(item.price, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
                                   </div>
                                 </div>
                               </motion.div>
@@ -452,23 +454,23 @@ const OrderHistory: React.FC = () => {
                               animate={{ opacity: 1, height: 'auto' }}
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.3 }}
-                              className="border-t border-gray-200/50 pt-6"
+                              className="border-t border-gray-200/50 pt-4 sm:pt-6"
                             >
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                                 {/* Shipping Address */}
                                 <motion.div
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ duration: 0.4, delay: 0.1 }}
-                                  className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border border-indigo-200/50"
+                                  className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 sm:p-6 rounded-xl border border-indigo-200/50"
                                 >
-                                  <div className="flex items-center space-x-3 mb-4">
-                                    <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-lg flex items-center justify-center">
-                                      <MapPin className="w-5 h-5 text-white" />
+                                  <div className="flex items-center space-x-2 sm:space-x-3 mb-3 sm:mb-4">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                      <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                                     </div>
-                                    <h5 className="text-lg font-bold text-gray-900">Shipping Address</h5>
+                                    <h5 className="text-base sm:text-lg font-bold text-gray-900">Shipping Address</h5>
                                   </div>
-                                  <div className="space-y-1 text-sm text-gray-700">
+                                  <div className="space-y-1 text-xs sm:text-sm text-gray-700">
                                     <p className="font-medium">{order.customerName}</p>
                                     <p>{order.shippingAddress?.street}</p>
                                     <p>{order.shippingAddress?.city}, {order.shippingAddress?.state}</p>
@@ -482,33 +484,33 @@ const OrderHistory: React.FC = () => {
                                   initial={{ opacity: 0, x: 20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ duration: 0.4, delay: 0.2 }}
-                                  className="bg-gradient-to-r from-emerald-50 to-green-50 p-6 rounded-xl border border-emerald-200/50"
+                                  className="bg-gradient-to-r from-emerald-50 to-green-50 p-4 sm:p-6 rounded-xl border border-emerald-200/50"
                                 >
-                                  <div className="flex items-center space-x-3 mb-4">
-                                    <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg flex items-center justify-center">
-                                      <CheckCircle className="w-5 h-5 text-white" />
+                                  <div className="flex items-center space-x-2 sm:space-x-3 mb-3 sm:mb-4">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                                     </div>
-                                    <h5 className="text-lg font-bold text-gray-900">Order Details</h5>
+                                    <h5 className="text-base sm:text-lg font-bold text-gray-900">Order Details</h5>
                                   </div>
-                                  <div className="space-y-3">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-sm text-gray-600">Order ID:</span>
-                                      <span className="font-mono text-sm font-bold text-gray-900">{order.orderId}</span>
+                                  <div className="space-y-2 sm:space-y-3">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
+                                      <span className="text-xs sm:text-sm text-gray-600 font-medium">Order ID:</span>
+                                      <span className="font-mono text-xs sm:text-sm font-bold text-gray-900 break-all">{order.orderId}</span>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-sm text-gray-600">Payment Method:</span>
-                                      <span className="font-semibold text-gray-900">{order.paymentMethod}</span>
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
+                                      <span className="text-xs sm:text-sm text-gray-600 font-medium">Payment Method:</span>
+                                      <span className="font-semibold text-xs sm:text-sm text-gray-900 truncate">{order.paymentMethod}</span>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-sm text-gray-600">Order Date:</span>
-                                      <span className="font-semibold text-gray-900">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
+                                      <span className="text-xs sm:text-sm text-gray-600 font-medium">Order Date:</span>
+                                      <span className="font-semibold text-xs sm:text-sm text-gray-900 truncate">
                                         {order.createdAt?.seconds ? new Date(order.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
                                       </span>
                                     </div>
                                     {order.notes && (
-                                      <div className="mt-4">
-                                        <span className="text-sm text-gray-600 block mb-2">Order Notes:</span>
-                                        <p className="text-sm text-gray-700 bg-white/50 p-3 rounded-lg">{order.notes}</p>
+                                      <div className="mt-3 sm:mt-4">
+                                        <span className="text-xs sm:text-sm text-gray-600 block mb-2 font-medium">Order Notes:</span>
+                                        <p className="text-xs sm:text-sm text-gray-700 bg-white/50 p-2 sm:p-3 rounded-lg">{order.notes}</p>
                                       </div>
                                     )}
                                   </div>
