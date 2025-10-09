@@ -185,17 +185,19 @@ export const Payment: React.FC = () => {
         className="space-y-8"
       >
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className={`text-3xl font-bold ${colorScheme.text.primary}`}>Complete Payment</h1>
-            <p className={`${colorScheme.text.secondary} mt-1`}>Manual payment for {formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-black">Complete Payment</h1>
+              <p className="text-black mt-1">Manual payment for {formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+            </div>
+            <Link to="/checkout">
+              <Button variant="outline">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Checkout
+              </Button>
+            </Link>
           </div>
-          <Link to="/checkout">
-            <Button variant="outline">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Checkout
-            </Button>
-          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -345,14 +347,6 @@ export const Payment: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Tax</span>
                   <span className="font-medium">{formatCurrency(order?.tax || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="font-medium">{formatCurrency(order?.shipping || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="font-medium">Free</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-3">
                   <span>Total</span>
