@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
   CreditCard, 
-  Truck, 
   Shield, 
   User, 
   AlertCircle, 
@@ -913,10 +912,6 @@ export const EnhancedCheckout: React.FC = () => {
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium">{formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="font-medium">Free</span>
-                </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-3">
                   <span>Total</span>
                   <span className="text-blue-600">{formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
@@ -934,10 +929,6 @@ export const EnhancedCheckout: React.FC = () => {
 
               {/* Security Features */}
               <div className="space-y-3 text-sm text-gray-600">
-                <div className="flex items-center space-x-2">
-                  <Truck className="h-4 w-4" />
-                  <span>Free shipping</span>
-                </div>
                 <div className="flex items-center space-x-2">
                   <Shield className="h-4 w-4" />
                   <span>Secure checkout</span>
