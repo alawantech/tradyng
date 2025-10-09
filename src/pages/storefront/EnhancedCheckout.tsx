@@ -472,17 +472,19 @@ export const EnhancedCheckout: React.FC = () => {
         className="space-y-8"
       >
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className={`text-3xl font-bold ${colorScheme.text.primary}`}>Checkout</h1>
-            <p className={`${colorScheme.text.secondary} mt-1`}>{itemCount} items • {formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-black">Checkout</h1>
+              <p className="text-black mt-1">{itemCount} items • {formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+            </div>
+            <Link to="/cart">
+              <Button variant="outline">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Cart
+              </Button>
+            </Link>
           </div>
-          <Link to="/cart">
-            <Button variant="outline">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Cart
-            </Button>
-          </Link>
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
