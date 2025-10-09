@@ -885,8 +885,8 @@ export const EnhancedCheckout: React.FC = () => {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <Card className={`p-6 sticky top-8 ${colorScheme.background.card}`}>
-              <h2 className={`text-xl font-bold ${colorScheme.text.primary} mb-6`}>Order Summary</h2>
+            <Card className="p-6 sticky top-8 bg-white">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
               
               {/* Order Items */}
               <div className="space-y-4 mb-6">
@@ -898,8 +898,8 @@ export const EnhancedCheckout: React.FC = () => {
                       className="w-12 h-12 object-cover rounded-lg"
                     />
                     <div className="flex-1">
-                      <p className={`font-medium text-sm ${colorScheme.text.primary}`}>{item.name}</p>
-                      <p className={`${colorScheme.text.secondary} text-sm`}>Qty: {item.quantity}</p>
+                      <p className="font-medium text-sm text-gray-900">{item.name}</p>
+                      <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
                     </div>
                     <p className="font-medium">{formatCurrency(item.price * item.quantity, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
                   </div>
@@ -908,11 +908,11 @@ export const EnhancedCheckout: React.FC = () => {
 
               <div className="space-y-3 mb-6 border-t pt-4">
                 <div className="flex justify-between">
-                  <span className={`${colorScheme.text.secondary}`}>Subtotal</span>
+                  <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium">{formatCurrency(total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={`${colorScheme.text.secondary}`}>Shipping</span>
+                  <span className="text-gray-600">Shipping</span>
                   <span className="font-medium">Free</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-3">
@@ -931,7 +931,7 @@ export const EnhancedCheckout: React.FC = () => {
               </Button>
 
               {/* Security Features */}
-              <div className={`space-y-3 text-sm ${colorScheme.text.secondary}`}>
+              <div className="space-y-3 text-sm text-gray-600">
                 <div className="flex items-center space-x-2">
                   <Truck className="h-4 w-4" />
                   <span>Free shipping</span>
@@ -944,10 +944,10 @@ export const EnhancedCheckout: React.FC = () => {
 
               {/* Store Info */}
               <div className="mt-6 pt-6 border-t">
-                <h3 className={`font-semibold ${colorScheme.text.primary} mb-2`}>Order from</h3>
-                <p className={`${colorScheme.text.secondary}`}>{business.name}</p>
+                <h3 className="font-semibold text-gray-900 mb-2">Order from</h3>
+                <p className="text-gray-600">{business.name}</p>
                 {business.phone && (
-                  <p className={`text-sm ${colorScheme.text.tertiary} mt-1`}>📞 {business.phone}</p>
+                  <p className="text-sm text-gray-500 mt-1">📞 {business.phone}</p>
                 )}
               </div>
             </Card>
