@@ -60,8 +60,8 @@ export const Cart: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className={`text-3xl font-bold ${colorScheme.text.primary}`}>Shopping Cart</h1>
-            <p className={`${colorScheme.text.secondary} mt-1`}>{itemCount} items</p>
+            <h1 className="text-3xl font-bold text-black bg-white rounded-lg px-4 py-2 border border-gray-200">Shopping Cart</h1>
+            <p className="mt-1 text-black bg-white rounded-lg px-4 py-2 inline-block border border-gray-200">{itemCount} items</p>
           </div>
           <Link to="/products">
             <Button variant="outline">
