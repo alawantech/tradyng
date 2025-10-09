@@ -1,22 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Upload, CreditCard, Clock, CheckCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Upload, CreditCard, Clock, CheckCircle, Sparkles, Shield, Star, Banknote, FileText, Camera, Zap, User, Package } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { OrderService, Order } from '../../services/order';
-import { useColorScheme } from '../../hooks/useColorScheme';
 import toast from 'react-hot-toast';
 
 export const Payment: React.FC = () => {
   const { business } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
-  
-  // Get color scheme based on business background color
-  const colorScheme = useColorScheme(business?.branding?.storeBackgroundColor);
   
   // Get order ID and business ID from location state
   const { orderId, businessId } = location.state || {};
@@ -61,19 +57,38 @@ export const Payment: React.FC = () => {
 
   if (!business) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white">Loading...</h1>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Sparkles className="w-8 h-8 text-white animate-pulse" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
+        </motion.div>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">
-          <h1 className={`text-2xl font-bold ${colorScheme.text.primary}`}>Loading order...</h1>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <div className="w-24 h-24 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
+              <Star className="w-12 h-12 text-white animate-spin" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">
+              Loading Your Order...
+            </h1>
+            <p className="text-gray-600 text-lg">Please wait while we prepare your payment details</p>
+          </motion.div>
         </div>
       </div>
     );
@@ -81,20 +96,33 @@ export const Payment: React.FC = () => {
 
   if (!order) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <h1 className={`text-3xl font-bold ${colorScheme.text.primary} mb-4`}>Order Not Found</h1>
-          <p className={`${colorScheme.text.secondary} mb-8`}>No order data found. Please start a new order.</p>
-          <Link to="/products">
-            <Button size="lg">
-              Continue Shopping
-            </Button>
-          </Link>
-        </motion.div>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <div className="w-24 h-24 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
+              <FileText className="w-12 h-12 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
+              Order Not Found
+            </h1>
+            <p className="text-gray-600 mb-8 text-lg">No order data found. Please start a new order.</p>
+            <Link to="/products">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Button size="lg" className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-xl shadow-xl">
+                  <ArrowLeft className="h-5 w-5 mr-2" />
+                  Continue Shopping
+                </Button>
+              </motion.div>
+            </Link>
+          </motion.div>
+        </div>
       </div>
     );
   }
@@ -178,196 +206,500 @@ export const Payment: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-8"
-      >
-        {/* Header */}
-        <div className="bg-white rounded-lg p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-black">Complete Payment</h1>
-              <p className="text-black mt-1">Manual payment for {formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
-            </div>
-            <Link to="/checkout">
-              <Button variant="outline">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Checkout
-              </Button>
-            </Link>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{
+            rotate: 360,
+            scale: [1, 1.1, 1],
+          }}
+          transition={{
+            rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+            scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+          }}
+          className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-purple-400/20 to-blue-400/20 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            rotate: -360,
+            scale: [1.1, 1, 1.1],
+          }}
+          transition={{
+            rotate: { duration: 25, repeat: Infinity, ease: "linear" },
+            scale: { duration: 5, repeat: Infinity, ease: "easeInOut" }
+          }}
+          className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"
+        />
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Payment Instructions */}
-          <div className="space-y-6">
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <CreditCard className="h-6 w-6 text-blue-600" />
-                <h2 className="text-xl font-bold text-gray-900">Bank Transfer Details</h2>
-              </div>
-              
-              <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="space-y-8"
+        >
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-white/80 to-white/60 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20" />
+            <div className="relative p-8">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Bank Name</p>
-                  <p className="text-lg font-semibold text-gray-900">{business.bankDetails?.bankName || 'First National Bank'}</p>
+                  <motion.h1
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2"
+                  >
+                    Complete Your Payment
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, delay: 0.3 }}
+                    className="text-gray-700 text-lg font-medium"
+                  >
+                    Secure bank transfer for {formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}
+                  </motion.p>
                 </div>
-                
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Account Name</p>
-                  <p className="text-lg font-semibold text-gray-900">{business.bankDetails?.accountName || business.name}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Account Number</p>
-                  <p className="text-lg font-mono font-semibold text-gray-900">{business.bankDetails?.accountNumber || '1234567890'}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Amount to Transfer</p>
-                  <p className="text-2xl font-bold text-blue-600">{formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Reference</p>
-                  <p className="text-lg font-mono font-semibold text-gray-900">{order?.orderId || 'N/A'}</p>
-                </div>
-              </div>
-              
-              <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-start space-x-3">
-                  <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800">Payment Instructions</p>
-                    <ul className="text-sm text-amber-700 mt-2 space-y-1">
-                      <li>• Transfer the exact amount shown above</li>
-                      <li>• Use the reference number in your transfer description</li>
-                      <li>• Upload your payment receipt below</li>
-                      <li>• Your order will be processed after payment verification</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Upload Receipt */}
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <Upload className="h-6 w-6 text-green-600" />
-                <h2 className="text-xl font-bold text-gray-900">Upload Payment Receipt</h2>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="receipt-upload"
-                  />
-                  <label htmlFor="receipt-upload" className="cursor-pointer">
-                    <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-lg font-medium text-gray-900 mb-2">
-                      Click to upload receipt
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      PNG, JPG or PDF up to 5MB
-                    </p>
-                  </label>
-                </div>
-                
-                {paymentReceipt && (
-                  <div className="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-green-800">{paymentReceipt.name}</p>
-                      <p className="text-xs text-green-600">
-                        {(paymentReceipt.size / (1024 * 1024)).toFixed(2)} MB
-                      </p>
-                    </div>
-                  </div>
-                )}
-                
-                {uploadError && (
-                  <p className="text-sm text-red-600">{uploadError}</p>
-                )}
-                
-                <Button
-                  onClick={handleSubmitPayment}
-                  disabled={!paymentReceipt || isUploading}
-                  size="lg"
-                  className="w-full"
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
                 >
-                  {isUploading ? 'Uploading...' : 'Submit Payment Receipt'}
-                </Button>
+                  <Link to="/checkout">
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Button variant="outline" className="bg-white/80 backdrop-blur-sm border-white/20 hover:bg-white/90 text-gray-700 px-6 py-3 rounded-xl shadow-lg">
+                        <ArrowLeft className="h-5 w-5 mr-2" />
+                        Back to Checkout
+                      </Button>
+                    </motion.div>
+                  </Link>
+                </motion.div>
               </div>
-            </Card>
-          </div>
+            </div>
+          </motion.div>
 
-          {/* Order Summary */}
-          <div>
-            <Card className="p-6 sticky top-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
-              
-              {/* Customer Info */}
-              <div className="mb-6 pb-6 border-b">
-                <h3 className="font-semibold text-gray-900 mb-3">Customer Details</h3>
-                <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Name:</span> {order?.customerName}</p>
-                  <p><span className="font-medium">Email:</span> {order?.customerEmail}</p>
-                  <p><span className="font-medium">Phone:</span> {order?.customerPhone}</p>
-                  <p><span className="font-medium">Address:</span> {order?.shippingAddress?.street}, {order?.shippingAddress?.city}, {order?.shippingAddress?.state}</p>
-                </div>
-              </div>
-              
-              {/* Order Items */}
-              <div className="space-y-4 mb-6">
-                {order?.items.map((item) => (
-                  <div key={item.productId} className="flex items-center space-x-3">
-                    <img
-                      src={item.image || '/api/placeholder/50/50'}
-                      alt={item.productName}
-                      className="w-12 h-12 object-cover rounded-lg"
-                    />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{item.productName}</p>
-                      <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Payment Instructions */}
+            <div className="space-y-6">
+
+              {/* Bank Transfer Details */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
+              >
+                <Card className="relative overflow-hidden shadow-2xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-xl" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-green-400/30 to-transparent rounded-full -translate-y-12 translate-x-12" />
+                  <div className="relative p-8">
+                    <div className="flex items-center space-x-4 mb-8">
+                      <motion.div
+                        animate={{ rotate: [0, 10, -10, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        className="flex-shrink-0"
+                      >
+                        <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                          <Banknote className="h-6 w-6 text-white" />
+                        </div>
+                      </motion.div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Bank Transfer Details</h2>
+                        <p className="text-gray-600 text-lg">Secure payment information</p>
+                      </div>
                     </div>
-                    <p className="font-medium">{formatCurrency(item.total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+                    
+                    <div className="space-y-6 bg-gradient-to-r from-green-50/50 to-emerald-50/50 backdrop-blur-sm p-6 rounded-2xl border border-green-200/50">
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.4, delay: 0.1 }}
+                        className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-xl"
+                      >
+                        <span className="text-gray-700 font-semibold">Bank Name</span>
+                        <span className="text-gray-900 font-bold">{business.bankDetails?.bankName || 'First National Bank'}</span>
+                      </motion.div>
+                      
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.4, delay: 0.2 }}
+                        className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-xl"
+                      >
+                        <span className="text-gray-700 font-semibold">Account Name</span>
+                        <span className="text-gray-900 font-bold">{business.bankDetails?.accountName || business.name}</span>
+                      </motion.div>
+                      
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.4, delay: 0.3 }}
+                        className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-xl"
+                      >
+                        <span className="text-gray-700 font-semibold">Account Number</span>
+                        <span className="text-gray-900 font-mono font-bold text-lg">{business.bankDetails?.accountNumber || '1234567890'}</span>
+                      </motion.div>
+                      
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.4, delay: 0.4 }}
+                        className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-100 to-blue-100 backdrop-blur-sm rounded-xl border-2 border-purple-200"
+                      >
+                        <span className="text-gray-700 font-semibold">Amount to Transfer</span>
+                        <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                          {formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}
+                        </span>
+                      </motion.div>
+                      
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.4, delay: 0.5 }}
+                        className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-xl"
+                      >
+                        <span className="text-gray-700 font-semibold">Reference</span>
+                        <span className="text-gray-900 font-mono font-bold">{order?.orderId || 'N/A'}</span>
+                      </motion.div>
+                    </div>
+                    
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.6, delay: 0.6 }}
+                      className="mt-8 p-6 bg-gradient-to-r from-amber-50/50 to-yellow-50/50 backdrop-blur-sm rounded-2xl border border-amber-200/50"
+                    >
+                      <div className="flex items-start space-x-4">
+                        <motion.div
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                          <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <Clock className="h-5 w-5 text-white" />
+                          </div>
+                        </motion.div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-amber-800 mb-3">Payment Instructions</h3>
+                          <ul className="text-amber-700 space-y-2 text-sm">
+                            <li className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                              <span>Transfer the exact amount shown above</span>
+                            </li>
+                            <li className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                              <span>Use the reference number in your transfer description</span>
+                            </li>
+                            <li className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                              <span>Upload your payment receipt below</span>
+                            </li>
+                            <li className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                              <span>Your order will be processed after payment verification</span>
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
-                ))}
-              </div>
+                </Card>
+              </motion.div>
 
-              <div className="space-y-3 mb-6 border-t pt-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">{formatCurrency(order?.subtotal || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tax</span>
-                  <span className="font-medium">{formatCurrency(order?.tax || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-                </div>
-                <div className="flex justify-between text-lg font-bold border-t pt-3">
-                  <span>Total</span>
-                  <span className="text-blue-600">{formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-                </div>
-              </div>
+              {/* Upload Receipt */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.7 }}
+              >
+                <Card className="relative overflow-hidden shadow-2xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-xl" />
+                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-blue-400/30 to-transparent rounded-full translate-y-12 -translate-x-12" />
+                  <div className="relative p-8">
+                    <div className="flex items-center space-x-4 mb-8">
+                      <motion.div
+                        animate={{ rotate: [0, -10, 10, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        className="flex-shrink-0"
+                      >
+                        <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                          <Camera className="h-6 w-6 text-white" />
+                        </div>
+                      </motion.div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Upload Payment Receipt</h2>
+                        <p className="text-gray-600 text-lg">Submit your proof of payment</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-6">
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        className="border-2 border-dashed border-purple-300 rounded-2xl p-8 text-center hover:border-purple-400 transition-all duration-300 bg-gradient-to-r from-purple-50/50 to-blue-50/50 backdrop-blur-sm"
+                      >
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={handleFileChange}
+                          className="hidden"
+                          id="receipt-upload"
+                        />
+                        <label htmlFor="receipt-upload" className="cursor-pointer">
+                          <motion.div
+                            animate={{ y: [0, -5, 0] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                          >
+                            <Upload className="h-16 w-16 text-purple-400 mx-auto mb-6" />
+                          </motion.div>
+                          <p className="text-xl font-bold text-gray-900 mb-3">
+                            Click to upload receipt
+                          </p>
+                          <p className="text-gray-600 text-lg">
+                            PNG, JPG or PDF up to 5MB
+                          </p>
+                        </label>
+                      </motion.div>
+                      
+                      <AnimatePresence>
+                        {paymentReceipt && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="flex items-center space-x-4 p-6 bg-gradient-to-r from-green-50/50 to-emerald-50/50 backdrop-blur-sm rounded-2xl border border-green-200/50"
+                          >
+                            <motion.div
+                              animate={{ rotate: [0, 10, -10, 0] }}
+                              transition={{ duration: 0.5 }}
+                            >
+                              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                                <CheckCircle className="h-5 w-5 text-white" />
+                              </div>
+                            </motion.div>
+                            <div className="flex-1">
+                              <p className="text-lg font-bold text-green-800">{paymentReceipt.name}</p>
+                              <p className="text-green-600 font-medium">
+                                {(paymentReceipt.size / (1024 * 1024)).toFixed(2)} MB
+                              </p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      
+                      {uploadError && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="p-4 bg-red-50/50 backdrop-blur-sm rounded-xl border border-red-200/50"
+                        >
+                          <p className="text-red-600 font-medium">{uploadError}</p>
+                        </motion.div>
+                      )}
+                      
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Button
+                          onClick={handleSubmitPayment}
+                          disabled={!paymentReceipt || isUploading}
+                          size="lg"
+                          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-xl shadow-xl font-semibold text-lg"
+                        >
+                          {isUploading ? (
+                            <div className="flex items-center">
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-3"
+                              />
+                              Uploading Receipt...
+                            </div>
+                          ) : (
+                            <div className="flex items-center">
+                              <Zap className="h-5 w-5 mr-2" />
+                              Submit Payment Receipt
+                            </div>
+                          )}
+                        </Button>
+                      </motion.div>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            </div>
 
-              {/* Store Info */}
-              <div className="pt-6 border-t">
-                <h3 className="font-semibold text-gray-900 mb-2">Store Information</h3>
-                <p className="text-gray-600">{business.name}</p>
-                {business.phone && (
-                  <p className="text-sm text-gray-500 mt-1">📞 {business.phone}</p>
-                )}
-              </div>
-            </Card>
+            {/* Order Summary */}
+            <div className="lg:col-span-1">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+                className="sticky top-8"
+              >
+                <Card className="relative overflow-hidden shadow-2xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-xl" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-purple-400/30 to-transparent rounded-full -translate-y-12 translate-x-12" />
+                  <div className="relative p-8">
+                    <div className="flex items-center space-x-4 mb-8">
+                      <motion.div
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        className="flex-shrink-0"
+                      >
+                        <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                          <Star className="h-6 w-6 text-white" />
+                        </div>
+                      </motion.div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Order Summary</h2>
+                        <p className="text-gray-600 text-lg">Review your purchase</p>
+                      </div>
+                    </div>
+
+                    {/* Customer Info */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.6, delay: 0.9 }}
+                      className="mb-8 p-6 bg-gradient-to-r from-gray-50/50 to-slate-50/50 backdrop-blur-sm rounded-2xl border border-gray-200/50"
+                    >
+                      <h3 className="font-bold text-gray-900 mb-4 flex items-center">
+                        <User className="h-5 w-5 mr-2 text-purple-600" />
+                        Customer Details
+                      </h3>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 font-medium">Name:</span>
+                          <span className="text-gray-900 font-semibold">{order?.customerName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 font-medium">Email:</span>
+                          <span className="text-gray-900 font-semibold">{order?.customerEmail}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 font-medium">Phone:</span>
+                          <span className="text-gray-900 font-semibold">{order?.customerPhone}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 font-medium">Address:</span>
+                          <span className="text-gray-900 font-semibold text-right">
+                            {order?.shippingAddress?.street}, {order?.shippingAddress?.city}
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                    
+                    {/* Order Items */}
+                    <div className="space-y-6 mb-8">
+                      <h3 className="font-bold text-gray-900 flex items-center">
+                        <Package className="h-5 w-5 mr-2 text-blue-600" />
+                        Order Items
+                      </h3>
+                      <AnimatePresence>
+                        {order?.items.map((item, index) => (
+                          <motion.div
+                            key={item.productId}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.4, delay: index * 0.1 }}
+                            className="flex items-center space-x-4 p-4 bg-white/50 backdrop-blur-sm rounded-xl shadow-sm"
+                          >
+                            <motion.img
+                              whileHover={{ scale: 1.1 }}
+                              src={item.image || '/api/placeholder/60/60'}
+                              alt={item.productName}
+                              className="w-16 h-16 object-cover rounded-xl shadow-lg"
+                            />
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900 text-sm leading-tight">{item.productName}</p>
+                              <p className="text-gray-600 text-sm mt-1">Qty: {item.quantity}</p>
+                            </div>
+                            <p className="font-bold text-gray-900">{formatCurrency(item.total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+
+                    <div className="space-y-4 mb-8 border-t border-gray-200/50 pt-6">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 font-medium">Subtotal</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(order?.subtotal || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 font-medium">Tax</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(order?.tax || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xl font-bold border-t border-gray-300/50 pt-4">
+                        <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Total</span>
+                        <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">{formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                      </div>
+                    </div>
+
+                    {/* Security Features */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.6, delay: 1.2 }}
+                      className="space-y-4 text-sm text-gray-600"
+                    >
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.6, delay: 1.3 }}
+                        className="flex items-center space-x-3 p-3 bg-green-50/50 backdrop-blur-sm rounded-lg"
+                      >
+                        <Shield className="h-5 w-5 text-green-600 flex-shrink-0" />
+                        <span className="font-medium">Secure payment processing</span>
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.6, delay: 1.4 }}
+                        className="flex items-center space-x-3 p-3 bg-blue-50/50 backdrop-blur-sm rounded-lg"
+                      >
+                        <Clock className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                        <span className="font-medium">Fast order processing</span>
+                      </motion.div>
+                    </motion.div>
+
+                    {/* Store Info */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.6, delay: 1.5 }}
+                      className="mt-8 pt-6 border-t border-gray-200/50"
+                    >
+                      <h3 className="font-bold text-gray-900 mb-3">Order from</h3>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">{business.name.charAt(0)}</span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{business.name}</p>
+                          {business.phone && (
+                            <p className="text-sm text-gray-600">📞 {business.phone}</p>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                </Card>
+              </motion.div>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 };
