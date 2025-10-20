@@ -100,12 +100,19 @@ export const sendEmail = functions.https.onCall(async (request, response) => {
     }
 
     // Build payload for MailerSend
+    const supportEmail = process.env.SUPPORT_EMAIL || functions.config()?.mail?.support_email || 'support@rady.ng';
+
     const payload = {
       from: { email: data.from },
       to: [{ email: data.to }],
       subject: data.subject,
       text: data.text || undefined,
-      html: data.html
+      html: data.html,
+      reply_to: { email: supportEmail },
+      headers: {
+        // Provide an easy unsubscribe path for ISPs and spam filters
+        'List-Unsubscribe': `mailto:${supportEmail}`
+      }
     };
 
     // Send using MailerSend HTTP API
@@ -164,7 +171,7 @@ export const sendOTPEmail = functions.https.onCall(async (request, response) => 
     // Build MailerSend payload
 
     const primaryColor = data.storeColor || '#3B82F6';
-    const fromEmail = 'noreply@rady.ng';
+  const fromEmail = process.env.MAIL_FROM_EMAIL || functions.config()?.mail?.from_email || 'noreply@rady.ng';
     const isPasswordReset = data.isPasswordReset || false;
 
     // Create simple, concise OTP email template that shows code immediately
@@ -225,12 +232,18 @@ export const sendOTPEmail = functions.https.onCall(async (request, response) => 
 
     const text = `${data.storeName}\n\n${isPasswordReset ? 'Password Reset Request\n\n' : ''}Your ${isPasswordReset ? 'password reset' : 'verification'} code: ${data.otp}\n\nExpires in 5 minutes.${data.whatsappNumber ? `\n\nNeed help? WhatsApp: ${data.whatsappNumber}` : ''}`;
 
+    const supportEmail = data.supportEmail || process.env.SUPPORT_EMAIL || functions.config()?.mail?.support_email || 'support@rady.ng';
+
     const payload = {
       from: { email: fromEmail, name: data.storeName },
       to: [{ email: data.email }],
       subject,
       text,
-      html
+      html,
+      reply_to: { email: supportEmail },
+      headers: {
+        'List-Unsubscribe': `mailto:${supportEmail}`
+      }
     };
 
     await sendViaMailerSend(payload);
@@ -308,17 +321,23 @@ export const testSendOTP = functions.https.onRequest(async (req, res) => {
 
     // Build email content (reuse same template as sendOTPEmail)
     const primaryColor = '#3B82F6';
-    const fromEmail = 'noreply@rady.ng';
+  const fromEmail = process.env.MAIL_FROM_EMAIL || functions.config()?.mail?.from_email || 'noreply@rady.ng';
     const subject = `${otp} - ${(businessName || 'Store')} verification code`;
     const html = `<!DOCTYPE html><html><body><div style="max-width:500px;margin:0 auto;background:white;padding:30px;text-align:center;"><h1 style="color:${primaryColor}">${businessName || 'Store'}</h1><div style="background:${primaryColor};color:white;border-radius:8px;padding:20px;margin:20px 0;"><div style="font-size:36px;font-weight:bold;letter-spacing:4px;font-family:monospace;">${otp}</div></div><p>Enter this code to complete registration. Expires in 5 minutes.</p></div></body></html>`;
     const text = `${businessName || 'Store'}\n\nYour verification code: ${otp}\n\nExpires in 5 minutes.`;
+
+    const supportEmail = process.env.SUPPORT_EMAIL || functions.config()?.mail?.support_email || 'support@rady.ng';
 
     const payload = {
       from: { email: fromEmail, name: businessName || 'Store' },
       to: [{ email }],
       subject,
       text,
-      html
+      html,
+      reply_to: { email: supportEmail },
+      headers: {
+        'List-Unsubscribe': `mailto:${supportEmail}`
+      }
     };
 
     // Send via MailerSend (will try fallback URLs internally)
