@@ -1,0 +1,23 @@
+# Normalize line endings to LF in the repository to avoid CRLF churn on Windows
+* text=auto
+
+# Force LF for source files (JavaScript/TypeScript/JSON/Markdown/etc.)
+*.js     text eol=lf
+*.ts     text eol=lf
+*.jsx    text eol=lf
+*.tsx    text eol=lf
+*.json   text eol=lf
+*.md     text eol=lf
+*.html   text eol=lf
+
+# Binary files — keep as-is
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.zip    binary
+*.gz     binary
+
+# Lockfiles should keep native EOL
+package-lock.json  text eol=lf
+yarn.lock          text eol=lf
