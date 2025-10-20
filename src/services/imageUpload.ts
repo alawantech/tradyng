@@ -1,5 +1,6 @@
 import { storage } from '../config/firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
+// We'll use signed URLs returned by the backend to upload files securely
 
 export class ImageUploadService {
   // Upload single image
@@ -8,18 +9,57 @@ export class ImageUploadService {
     folder: string, 
     fileName?: string
   ): Promise<string> {
+    const timestamp = Date.now();
+    const finalFileName = fileName || `${timestamp}_${file.name}`;
+    const path = `${folder}/${finalFileName}`;
+
     try {
-      const timestamp = Date.now();
-      const finalFileName = fileName || `${timestamp}_${file.name}`;
-      const storageRef = ref(storage, `${folder}/${finalFileName}`);
-      
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      
-      return downloadURL;
+
+      // Call HTTP Cloud Function to get signed upload URL
+      const region = import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION || 'us-central1';
+      const project = import.meta.env.VITE_FIREBASE_PROJECT_ID || '';
+      const url = `https://${region}-${project}.cloudfunctions.net/generateUploadUrl`;
+
+      // Get the current user's ID token to authorize the request
+      const currentUser = (await import('firebase/auth')).getAuth().currentUser;
+      const idToken = currentUser ? await currentUser.getIdToken() : null;
+
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+        },
+        body: JSON.stringify({ path, contentType: file.type })
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        console.error('generateUploadUrl failed', text);
+        throw new Error('Failed to get upload URL (server error)');
+      }
+
+      const { uploadUrl, publicUrl } = await resp.json();
+
+      // Upload file directly to the signed URL via PUT
+      const putResp = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type
+        },
+        body: file
+      });
+
+      if (!putResp.ok) {
+        const text = await putResp.text();
+        console.error('Signed upload failed', text);
+        throw new Error('Signed upload failed');
+      }
+
+      return publicUrl;
     } catch (error) {
-      console.error('Error uploading image:', error);
-      throw new Error('Failed to upload image');
+      console.error('Signed upload path failed:', error);
+      throw new Error('Failed to upload image via signed URL. Ensure the upload function is reachable and returns a signed URL.');
     }
   }
 
@@ -45,7 +85,9 @@ export class ImageUploadService {
   // Delete image
   static async deleteImage(imageUrl: string): Promise<void> {
     try {
-      const imageRef = ref(storage, imageUrl);
+  // If imageUrl is a public https URL, extract the path after the bucket name
+  const path = imageUrl.replace(/^https:\/\/storage.googleapis.com\/[A-Za-z0-9-_.]+\//, '');
+  const imageRef = ref(storage, path);
       await deleteObject(imageRef);
     } catch (error) {
       console.error('Error deleting image:', error);
