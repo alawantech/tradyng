@@ -288,10 +288,10 @@ export const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
               )}
             </button>
             
-            {/* Multiple codes info */}
-            <div className="mt-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
-              <p className="text-xs text-green-800 text-center">
-                ✅ <strong>Multiple codes allowed!</strong> You can request several codes and use any valid one.
+            {/* Single-code policy info */}
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
+              <p className="text-xs text-yellow-800 text-center">
+                ⚠️ <strong>Single active code policy:</strong> You can request a new code every 2 minutes. Previous codes expire after 5 minutes and are invalid once a new code is issued.
               </p>
             </div>
           </div>

@@ -35,22 +35,67 @@ var __importStar = (this && this.__importStar) || (function () {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _a, _b;
+var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.healthCheck = exports.sendOTPEmail = exports.sendEmail = void 0;
+exports.testSendOTP = exports.healthCheck = exports.sendOTPEmail = exports.sendEmail = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
-const mail_1 = __importDefault(require("@sendgrid/mail"));
+const node_fetch_1 = __importDefault(require("node-fetch"));
 // Initialize Firebase Admin
 admin.initializeApp();
-// Initialize SendGrid
-const sendGridApiKey = process.env.SENDGRID_API_KEY || ((_b = (_a = functions.config()) === null || _a === void 0 ? void 0 : _a.sendgrid) === null || _b === void 0 ? void 0 : _b.api_key);
-if (sendGridApiKey && sendGridApiKey.startsWith('SG.')) {
-    mail_1.default.setApiKey(sendGridApiKey);
-    console.log('SendGrid initialized successfully');
+// Initialize MailerSend token
+const mailerSendToken = process.env.MAIL_SENDER_API_TOKEN || ((_b = (_a = functions.config()) === null || _a === void 0 ? void 0 : _a.mail) === null || _b === void 0 ? void 0 : _b.sender_api_token) || process.env.MAIL_SENDER_API_TOKEN;
+const mailerSendUrl = process.env.MAIL_SENDER_API_URL || ((_d = (_c = functions.config()) === null || _c === void 0 ? void 0 : _c.mail) === null || _d === void 0 ? void 0 : _d.sender_api_url) || 'https://api.mailersend.com/v1/email';
+if (!mailerSendToken) {
+    console.warn('MAIL_SENDER_API_TOKEN not found. Email sending will fail.');
 }
 else {
-    console.warn('SendGrid API key not found or invalid format. Email sending will fail.');
+    console.log('MailerSend token found, emails will be sent via MailerSend HTTP API');
+}
+async function sendViaMailerSend(payload, url = mailerSendUrl) {
+    if (!mailerSendToken) {
+        throw new functions.https.HttpsError('failed-precondition', 'Email service not configured.');
+    }
+    const candidateUrls = [url, 'https://api.mailersend.com/v1/email', 'https://api.mailersend.com/v1.1/email'];
+    const tried = [];
+    for (const candidate of candidateUrls) {
+        if (!candidate)
+            continue;
+        try {
+            console.log('MailerSend: attempting', candidate);
+            const res = await (0, node_fetch_1.default)(candidate, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${mailerSendToken}`
+                },
+                body: JSON.stringify(payload),
+                // set a short timeout via AbortController if desired in future
+            });
+            const text = await res.text();
+            let json = null;
+            try {
+                json = JSON.parse(text);
+            }
+            catch (e) {
+                json = text;
+            }
+            if (res.ok) {
+                console.log('MailerSend success:', candidate);
+                return json;
+            }
+            console.warn('MailerSend non-ok response:', res.status, candidate);
+            tried.push({ url: candidate, status: res.status, body: json });
+            // try next candidate
+        }
+        catch (errAny) {
+            const e = errAny;
+            console.error('MailerSend request error for', candidate, e && e.message ? e.message : e);
+            tried.push({ url: candidate, error: String(e) });
+        }
+    }
+    console.error('MailerSend: all attempts failed', tried);
+    throw new functions.https.HttpsError('internal', 'Failed to send email via MailerSend', { tried });
 }
 // Generic email sending function
 exports.sendEmail = functions.https.onCall(async (request, response) => {
@@ -65,19 +110,16 @@ exports.sendEmail = functions.https.onCall(async (request, response) => {
         if (!emailRegex.test(data.to) || !emailRegex.test(data.from)) {
             throw new functions.https.HttpsError('invalid-argument', 'Invalid email format');
         }
-        // Check if SendGrid is configured
-        if (!sendGridApiKey || !sendGridApiKey.startsWith('SG.')) {
-            throw new functions.https.HttpsError('failed-precondition', 'Email service not configured. Please set up SendGrid API key.');
-        }
-        // Send email via SendGrid
-        const msg = {
-            to: data.to,
-            from: data.from,
+        // Build payload for MailerSend
+        const payload = {
+            from: { email: data.from },
+            to: [{ email: data.to }],
             subject: data.subject,
-            html: data.html,
             text: data.text || undefined,
+            html: data.html
         };
-        await mail_1.default.send(msg);
+        // Send using MailerSend HTTP API
+        await sendViaMailerSend(payload);
         console.log(`Email sent successfully to: ${data.to}`);
         return {
             success: true,
@@ -85,7 +127,7 @@ exports.sendEmail = functions.https.onCall(async (request, response) => {
         };
     }
     catch (error) {
-        console.error('SendGrid error:', error);
+        console.error('Email service error:', error);
         if (error instanceof functions.https.HttpsError) {
             throw error;
         }
@@ -109,10 +151,7 @@ exports.sendOTPEmail = functions.https.onCall(async (request, response) => {
         if (!emailRegex.test(data.email)) {
             throw new functions.https.HttpsError('invalid-argument', 'Invalid email format');
         }
-        // Check if SendGrid is configured
-        if (!sendGridApiKey || !sendGridApiKey.startsWith('SG.')) {
-            throw new functions.https.HttpsError('failed-precondition', 'Email service not configured. Please set up SendGrid API key.');
-        }
+        // Build MailerSend payload
         const primaryColor = data.storeColor || '#3B82F6';
         const fromEmail = 'noreply@rady.ng';
         const isPasswordReset = data.isPasswordReset || false;
@@ -171,15 +210,14 @@ exports.sendOTPEmail = functions.https.onCall(async (request, response) => {
       </html>
     `;
         const text = `${data.storeName}\n\n${isPasswordReset ? 'Password Reset Request\n\n' : ''}Your ${isPasswordReset ? 'password reset' : 'verification'} code: ${data.otp}\n\nExpires in 5 minutes.${data.whatsappNumber ? `\n\nNeed help? WhatsApp: ${data.whatsappNumber}` : ''}`;
-        // Send email via SendGrid
-        const msg = {
-            to: data.email,
-            from: `${data.storeName} <${fromEmail}>`,
+        const payload = {
+            from: { email: fromEmail, name: data.storeName },
+            to: [{ email: data.email }],
             subject,
-            html,
             text,
+            html
         };
-        await mail_1.default.send(msg);
+        await sendViaMailerSend(payload);
         console.log(`OTP email sent successfully to: ${data.email}`);
         return {
             success: true,
@@ -201,5 +239,62 @@ exports.healthCheck = functions.https.onRequest((req, res) => {
         timestamp: new Date().toISOString(),
         message: 'Tradyng Email Functions are running'
     });
+});
+// Temporary test endpoint: create OTP record and send OTP email via MailerSend
+// Usage (POST JSON): { "email": "user@example.com", "businessId": "", "businessName": "Test Store" }
+exports.testSendOTP = functions.https.onRequest(async (req, res) => {
+    try {
+        if (req.method !== 'POST') {
+            res.status(405).send({ error: 'Method not allowed, use POST' });
+            return;
+        }
+        const { email, businessId, businessName } = req.body || {};
+        if (!email || typeof email !== 'string') {
+            res.status(400).send({ error: 'Missing email in request body' });
+            return;
+        }
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            res.status(400).send({ error: 'Invalid email format' });
+            return;
+        }
+        // Generate 4-digit OTP
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 5 * 60000); // 5 minutes
+        // Store OTP in Firestore
+        const otpRecord = {
+            email: email.toLowerCase(),
+            otp,
+            expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+            isUsed: false,
+            attempts: 0,
+            businessId: businessId || null,
+            businessName: businessName || null,
+            createdAt: admin.firestore.Timestamp.fromDate(now)
+        };
+        await admin.firestore().collection('email_otps').add(otpRecord);
+        // Build email content (reuse same template as sendOTPEmail)
+        const primaryColor = '#3B82F6';
+        const fromEmail = 'noreply@rady.ng';
+        const subject = `${otp} - ${(businessName || 'Store')} verification code`;
+        const html = `<!DOCTYPE html><html><body><div style="max-width:500px;margin:0 auto;background:white;padding:30px;text-align:center;"><h1 style="color:${primaryColor}">${businessName || 'Store'}</h1><div style="background:${primaryColor};color:white;border-radius:8px;padding:20px;margin:20px 0;"><div style="font-size:36px;font-weight:bold;letter-spacing:4px;font-family:monospace;">${otp}</div></div><p>Enter this code to complete registration. Expires in 5 minutes.</p></div></body></html>`;
+        const text = `${businessName || 'Store'}\n\nYour verification code: ${otp}\n\nExpires in 5 minutes.`;
+        const payload = {
+            from: { email: fromEmail, name: businessName || 'Store' },
+            to: [{ email }],
+            subject,
+            text,
+            html
+        };
+        // Send via MailerSend (will try fallback URLs internally)
+        await sendViaMailerSend(payload);
+        res.json({ success: true, message: `OTP sent to ${email}` });
+    }
+    catch (errAny) {
+        console.error('testSendOTP error:', errAny);
+        res.status(500).send({ error: 'Failed to send OTP', details: String(errAny) });
+    }
 });
 //# sourceMappingURL=index.js.map

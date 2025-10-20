@@ -1,8 +1,7 @@
 // OTP Service for customer registration verification
 import { db } from '../config/firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, Timestamp, limit } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, Timestamp, limit, updateDoc } from 'firebase/firestore';
 import { EmailService } from './emailService';
-import DirectEmailService from './directEmailService';
 import { BusinessService } from './business';
 
 export interface OTPRecord {
@@ -18,7 +17,7 @@ export interface OTPRecord {
 
 export class OTPService {
   private static OTP_EXPIRY_MINUTES = 5; // OTP expires in 5 minutes as requested
-  private static RATE_LIMIT_MINUTES = 0.5; // Can request new OTP every 30 seconds (user-friendly)
+  private static RATE_LIMIT_MINUTES = 2; // Can request new OTP every 2 minutes
 
   // Generate 4-digit OTP
   static generateOTP(): string {
@@ -40,7 +39,7 @@ export class OTPService {
         }
       }
       
-      // Check rate limiting - prevent spam (simplified query)
+      // Check rate limiting - prevent spam and disallow multiple active codes
       const recentOTPQuery = query(
         collection(db, 'email_otps'),
         where('email', '==', emailLower),
@@ -52,19 +51,30 @@ export class OTPService {
       // Filter in code to avoid index requirement
       const now = new Date();
       const rateLimitTime = new Date(now.getTime() - this.RATE_LIMIT_MINUTES * 60000);
-      
-      const recentOTP = recentOTPs.docs.find(doc => {
-        const data = doc.data();
-        const createdAt = data.createdAt.toDate();
-        return createdAt > rateLimitTime;
-      });
-      
-      if (recentOTP) {
-        const waitSeconds = Math.ceil(this.RATE_LIMIT_MINUTES * 60);
-        return {
-          success: false,
-          message: `Please wait ${waitSeconds} seconds before requesting another code`
-        };
+
+      // Find any existing valid (not used, not expired) OTP for this email
+      let existingValidOTPDoc: any = null;
+      for (const d of recentOTPs.docs) {
+        const data = d.data();
+        const expiresAt = data.expiresAt.toDate();
+        const isUsed = data.isUsed;
+        if (!isUsed && expiresAt > now) {
+          existingValidOTPDoc = { id: d.id, data };
+          break;
+        }
+      }
+
+      if (existingValidOTPDoc) {
+        const createdAt = existingValidOTPDoc.data.createdAt.toDate();
+        // If created within rate limit window, deny request and ask to wait
+        if (createdAt > rateLimitTime) {
+          const waitSeconds = Math.ceil((createdAt.getTime() + this.RATE_LIMIT_MINUTES * 60000 - now.getTime()) / 1000);
+          return {
+            success: false,
+            message: `Please wait ${waitSeconds} seconds before requesting another code`
+          };
+        }
+        // Otherwise (rate window passed) we'll overwrite the existing OTP record
       }
 
       // Clean up old OTPs for this email
@@ -75,22 +85,36 @@ export class OTPService {
       const expiresAt = new Date(Date.now() + this.OTP_EXPIRY_MINUTES * 60000);
       const createdAt = new Date();
 
-      // Store OTP in Firestore
-      const otpRecord: Omit<OTPRecord, 'createdAt' | 'expiresAt'> & { 
-        createdAt: Timestamp; 
-        expiresAt: Timestamp;
-      } = {
-        email: emailLower,
-        otp,
-        expiresAt: Timestamp.fromDate(expiresAt),
-        isUsed: false,
-        attempts: 0,
-        businessId,
-        businessName,
-        createdAt: Timestamp.fromDate(createdAt)
-      };
+      // Store OTP in Firestore. If there's an existing valid OTP doc (older than rate limit),
+      // update it instead of creating a new one to ensure only one active code exists.
+      if (existingValidOTPDoc) {
+        const otpDocRef = doc(db, 'email_otps', existingValidOTPDoc.id);
+        await updateDoc(otpDocRef, {
+          otp,
+          expiresAt: Timestamp.fromDate(expiresAt),
+          isUsed: false,
+          attempts: 0,
+          businessId: businessId || existingValidOTPDoc.data.businessId || null,
+          businessName: businessName || existingValidOTPDoc.data.businessName || null,
+          createdAt: Timestamp.fromDate(createdAt)
+        } as any);
+      } else {
+        const otpRecord: Omit<OTPRecord, 'createdAt' | 'expiresAt'> & { 
+          createdAt: Timestamp; 
+          expiresAt: Timestamp;
+        } = {
+          email: emailLower,
+          otp,
+          expiresAt: Timestamp.fromDate(expiresAt),
+          isUsed: false,
+          attempts: 0,
+          businessId,
+          businessName,
+          createdAt: Timestamp.fromDate(createdAt)
+        };
 
-      await addDoc(collection(db, 'email_otps'), otpRecord);
+        await addDoc(collection(db, 'email_otps'), otpRecord);
+      }
 
       // Send OTP email
       const storeBranding = {
@@ -106,21 +130,12 @@ export class OTPService {
         storeBranding
       );
 
-      // If Firebase Functions fails, try direct SendGrid
+      // If Firebase Functions fails to send the email, do not attempt client-side
+      // SendGrid fallback. Client-side SendGrid keys are not reliable and cause
+      // inconsistent behavior. Surface the failure back to the caller so it can
+      // show a proper error message and the server logs contain the details.
       if (!emailSent) {
-        console.log('🔄 Firebase Functions failed, trying direct SendGrid...');
-        const directEmailSent = await DirectEmailService.sendOTPEmail(
-          email,
-          otp,
-          businessData?.name || businessName || 'Store',
-          businessData?.whatsapp || '+2348123456789' // Always include WhatsApp
-        );
-        
-        if (directEmailSent) {
-          console.log('✅ Email sent via direct SendGrid');
-        } else {
-          console.error('❌ Both email services failed');
-        }
+        console.error('❌ Firebase Functions failed to send OTP email; aborting without client-side fallback');
       }
 
       if (emailSent) {
