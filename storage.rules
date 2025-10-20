@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow read access to product images for everyone (public read)
+    match /businesses/{businessId}/products/{allPaths=**} {
+      allow read: if true;
+
+      // Allow write only if the user is authenticated and is the owner of the business
+      allow write: if request.auth != null &&
+        // Read the business document and ensure ownerId matches the authenticated user
+        get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+    }
+
+    // Add a safe default: deny other paths unless explicitly allowed
+    match /{allPaths=**} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}
