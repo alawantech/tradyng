@@ -33,9 +33,9 @@ export const Input: React.FC<InputProps> = ({
           </div>
         )}
         <input
-          className={`w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2 border ${borderClassName || 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-500 ${
+          className={`w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2 border ${borderClassName || 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-transparent ${
             error ? 'border-red-500' : ''
-          } ${className}`}
+          } ${className} text-white placeholder-white/70`}
           {...props}
         />
       </div>
