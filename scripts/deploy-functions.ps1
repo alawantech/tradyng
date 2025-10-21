@@ -34,31 +34,42 @@ if ($env:FUNCTIONS) {
     $functionsList = $defaultFunctions
 }
 
-# Get token from env or prompt (optional now since email functions are removed)
-$token = $env:MAIL_SENDER_API_TOKEN
-
 Write-Host "Deploying functions to region: $region"
 Write-Host "Functions to update: $($functionsList -join ', ')"
 
 foreach ($fn in $functionsList) {
-    Write-Host "\nUpdating function: $fn"
-    try {
-        & gcloud functions deploy $fn `
-            --region=$region `
-            --runtime=nodejs18 `
-            --trigger-http `
-            --entry-point=$fn `
-            --quiet `
-            --update-env-vars "MAIL_SENDER_API_TOKEN=$token,MAIL_FROM_EMAIL=$mailFrom"
+  Write-Host "\nUpdating function: $fn"
+  try {
+    # Build the optional env var string only if MAIL_FROM_EMAIL or SUPPORT_EMAIL are provided
+    $envPairs = @()
+    if ($mailFrom) { $envPairs += "MAIL_FROM_EMAIL=$mailFrom" }
+    if ($SupportEmail) { $envPairs += "SUPPORT_EMAIL=$SupportEmail" }
+    $envArg = $null
+    if ($envPairs.Count -gt 0) { $envArg = $envPairs -join ',' }
 
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "gcloud returned non-zero exit code ($LASTEXITCODE) for function $fn"
-        } else {
-            Write-Host "Function $fn updated successfully."
-        }
-    } catch {
-        Write-Error "Failed to deploy/update function $fn: $_"
+    $deployArgs = @(
+      'functions', 'deploy', $fn,
+      '--region=' + $region,
+      '--runtime=nodejs18',
+      '--trigger-http',
+      '--entry-point=' + $fn,
+      '--quiet'
+    )
+
+    if ($envArg) {
+      $deployArgs += @('--update-env-vars', $envArg)
     }
+
+    & gcloud @deployArgs
+
+    if ($LASTEXITCODE -ne 0) {
+      Write-Warning "gcloud returned non-zero exit code ($LASTEXITCODE) for function $fn"
+    } else {
+      Write-Host "Function $fn updated successfully."
+    }
+  } catch {
+    Write-Error "Failed to deploy/update function $fn: $_"
+  }
 }
 
 Write-Host "All done. Check Cloud Console or run 'gcloud functions logs read <FUNCTION>' to inspect logs."

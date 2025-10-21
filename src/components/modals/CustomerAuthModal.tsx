@@ -57,8 +57,11 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       confirmPassword: '',
     });
     setShowPassword(false);
-    setShowOTPModal(false);
-    setPendingRegistration(null);
+  };
+
+  // Simple handler for forgot-password since email/OTP flows were removed.
+  const handleForgotPassword = () => {
+    toast('Password reset is not available in this build. Please contact support for help.');
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -348,7 +351,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                       <button
                         type="button"
                         className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
-                        onClick={() => setShowForgotPasswordModal(true)}
+                        onClick={handleForgotPassword}
                       >
                         Forgot password?
                       </button>
@@ -596,32 +599,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
         </div>
       </div>
       
-      {/* OTP Verification Modal */}
-      <OTPVerificationModal
-        key="otp-verification-modal"
-        isOpen={showOTPModal}
-        onClose={handleOTPModalClose}
-        onVerified={handleOTPVerified}
-        email={pendingRegistration?.email || ''}
-        businessName={business?.name}
-        businessId={business?.id}
-      />
-      
-      {/* Forgot Password Modal */}
-      <ForgotPasswordModal
-        key="forgot-password-modal"
-        isOpen={showForgotPasswordModal}
-        onClose={() => setShowForgotPasswordModal(false)}
-        onResetInitiated={handleResetInitiated}
-      />
-      
-      {/* Password Reset Modal */}
-      <PasswordResetModal
-        key="password-reset-modal"
-        isOpen={showPasswordResetModal}
-        onClose={handlePasswordResetModalClose}
-        email={resetEmail}
-      />
+      {/* Email/OTP modals removed on purpose (password reset & OTP flows disabled) */}
     </AnimatePresence>
   );
 };
