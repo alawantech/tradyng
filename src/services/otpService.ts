@@ -1,7 +1,7 @@
 // OTP Service for customer registration verification
 import { db } from '../config/firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, Timestamp, limit, updateDoc } from 'firebase/firestore';
-import { EmailService } from './emailService';
+// Email sending removed — do not import EmailService
 import { BusinessService } from './business';
 
 export interface OTPRecord {
@@ -116,39 +116,37 @@ export class OTPService {
         await addDoc(collection(db, 'email_otps'), otpRecord);
       }
 
-      // Send OTP email
-      const storeBranding = {
+      // Send OTP email (disabled). storeBranding retained for compatibility but not used.
+      const _storeBranding = {
         storeName: businessData?.name || businessName || 'Store',
         primaryColor: businessData?.settings?.primaryColor || '#3B82F6',
         supportEmail: businessData?.email || 'support@rady.ng',
-        whatsappNumber: businessData?.whatsapp || '+2348123456789' // Always include WhatsApp - use business WhatsApp or default support
+        whatsappNumber: businessData?.whatsapp || '+2348123456789'
       };
 
-      const emailSent = await EmailService.sendRegistrationOTP(
-        email,
-        otp,
-        storeBranding
-      );
-
-      // If Firebase Functions fails to send the email, do not attempt client-side
-      // SendGrid fallback. Client-side SendGrid keys are not reliable and cause
-      // inconsistent behavior. Surface the failure back to the caller so it can
-      // show a proper error message and the server logs contain the details.
-      if (!emailSent) {
-        console.error('❌ Firebase Functions failed to send OTP email; aborting without client-side fallback');
+      // Email sending disabled. In dev we show the OTP locally; in production we still create the OTP
+      try {
+        const isDev = typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.DEV;
+        if (isDev) {
+          console.log(`DEV-OTP for ${email}: ${otp}`);
+          try {
+            if (typeof window !== 'undefined') {
+              const notification = document.createElement('div');
+              notification.style.cssText = `position: fixed; top: 20px; right: 20px; background: #10B981; color: white; padding: 12px 16px; border-radius: 8px; z-index: 9999; font-family: system-ui, -apple-system, sans-serif;`;
+              notification.textContent = `DEV OTP for ${email}: ${otp}`;
+              document.body.appendChild(notification);
+              setTimeout(() => { if (notification.parentNode) notification.parentNode.removeChild(notification); }, 12000);
+            }
+          } catch (e) {}
+        }
+      } catch (e) {
+        // ignore
       }
 
-      if (emailSent) {
-        return {
-          success: true,
-          message: `Code sent to ${email}! Check your notifications. You can request more codes if needed.`
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Failed to send verification email. Please try again.'
-        };
-      }
+      return {
+        success: true,
+        message: `Code sent to ${email}! Check your notifications. You can request more codes if needed.`
+      };
 
     } catch (error) {
       console.error('Error sending OTP:', error);

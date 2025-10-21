@@ -1,0 +1,67 @@
+name: Deploy Cloud Functions
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-functions:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure gcloud
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Install dependencies (functions)
+        working-directory: ./functions
+        run: |
+          npm ci
+
+      - name: Build functions
+        working-directory: ./functions
+        run: |
+          npm run build
+
+      # Email functions removed; deploying only remaining functions below
+
+      - name: Deploy healthCheck (gen2 HTTP)
+        run: |
+          gcloud functions deploy healthCheck \
+            --gen2 --region=${{ secrets.FUNCTIONS_REGION }} --runtime=nodejs22 \
+            --entry-point=healthCheck --trigger-http --allow-unauthenticated=true
+
+      - name: Deploy generateUploadUrl (gen2 HTTP)
+        run: |
+          gcloud functions deploy generateUploadUrl \
+            --gen2 --region=${{ secrets.FUNCTIONS_REGION }} --runtime=nodejs22 \
+            --entry-point=generateUploadUrl --trigger-http --allow-unauthenticated=false
+
+      - name: List deployed functions
+        run: |
+          gcloud functions list --region=${{ secrets.FUNCTIONS_REGION }}
+
+      - name: Optional: Run smoke test (send test OTP)
+        if: ${{ secrets.MAILER_TEST_EMAIL && secrets.MAIL_SENDER_API_TOKEN }}
+        env:
+          TEST_EMAIL: ${{ secrets.MAILER_TEST_EMAIL }}
+        run: |
+          # Attempt to call testSendOTP (requires function URL and service account auth)
+          echo "Smoke test not implemented automatically. Use the function URL from gcloud functions list to POST a test payload."

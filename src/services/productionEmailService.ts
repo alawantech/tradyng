@@ -26,28 +26,9 @@ export class ProductionEmailService {
   private static API_BASE_URL = import.meta.env.VITE_EMAIL_API_URL || 'http://localhost:3001';
 
   static async sendEmail(emailData: EmailTemplate): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.API_BASE_URL}/api/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(emailData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send email');
-      }
-
-      const result = await response.json();
-      console.log('Email sent successfully:', result.message);
-      return true;
-
-    } catch (error) {
-      console.error('Error sending email via API:', error);
-      return false;
-    }
+    // Email delivery via backend API has been disabled in this build.
+    console.warn('ProductionEmailService.sendEmail called but email sending is disabled.');
+    return false;
   }
 
   // Registration OTP email with beautiful template

@@ -40,6 +40,22 @@ if (!MAIL_SENDER_API_TOKEN) {
   process.exit(1);
 }
 
+// Non-sensitive debug: show where the token came from and a masked preview
+try {
+  const tokenSource = process.env.MAIL_SENDER_API_TOKEN ? 'environment (process.env)' : (fileEnv.MAIL_SENDER_API_TOKEN ? 'functions/.env' : 'none');
+  let masked = '';
+  if (MAIL_SENDER_API_TOKEN && MAIL_SENDER_API_TOKEN.length > 12) {
+    masked = MAIL_SENDER_API_TOKEN.slice(0, 8) + '...' + MAIL_SENDER_API_TOKEN.slice(-4);
+  } else if (MAIL_SENDER_API_TOKEN) {
+    masked = MAIL_SENDER_API_TOKEN.slice(0, 4) + '...';
+  }
+  console.log(`MAIL_SENDER_API_TOKEN source: ${tokenSource}`);
+  console.log(`MAIL_SENDER_API_URL: ${MAIL_SENDER_API_URL}`);
+  console.log(`Token preview (masked): ${masked}`);
+} catch (e) {
+  // don't expose secrets; just continue
+}
+
 async function trySend(url, payload) {
   const res = await fetch(url, {
     method: 'POST',

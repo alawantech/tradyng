@@ -190,7 +190,7 @@ export const Cart: React.FC = () => {
                             </motion.button>
 
                             <motion.span
-                              key={item.quantity}
+                              key={`qty-${item.id}`}
                               initial={{ scale: 0.8 }}
                               animate={{ scale: 1 }}
                               className="w-12 text-center font-bold text-gray-900"
@@ -210,7 +210,7 @@ export const Cart: React.FC = () => {
 
                           <div className="text-right">
                             <motion.p
-                              key={item.price * item.quantity}
+                              key={`total-${item.id}`}
                               initial={{ scale: 0.8 }}
                               animate={{ scale: 1 }}
                               className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"

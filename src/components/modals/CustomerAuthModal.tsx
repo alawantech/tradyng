@@ -129,26 +129,45 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Step 1: Send OTP for email verification BEFORE creating account
-      const otpResult = await OTPService.sendOTP(
-        formData.email, 
-        business?.id, 
-        business?.name
-      );
+      // Make OTP requirement configurable via env var for development convenience.
+      // Set VITE_REQUIRE_OTP=false to skip OTP and create account immediately.
+      const requireOtp = (import.meta.env.VITE_REQUIRE_OTP ?? 'true') === 'true';
 
-      if (otpResult.success) {
-        // Store registration data for after OTP verification
-        setPendingRegistration({
-          email: formData.email,
-          password: formData.password,
-          displayName: formData.displayName
-        });
-        
-        // Show OTP modal
-        setShowOTPModal(true);
-        toast.success(otpResult.message);
+      if (!requireOtp) {
+        // Directly create account without OTP (development-friendly)
+        await signUp(
+          formData.email,
+          formData.password,
+          formData.displayName,
+          () => {
+            toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
+            resetForm();
+            onClose();
+            navigate('/');
+          }
+        );
       } else {
-        toast.error(otpResult.message);
+        // Step 1: Send OTP for email verification BEFORE creating account
+        const otpResult = await OTPService.sendOTP(
+          formData.email,
+          business?.id,
+          business?.name
+        );
+
+        if (otpResult.success) {
+          // Store registration data for after OTP verification
+          setPendingRegistration({
+            email: formData.email,
+            password: formData.password,
+            displayName: formData.displayName
+          });
+
+          // Show OTP modal
+          setShowOTPModal(true);
+          toast.success(otpResult.message);
+        } else {
+          toast.error(otpResult.message);
+        }
       }
     } catch (error: any) {
       console.error('OTP sending error:', error);
@@ -683,6 +702,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       
       {/* OTP Verification Modal */}
       <OTPVerificationModal
+        key="otp-verification-modal"
         isOpen={showOTPModal}
         onClose={handleOTPModalClose}
         onVerified={handleOTPVerified}
@@ -693,6 +713,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       
       {/* Forgot Password Modal */}
       <ForgotPasswordModal
+        key="forgot-password-modal"
         isOpen={showForgotPasswordModal}
         onClose={() => setShowForgotPasswordModal(false)}
         onResetInitiated={handleResetInitiated}
@@ -700,6 +721,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       
       {/* Password Reset Modal */}
       <PasswordResetModal
+        key="password-reset-modal"
         isOpen={showPasswordResetModal}
         onClose={handlePasswordResetModalClose}
         email={resetEmail}

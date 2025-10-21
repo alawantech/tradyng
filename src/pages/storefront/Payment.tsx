@@ -176,22 +176,7 @@ export const Payment: React.FC = () => {
         });
       }
 
-      // Send confirmation email to customer
-      try {
-        const { sendEmail } = await import('../../services/emailService');
-        await sendEmail({
-          to: order.customerEmail,
-          from: business.email || 'noreply@rady.ng',
-          subject: `Order ${order.orderId} Created - Awaiting Approval`,
-          html: `<h2>Order Created Successfully</h2>
-            <p>Hi ${order.customerName},</p>
-            <p>Your order <b>${order.orderId}</b> has been created and is awaiting admin approval.</p>
-            <p>Once your payment is verified, your order will be processed and shipped.</p>
-            <p>Thank you for shopping with ${business.name}!</p>`
-        });
-      } catch (emailError) {
-        console.error('Error sending confirmation email:', emailError);
-      }
+      // Email sending disabled — skipping order confirmation email.
 
       toast.success('Payment receipt uploaded successfully! Your order is now awaiting admin approval.');
       // Redirect to order history page and pass orderId in state
