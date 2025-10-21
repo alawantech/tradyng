@@ -4,10 +4,7 @@ import { X, Eye, EyeOff, User, Mail, Lock, ShoppingBag, Heart, Star, Shield, Ale
 import { useNavigate } from 'react-router-dom';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { useStore } from '../../pages/storefront/StorefrontLayout';
-import { OTPService } from '../../services/otpService';
-import { OTPVerificationModal } from './OTPVerificationModal';
-import { ForgotPasswordModal } from './ForgotPasswordModal';
-import { PasswordResetModal } from './PasswordResetModal';
+// OTP and email-based password reset removed — signup will create account immediately
 import toast from 'react-hot-toast';
 
 interface CustomerAuthModalProps {
@@ -28,18 +25,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  // OTP verification states
-  const [showOTPModal, setShowOTPModal] = useState(false);
-  const [pendingRegistration, setPendingRegistration] = useState<{
-    email: string;
-    password: string;
-    displayName: string;
-  } | null>(null);
-  
-  // Forgot password states
-  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
-  const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
+  // Removed OTP and email-based password reset state
   
   const [formData, setFormData] = useState({
     email: '',
@@ -129,46 +115,18 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Make OTP requirement configurable via env var for development convenience.
-      // Set VITE_REQUIRE_OTP=false to skip OTP and create account immediately.
-      const requireOtp = (import.meta.env.VITE_REQUIRE_OTP ?? 'true') === 'true';
-
-      if (!requireOtp) {
-        // Directly create account without OTP (development-friendly)
-        await signUp(
-          formData.email,
-          formData.password,
-          formData.displayName,
-          () => {
-            toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
-            resetForm();
-            onClose();
-            navigate('/');
-          }
-        );
-      } else {
-        // Step 1: Send OTP for email verification BEFORE creating account
-        const otpResult = await OTPService.sendOTP(
-          formData.email,
-          business?.id,
-          business?.name
-        );
-
-        if (otpResult.success) {
-          // Store registration data for after OTP verification
-          setPendingRegistration({
-            email: formData.email,
-            password: formData.password,
-            displayName: formData.displayName
-          });
-
-          // Show OTP modal
-          setShowOTPModal(true);
-          toast.success(otpResult.message);
-        } else {
-          toast.error(otpResult.message);
+      // Directly create account without OTP
+      await signUp(
+        formData.email,
+        formData.password,
+        formData.displayName,
+        () => {
+          toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
+          resetForm();
+          onClose();
+          navigate('/');
         }
-      }
+      );
     } catch (error: any) {
       console.error('OTP sending error:', error);
       toast.error('Error sending verification code. Please try again.');
@@ -177,71 +135,9 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     }
   };
 
-  // Handle successful OTP verification - now create the actual account
-  const handleOTPVerified = async () => {
-    if (!pendingRegistration) return;
+  // OTP flows removed.
 
-    setIsLoading(true);
-    try {
-      // Now create the Firebase account after email verification
-      await signUp(
-        pendingRegistration.email, 
-        pendingRegistration.password, 
-        pendingRegistration.displayName, 
-        () => {
-          // Success callback - redirect to homepage
-          toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
-          resetForm();
-          setShowOTPModal(false);
-          setPendingRegistration(null);
-          onClose();
-          navigate('/');
-        }
-      );
-    } catch (error: any) {
-      console.error('Account creation error:', error);
-      
-      // Handle specific Firebase auth errors
-      if (error.code === 'auth/email-already-in-use') {
-        toast.error(
-          `This email is already registered! Try signing in instead.`,
-          {
-            duration: 5000,
-            icon: '👋',
-          }
-        );
-      } else if (error.code === 'auth/weak-password') {
-        toast.error('Password is too weak. Please choose a stronger password.');
-      } else if (error.code === 'auth/invalid-email') {
-        toast.error('Please enter a valid email address.');
-      } else {
-        toast.error(
-          `Registration failed: ${error.message || 'Please try again.'}`,
-          { duration: 6000 }
-        );
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle OTP modal close
-  const handleOTPModalClose = () => {
-    setShowOTPModal(false);
-    setPendingRegistration(null);
-    setIsLoading(false);
-  };
-
-  // Handle forgot password flow
-  const handleResetInitiated = (email: string) => {
-    setResetEmail(email);
-    setShowPasswordResetModal(true);
-  };
-
-  const handlePasswordResetModalClose = () => {
-    setShowPasswordResetModal(false);
-    setResetEmail('');
-  };
+  // Forgot password removed.
 
   const switchMode = () => {
     setMode(mode === 'signin' ? 'signup' : 'signin');
