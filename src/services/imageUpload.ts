@@ -1,5 +1,5 @@
 import { storage } from '../config/firebase';
-import { ref, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, deleteObject } from 'firebase/storage';
 // We'll use signed URLs returned by the backend to upload files securely
 
 export class ImageUploadService {
@@ -14,8 +14,18 @@ export class ImageUploadService {
     const path = `${folder}/${finalFileName}`;
 
     try {
+      // Convert file to base64
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
-      // Call HTTP Cloud Function to get signed upload URL
+      // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+      const base64String = base64Data.split(',')[1];
+
+      // Call HTTP Cloud Function to upload directly
       const region = import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION || 'us-central1';
       const project = import.meta.env.VITE_FIREBASE_PROJECT_ID || '';
       const url = `https://${region}-${project}.cloudfunctions.net/generateUploadUrl`;
@@ -30,7 +40,11 @@ export class ImageUploadService {
           'Content-Type': 'application/json',
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         },
-        body: JSON.stringify({ path, contentType: file.type })
+        body: JSON.stringify({
+          path,
+          contentType: file.type,
+          fileData: base64String
+        })
       });
 
       if (!resp.ok) {
@@ -39,27 +53,16 @@ export class ImageUploadService {
         throw new Error('Failed to get upload URL (server error)');
       }
 
-      const { uploadUrl, publicUrl } = await resp.json();
+      const { publicUrl, uploaded } = await resp.json();
 
-      // Upload file directly to the signed URL via PUT
-      const putResp = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type
-        },
-        body: file
-      });
-
-      if (!putResp.ok) {
-        const text = await putResp.text();
-        console.error('Signed upload failed', text);
-        throw new Error('Signed upload failed');
+      if (!uploaded) {
+        throw new Error('Upload was not completed by server');
       }
 
       return publicUrl;
     } catch (error) {
-      console.error('Signed upload path failed:', error);
-      throw new Error('Failed to upload image via signed URL. Ensure the upload function is reachable and returns a signed URL.');
+      console.error('Direct upload failed:', error);
+      throw new Error('Failed to upload image. Please try again.');
     }
   }
 

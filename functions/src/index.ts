@@ -678,6 +678,7 @@ export const healthCheck = functions.https.onRequest((req, res) => {
 
   // Generate signed upload URL (v4) for direct-to-GCS uploads
   // Expects POST { path: 'folder/file.jpg', contentType: 'image/jpeg' }
+  // Alternative: POST { path: 'folder/file.jpg', fileData: base64string, contentType: 'image/jpeg' }
   export const generateUploadUrl = functions.https.onRequest(async (req, res) => {
     // CORS
     res.set('Access-Control-Allow-Origin', '*');
@@ -710,7 +711,7 @@ export const healthCheck = functions.https.onRequest((req, res) => {
         return;
       }
 
-      const { path, contentType } = req.body || {};
+      const { path, contentType, fileData } = req.body || {};
       if (!path || typeof path !== 'string' || !contentType || typeof contentType !== 'string') {
         res.status(400).send({ error: 'Missing required fields: path, contentType' });
         return;
@@ -721,6 +722,34 @@ export const healthCheck = functions.https.onRequest((req, res) => {
       const bucket = admin.storage().bucket();
       const file = bucket.file(cleanPath);
 
+      // If fileData is provided, upload directly instead of generating signed URL
+      if (fileData && typeof fileData === 'string') {
+        try {
+          // Convert base64 to buffer
+          const buffer = Buffer.from(fileData, 'base64');
+          await file.save(buffer, {
+            metadata: {
+              contentType: contentType,
+            },
+            public: true, // Make the file publicly accessible
+          });
+
+          const bucketName = bucket.name || process.env.GCLOUD_STORAGE_BUCKET || `${process.env.GCLOUD_PROJECT}.appspot.com`;
+          const publicUrl = `https://storage.googleapis.com/${bucketName}/${encodeURI(cleanPath)}`;
+
+          res.json({
+            uploadUrl: null, // No signed URL needed
+            publicUrl,
+            uploaded: true
+          });
+          return;
+        } catch (uploadError) {
+          console.error('Direct upload failed:', uploadError);
+          // Fall back to signed URL approach
+        }
+      }
+
+      // Fallback: Generate signed URL
       const expiresMs = Date.now() + 15 * 60 * 1000; // 15 minutes
       const [uploadUrl] = await file.getSignedUrl({
         version: 'v4',
