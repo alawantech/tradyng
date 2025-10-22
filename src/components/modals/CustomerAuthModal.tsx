@@ -4,7 +4,8 @@ import { X, Eye, EyeOff, User, Mail, Lock, ShoppingBag, Heart, Star, Shield, Ale
 import { useNavigate } from 'react-router-dom';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { useStore } from '../../pages/storefront/StorefrontLayout';
-// OTP and email-based password reset removed — signup will create account immediately
+// OTP service for email verification
+import { OTPService } from '../../services/otpService';
 import toast from 'react-hot-toast';
 
 interface CustomerAuthModalProps {
@@ -25,7 +26,12 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  // Removed OTP and email-based password reset state
+  // OTP verification state
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpError, setOtpError] = useState('');
   
   const [formData, setFormData] = useState({
     email: '',
@@ -57,6 +63,12 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       confirmPassword: '',
     });
     setShowPassword(false);
+    // Reset OTP state
+    setOtp('');
+    setOtpModalOpen(false);
+    setOtpLoading(false);
+    setOtpCooldown(0);
+    setOtpError('');
   };
 
   // Simple handler for forgot-password since email/OTP flows were removed.
@@ -66,6 +78,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsLoading(true);
 
     try {
@@ -98,6 +111,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     
     // Basic validation
     if (!formData.email || !formData.password || !formData.displayName) {
@@ -118,18 +132,26 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Directly create account without OTP
-      await signUp(
-        formData.email,
-        formData.password,
-        formData.displayName,
-        () => {
-          toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
-          resetForm();
-          onClose();
-          navigate('/');
-        }
-      );
+      // Send OTP instead of creating account directly
+      const otpResult = await OTPService.sendOTP(formData.email);
+
+      if (otpResult.success) {
+        toast.success(otpResult.message);
+        setOtpModalOpen(true);
+        // Start cooldown timer for resend
+        setOtpCooldown(120); // 2 minutes
+        const cooldownInterval = setInterval(() => {
+          setOtpCooldown(prev => {
+            if (prev <= 1) {
+              clearInterval(cooldownInterval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        toast.error(otpResult.message);
+      }
     } catch (error: any) {
       console.error('OTP sending error:', error);
       toast.error('Error sending verification code. Please try again.');
@@ -138,9 +160,71 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     }
   };
 
-  // OTP flows removed.
+  const verifyOtpAndCreateAccount = async (otpCode: string) => {
+    setOtpLoading(true);
+    setOtpError('');
 
-  // Forgot password removed.
+    try {
+      const verifyResult = await OTPService.verifyOTP(formData.email, otpCode);
+
+      if (verifyResult.valid) {
+        // OTP verified, now create the account
+        await signUp(
+          formData.email,
+          formData.password,
+          formData.displayName,
+          () => {
+            toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
+            resetForm();
+            onClose();
+            navigate('/');
+          }
+        );
+      } else {
+        setOtpError(verifyResult.message);
+        toast.error(verifyResult.message);
+      }
+    } catch (error: any) {
+      console.error('OTP verification error:', error);
+      const errorMessage = 'Error verifying code. Please try again.';
+      setOtpError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    if (otpCooldown > 0) return;
+
+    setOtpLoading(true);
+    try {
+      const resendResult = await OTPService.sendOTP(formData.email);
+
+      if (resendResult.success) {
+        toast.success(resendResult.message);
+        setOtpCooldown(120); // Reset cooldown
+        const cooldownInterval = setInterval(() => {
+          setOtpCooldown(prev => {
+            if (prev <= 1) {
+              clearInterval(cooldownInterval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        toast.error(resendResult.message);
+      }
+    } catch (error: any) {
+      console.error('Resend OTP error:', error);
+      toast.error('Error resending code. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // OTP and email-based password reset removed.
 
   const switchMode = () => {
     setMode(mode === 'signin' ? 'signup' : 'signin');
@@ -163,7 +247,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm auth-modal-backdrop"
-            onClick={onClose}
+            onClick={(e) => e.stopPropagation()}
           />
           
           {/* Modal */}
@@ -173,6 +257,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", duration: 0.5 }}
             className="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8"
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Decorative gradient header */}
             <div 
@@ -600,6 +685,157 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       </div>
       
       {/* Email/OTP modals removed on purpose (password reset & OTP flows disabled) */}
+      
+      {/* OTP Verification Modal */}
+      <AnimatePresence>
+        {otpModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 overflow-y-auto"
+          >
+            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={() => setOtpModalOpen(false)}
+              />
+              
+              {/* Modal */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: "spring", duration: 0.5 }}
+                className="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl"
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Verify Your Email
+                    </h3>
+                    <button
+                      onClick={() => setOtpModalOpen(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-600">
+                    We sent a 4-digit code to <strong>{formData.email}</strong>
+                  </p>
+                </div>
+
+                {/* OTP Input */}
+                <div className="p-6">
+                  <div className="space-y-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Enter verification code
+                    </label>
+                    
+                    {/* OTP Input Fields */}
+                    <div className="flex justify-center space-x-3">
+                      {[0, 1, 2, 3].map((index) => (
+                        <input
+                          key={index}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={1}
+                          value={otp[index] || ''}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/[^0-9]/g, '');
+                            const newOtp = otp.split('');
+                            newOtp[index] = value;
+                            const updatedOtp = newOtp.join('');
+                            setOtp(updatedOtp);
+                            
+                            // Auto-advance to next input
+                            if (value && index < 3) {
+                              const nextInput = document.getElementById(`otp-${index + 1}`);
+                              nextInput?.focus();
+                            }
+                            
+                            // Auto-verify when complete
+                            if (updatedOtp.length === 4) {
+                              verifyOtpAndCreateAccount(updatedOtp);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Backspace' && !otp[index] && index > 0) {
+                              const prevInput = document.getElementById(`otp-${index - 1}`);
+                              prevInput?.focus();
+                            }
+                          }}
+                          id={`otp-${index}`}
+                          className="w-12 h-12 text-center text-xl font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
+                          style={{ 
+                            '--tw-ring-color': primaryColor 
+                          } as React.CSSProperties}
+                          disabled={otpLoading}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Error Message */}
+                    {otpError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-sm text-red-600 text-center"
+                      >
+                        {otpError}
+                      </motion.div>
+                    )}
+
+                    {/* Loading State */}
+                    {otpLoading && (
+                      <div className="text-center">
+                        <div className="inline-flex items-center space-x-2 text-sm text-gray-600">
+                          <div className="w-4 h-4 border-2 border-gray-300 border-t-current rounded-full animate-spin"></div>
+                          <span>Verifying code...</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Resend Button */}
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        onClick={resendOtp}
+                        disabled={otpLoading || otpCooldown > 0}
+                        className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {otpCooldown > 0 
+                          ? `Resend code in ${Math.floor(otpCooldown / 60)}:${(otpCooldown % 60).toString().padStart(2, '0')}`
+                          : 'Resend code'
+                        }
+                      </button>
+                    </div>
+
+                    {/* Cancel Button */}
+                    <div className="flex justify-center pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setOtpModalOpen(false)}
+                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                        disabled={otpLoading}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 };
