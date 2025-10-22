@@ -9,8 +9,8 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <img src={logo} alt="Trady.ng Logo" className="h-8 w-8 object-contain" />
-              <span className="text-xl font-bold">trady.ng</span>
+              <img src={logo} alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
+              <span className="text-xl font-bold">rady.ng</span>
             </div>
             <p className="text-gray-400 mb-6">
               Empowering businesses to create their own online stores and reach customers worldwide.
@@ -19,7 +19,7 @@ export const Footer: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center space-x-2 text-gray-400">
                 <Mail className="h-4 w-4" />
-                <span>support@trady.ng</span>
+                <span>support@rady.ng</span>
               </div>
               <div className="flex items-center space-x-2 text-gray-400">
                 <Phone className="h-4 w-4" />
@@ -54,7 +54,7 @@ export const Footer: React.FC = () => {
         </div>
         
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-          <p>&copy; 2024 Trady.ng. All rights reserved.</p>
+          <p>&copy; 2024 Rady.ng. All rights reserved.</p>
         </div>
       </div>
     </footer>

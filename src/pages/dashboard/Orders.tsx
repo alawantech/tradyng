@@ -992,7 +992,7 @@ export const Orders: React.FC = () => {
                                 paymentMethod={order.paymentMethod}
                                 createdAt={order.createdAt?.toDate().toLocaleDateString() || 'N/A'}
                                 currencyCode={business?.settings?.currency}
-                                storeName={business?.name || 'Trady.ng'}
+                                storeName={business?.name || 'Rady.ng'}
                                 storeAddress={business?.address}
                                 storePhone={business?.phone}
                                 storeEmail={business?.email}

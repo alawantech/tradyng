@@ -108,8 +108,8 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Basic business page theme',
       '50 MB storage limit',
       '50 orders per month limit',
-      '"Powered by trady.ng" badge',
-      'trady.ng/yourbusiness subdomain only'
+      '"Powered by rady.ng" badge',
+      'rady.ng/yourbusiness subdomain only'
     ],
     buttonText: 'Get Started Free'
   },

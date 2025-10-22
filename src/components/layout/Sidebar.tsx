@@ -70,8 +70,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
       >
         <div className="p-6 flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
-            <img src={logo} alt="Trady.ng Logo" className="h-8 w-8 object-contain" />
-            <span className="text-xl font-bold text-gray-900">trady.ng</span>
+            <img src={logo} alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
+            <span className="text-xl font-bold text-gray-900">rady.ng</span>
           </Link>
           {/* Close button for mobile/tablet */}
           <button

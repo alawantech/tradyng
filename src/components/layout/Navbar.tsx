@@ -24,8 +24,8 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center space-x-2">
-            <img src={logo} alt="Trady.ng Logo" className="h-8 w-8 object-contain" />
-            <span className="text-xl font-bold text-gray-900">trady.ng</span>
+            <img src={logo} alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
+            <span className="text-xl font-bold text-gray-900">rady.ng</span>
           </Link>
           
           <div className="hidden md:flex items-center space-x-8">

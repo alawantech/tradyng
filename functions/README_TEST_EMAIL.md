@@ -1,3 +1,20 @@
+Test sending email via MailerSend
+
+This script helps you verify a MailerSend API token from your local machine before deploying functions.
+
+Usage (PowerShell):
+
+1. Open PowerShell in the repo root.
+2. Set the environment variable and run the script:
+
+```powershell
+$env:MAIL_SENDER_API_TOKEN = 'YOUR_MAILERSEND_TOKEN_HERE'
+node .\functions\send_test_email.js recipient@example.com
+```
+
+Replace `recipient@example.com` with the email you want to send to (for example, `abubakarlawan671@gmail.com`).
+
+The script will print the HTTP response and body from MailerSend.
 Test email sender
 
 This small script sends a single test email using the MailerSend API token configured in `functions/.env`.

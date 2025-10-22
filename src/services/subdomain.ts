@@ -12,9 +12,7 @@ export class SubdomainService {
   private static MAIN_DOMAINS = [
     'localhost',
     'rady.ng',
-    'www.rady.ng',
-    'trady.ng',
-    'www.trady.ng'
+    'www.rady.ng'
   ];
 
   // Check if current URL is a store subdomain
@@ -62,9 +60,9 @@ export class SubdomainService {
       };
     }
 
-    // Check if it's a subdomain of rady.ng or trady.ng
-    if (hostname.endsWith('.rady.ng') || hostname.endsWith('.trady.ng')) {
-      const subdomain = hostname.replace('.rady.ng', '').replace('.trady.ng', '');
+    // Check if it's a subdomain of rady.ng
+    if (hostname.endsWith('.rady.ng')) {
+      const subdomain = hostname.replace('.rady.ng', '');
       
       // Skip www and other system subdomains
       if (subdomain && subdomain !== 'www' && subdomain !== 'api' && subdomain !== 'admin') {
@@ -151,7 +149,7 @@ export class SubdomainService {
     }
 
     // Check if it's the main domain
-    return this.MAIN_DOMAINS.includes(hostname) || hostname === 'rady.ng' || hostname === 'trady.ng';
+    return this.MAIN_DOMAINS.includes(hostname) || hostname === 'rady.ng';
   }
 
   // Get the dashboard URL (always main domain)

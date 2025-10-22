@@ -96,7 +96,7 @@ export const SignUp: React.FC = () => {
           <div className="text-center mb-8">
             <Link to="/" className="flex items-center justify-center space-x-2 mb-4">
               <Store className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">trady.ng</span>
+              <span className="text-xl font-bold text-gray-900">rady.ng</span>
             </Link>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Your Store</h2>
             <p className="text-gray-600">Start your e-commerce journey today</p>
@@ -154,7 +154,7 @@ export const SignUp: React.FC = () => {
               placeholder="adebayofashion"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Your store will be available at: {formData.subdomain || 'yourstore'}.trady.ng
+              Your store will be available at: {formData.subdomain || 'yourstore'}.rady.ng
             </p>
 
             <Button type="submit" className="w-full" disabled={loading}>

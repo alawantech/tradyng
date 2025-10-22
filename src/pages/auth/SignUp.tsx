@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Store, ArrowRight, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -9,7 +9,8 @@ import toast from 'react-hot-toast';
 import { AuthService } from '../../services/auth';
 import { UserService } from '../../services/user';
 import { BusinessService } from '../../services/business';
-import { CountryService, countriesWithStates } from '../../data/countries';
+import { CountryService } from '../../data/countries';
+import type { Country, State } from '../../data/countries';
 import { getDefaultCurrencyForCountry } from '../../constants/currencies';
 import { COUNTRY_CALLING_CODES } from '../../data/countryCallingCodes';
 import logo from '../../assets/logo.png';
@@ -65,6 +66,12 @@ export const SignUp: React.FC = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showRepeatPassword, setShowRepeatPassword] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0); // seconds remaining until resend allowed
+  const otpCooldownRef = React.useRef<number | null>(null);
+  const OTP_LENGTH = 4;
 
   // Load countries on component mount
   useEffect(() => {
@@ -129,13 +136,13 @@ export const SignUp: React.FC = () => {
         setDomainStatus({
           checking: false,
           available: false,
-          message: `${subdomain}.trady.ng is already taken`
+          message: `${subdomain}.rady.ng is already taken`
         });
       } else {
         setDomainStatus({
           checking: false,
           available: true,
-          message: `${subdomain}.trady.ng is available!`
+          message: `${subdomain}.rady.ng is available!`
         });
       }
     } catch (error) {
@@ -190,6 +197,14 @@ export const SignUp: React.FC = () => {
   };
 
   const nextStep = () => {
+    // If we're on email step (2), trigger OTP flow instead of immediately advancing
+    if (currentStep === 2 && isStepValid(2)) {
+      // If we're currently waiting on an OTP cooldown or loading, do nothing
+      if (otpLoading || otpCooldown > 0) return;
+      triggerSendOtp();
+      return;
+    }
+
     if (currentStep < 5 && isStepValid(currentStep)) {
       setCurrentStep(prev => prev + 1);
     }
@@ -243,6 +258,7 @@ export const SignUp: React.FC = () => {
           ownerId: authUser.uid,
           email: formData.email,
           phone: `${formData.countryCode}${formData.phone}`,
+          whatsapp: `${formData.countryCode}${formData.phone}`,
           country: formData.country,
           state: formData.state,
           plan: 'free',
@@ -281,6 +297,109 @@ export const SignUp: React.FC = () => {
     }
   };
 
+  // OTP helpers
+  const triggerSendOtp = async () => {
+    try {
+      setOtpLoading(true);
+      // Use the deployed run.app endpoint (updated after deployment).
+      // For Cloud Functions v2 each function has its own run.app host; do not append the function name path.
+      const res = await fetch('https://sendotp-rv5lqk7lxa-uc.a.run.app', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email })
+      });
+      if (!res.ok) {
+        // Try JSON first, then text. Some errors return HTML (404 page) so fall back safely.
+        let bodyText: string | null = null;
+        try {
+          const json = await res.json();
+          bodyText = json && (json.error || json.message) ? (json.error || json.message) : JSON.stringify(json);
+        } catch (_e) {
+          try { bodyText = await res.text(); } catch (_e2) { bodyText = null; }
+        }
+        // If rate-limited, start a cooldown and surface a user-friendly message
+        if (res.status === 429) {
+          // Default cooldown is 60 seconds as enforced by the server
+          const cooldownSec = 60;
+          setOtpCooldown(cooldownSec);
+          // start interval to count down
+          if (otpCooldownRef.current) window.clearInterval(otpCooldownRef.current);
+          otpCooldownRef.current = window.setInterval(() => {
+            setOtpCooldown(prev => {
+              if (prev <= 1) {
+                if (otpCooldownRef.current) {
+                  window.clearInterval(otpCooldownRef.current);
+                  otpCooldownRef.current = null;
+                }
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000) as unknown as number;
+
+          // Try to parse server message for toast
+          const msg = bodyText || 'OTP recently requested. Please wait a minute before requesting again.';
+          // Open modal so user can enter existing OTP if they already received it
+          setShowOtpModal(true);
+          setOtpCode('');
+          toast.error(msg);
+          return;
+        }
+
+        throw new Error(bodyText || `Failed to send OTP (status ${res.status})`);
+      }
+      setShowOtpModal(true);
+      setOtpCode('');
+    } catch (err: any) {
+      console.error('sendOtp error:', err);
+      toast.error(err.message || 'Failed to send OTP');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // Clean up cooldown timer on unmount
+  useEffect(() => {
+    return () => {
+      if (otpCooldownRef.current) {
+        window.clearInterval(otpCooldownRef.current);
+        otpCooldownRef.current = null;
+      }
+    };
+  }, []);
+
+  const verifyOtpAuto = async (code: string) => {
+    if (code.length !== OTP_LENGTH) return;
+    try {
+      setOtpLoading(true);
+      const res = await fetch('https://verifyotp-rv5lqk7lxa-uc.a.run.app', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, code })
+      });
+      if (!res.ok) {
+        let bodyText: string | null = null;
+        try {
+          const json = await res.json();
+          bodyText = json && (json.error || json.message) ? (json.error || json.message) : JSON.stringify(json);
+        } catch (_e) {
+          try { bodyText = await res.text(); } catch (_e2) { bodyText = null; }
+        }
+        throw new Error(bodyText || `Invalid code (status ${res.status})`);
+      }
+      // success: close modal and advance to next step
+      setShowOtpModal(false);
+      setOtpCode('');
+      setCurrentStep(prev => prev + 1);
+      toast.success('Email verified');
+    } catch (err: any) {
+      console.error('verifyOtp error:', err);
+      toast.error(err.message || 'Invalid code');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -298,7 +417,7 @@ export const SignUp: React.FC = () => {
             {formData.storeName && formData.storeName.length >= 4 && (
               <div className="mt-3 p-3 bg-gray-800 rounded-lg border border-gray-600">
                 <p className="text-sm text-gray-300">
-                  Your store URL: <span className="text-blue-400">https://{generateSubdomain(formData.storeName)}.trady.ng</span>
+                  Your store URL: <span className="text-blue-400">https://{generateSubdomain(formData.storeName)}.rady.ng</span>
                 </p>
               </div>
             )}
@@ -355,6 +474,11 @@ export const SignUp: React.FC = () => {
               onChange={(e) => handleInputChange('email', e.target.value)}
               className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
+            {otpCooldown > 0 && (
+              <div className="mt-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded-lg">
+                <p className="text-sm text-yellow-400">OTP recently requested. Please wait {otpCooldown} seconds before requesting again.</p>
+              </div>
+            )}
           </div>
         );
 
@@ -486,7 +610,7 @@ export const SignUp: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mx-auto h-12 w-12 flex items-center justify-center mb-4">
-            <img src={logo} alt="Trady.ng Logo" className="h-12 w-12 object-contain bg-white rounded-xl" />
+            <img src={logo} alt="Rady.ng Logo" className="h-12 w-12 object-contain bg-white rounded-xl" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Create Your Store</h1>
           <p className="text-gray-400">Join thousands of successful merchants</p>
@@ -548,9 +672,9 @@ export const SignUp: React.FC = () => {
             {currentStep < steps.length ? (
               <Button
                 onClick={nextStep}
-                disabled={!isStepValid(currentStep)}
+                disabled={!isStepValid(currentStep) || (currentStep === 2 && (otpLoading || otpCooldown > 0))}
                 className={`flex-1 h-12 rounded-lg font-medium transition-colors ${
-                  isStepValid(currentStep)
+                  isStepValid(currentStep) && !(currentStep === 2 && (otpLoading || otpCooldown > 0))
                   ? 'bg-blue-500 text-white hover:bg-blue-600' 
                   : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}
@@ -591,6 +715,50 @@ export const SignUp: React.FC = () => {
           </p>
         </div>
       </div>
+      {/* OTP Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-sm">
+            <h3 className="text-lg font-semibold text-white mb-2">Enter verification code</h3>
+            <p className="text-sm text-gray-400 mb-4">We sent a 4-digit code to <span className="font-medium text-white">{formData.email}</span></p>
+            <div className="flex items-center space-x-2">
+              <input
+                autoFocus
+                value={otpCode}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH);
+                  setOtpCode(v);
+                  if (v.length === OTP_LENGTH) verifyOtpAuto(v);
+                }}
+                className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg text-center tracking-widest text-xl"
+                placeholder="_ _ _ _"
+              />
+            </div>
+            <div className="flex justify-between items-center mt-4">
+              <button
+                className="px-4 py-2 bg-gray-700 text-white rounded-lg"
+                onClick={() => { setShowOtpModal(false); setOtpCode(''); }}
+              >
+                Cancel
+              </button>
+              <div className="flex items-center space-x-3">
+                <div>
+                  {otpLoading ? <div className="text-sm text-gray-300">Verifying...</div> : <div className="text-sm text-gray-400">Auto-verifies when you finish typing</div>}
+                </div>
+                <div>
+                  <button
+                    className={`px-3 py-2 rounded-lg font-medium text-sm ${otpCooldown > 0 || otpLoading ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+                    onClick={() => { if (!otpLoading && otpCooldown === 0) triggerSendOtp(); }}
+                    disabled={otpCooldown > 0 || otpLoading}
+                  >
+                    {otpCooldown > 0 ? `Resend (${otpCooldown}s)` : 'Resend'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

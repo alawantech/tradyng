@@ -41,7 +41,7 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
   paymentMethod,
   createdAt,
   currencyCode = DEFAULT_CURRENCY,
-  storeName = "Trady.ng",
+  storeName = "Rady.ng",
   storeAddress,
   storePhone,
   storeEmail,
