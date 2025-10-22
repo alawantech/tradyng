@@ -584,7 +584,7 @@ export const Products: React.FC = () => {
         <div className="flex-1">
           <Input
             placeholder="Search products by name..."
-            className="pl-10 w-full max-w-md rounded-lg border focus:ring-2 focus:ring-blue-500"
+            className="pl-10 w-full max-w-md rounded-lg border focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
@@ -730,6 +730,7 @@ export const Products: React.FC = () => {
                     onChange={handleFormChange}
                     placeholder="Ankara Dress"
                     required
+                    className="text-gray-900 placeholder-gray-500"
                   />
                 </div>
 
@@ -745,6 +746,7 @@ export const Products: React.FC = () => {
                     onChange={handleFormChange}
                     placeholder="15000"
                     required
+                    className="text-gray-900 placeholder-gray-500"
                   />
                 </div>
 
@@ -758,6 +760,7 @@ export const Products: React.FC = () => {
                     value={productForm.stock}
                     onChange={handleFormChange}
                     placeholder="0"
+                    className="text-gray-900 placeholder-gray-500"
                   />
                   <div className="flex gap-2 mt-2">
                     <div className="flex-1">
@@ -769,6 +772,7 @@ export const Products: React.FC = () => {
                         value={productForm.width || ''}
                         onChange={handleFormChange}
                         placeholder="e.g. 30"
+                        className="text-gray-900 placeholder-gray-500"
                       />
                     </div>
                     <div className="flex-1">
@@ -780,6 +784,7 @@ export const Products: React.FC = () => {
                         value={productForm.height || ''}
                         onChange={handleFormChange}
                         placeholder="e.g. 50"
+                        className="text-gray-900 placeholder-gray-500"
                       />
                     </div>
                   </div>
@@ -817,9 +822,9 @@ export const Products: React.FC = () => {
                       >{size}</button>
                     ))}
                   </div>
-                  <input
+                                    <input
                     type="text"
-                    className="mt-2 w-full px-2 py-1 border rounded"
+                    className="mt-2 w-full px-2 py-1 border rounded text-gray-900 placeholder-gray-500"
                     placeholder="Add custom size (press Enter)"
                     onKeyDown={e => {
                       if (e.key === 'Enter' && e.currentTarget.value.trim()) {
