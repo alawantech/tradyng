@@ -122,7 +122,7 @@ async function sendEmailViaMailerSend(to: string, subject: string, html: string)
   }
 }
 
-// sendOtp: POST { email }
+// sendOtp: POST { email, businessName }
 export const sendOtp = functions.https.onRequest({
   secrets: ['MAIL_SENDER_API_TOKEN']
 }, async (req: Request, res: Response) => {
@@ -146,7 +146,7 @@ export const sendOtp = functions.https.onRequest({
       return;
     }
 
-    const { email } = req.body || {};
+    const { email, businessName } = req.body || {};
     if (!email || typeof email !== 'string') {
       res.status(400).send({ error: 'Missing email' });
       return;
@@ -185,7 +185,7 @@ export const sendOtp = functions.https.onRequest({
     });
 
     // send email
-    const subject = 'Your Rady.ng verification code';
+    const subject = `Your ${businessName || 'Rady.ng'} verification code`;
     const html = `<p>Your verification code is:</p><h1 style="font-size: 48px; font-weight: bold; color: #333; text-align: center;">${otp}</h1><p>This code expires in 10 minutes.</p>`;
     await sendEmailViaMailerSend(email, subject, html);
 
