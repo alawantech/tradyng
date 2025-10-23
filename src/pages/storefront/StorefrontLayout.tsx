@@ -40,7 +40,7 @@ export const useStore = () => useContext(StoreContext);
 
 export const StorefrontLayout: React.FC = () => {
   const { itemCount } = useCart();
-  const { user, signOut } = useCustomerAuth();
+  const { user, signOut, setBusinessId } = useCustomerAuth();
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
@@ -101,6 +101,9 @@ export const StorefrontLayout: React.FC = () => {
               isLoading: false,
               error: null
             });
+            
+            // Set business ID for customer authentication
+            setBusinessId(detectedSubdomain.businessId);
             
             // Set dynamic CSS variables for branding
             if (business.branding?.storeBackgroundColor) {

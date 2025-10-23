@@ -1,24 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '../config/firebase';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  updateProfile,
-  updatePassword as firebaseUpdatePassword,
-  User
-} from 'firebase/auth';
-import { UserService } from '../services/user';
-import { CustomerService } from '../services/customer';
+import { User } from 'firebase/auth';
+import { customerAuthService } from '../services/customerAuth';
 
 interface CustomerAuthContextType {
   user: User | null;
+  customerProfile: any | null;
+  businessId: string | null;
   isLoading: boolean;
-  signIn: (email: string, password: string, onSuccess?: () => void) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string, onSuccess?: () => void) => Promise<void>;
+  signIn: (email: string, password: string, businessId: string, onSuccess?: () => void) => Promise<void>;
+  signUp: (email: string, password: string, displayName: string, businessId: string, onSuccess?: () => void) => Promise<void>;
   signOut: () => Promise<void>;
   updatePassword: (newPassword: string) => Promise<boolean>;
+  setBusinessId: (businessId: string | null) => void;
 }
 
 const CustomerAuthContext = createContext<CustomerAuthContextType | undefined>(undefined);
@@ -33,50 +26,80 @@ export const useCustomerAuth = () => {
 
 export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [customerProfile, setCustomerProfile] = useState<any | null>(null);
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setIsLoading(false);
-    });
+    const unsubscribe = customerAuthService.onAuthStateChanged(
+      async (firebaseUser, _, bid) => {
+        setUser(firebaseUser);
+
+        // If we have a user and business ID, try to get customer profile
+        if (firebaseUser && bid) {
+          try {
+            const customerProfile = await customerAuthService.getCustomerProfile(firebaseUser, bid);
+            setCustomerProfile(customerProfile);
+          } catch (error) {
+            console.error('Error loading customer profile:', error);
+            setCustomerProfile(null);
+          }
+        } else if (firebaseUser && businessId) {
+          // If businessId is set but not passed in callback, use the stored one
+          try {
+            const customerProfile = await customerAuthService.getCustomerProfile(firebaseUser, businessId);
+            setCustomerProfile(customerProfile);
+          } catch (error) {
+            console.error('Error loading customer profile:', error);
+            setCustomerProfile(null);
+          }
+        } else {
+          setCustomerProfile(null);
+        }
+
+        setIsLoading(false);
+      },
+      businessId || undefined
+    );
 
     return unsubscribe;
-  }, []);
+  }, [businessId]);
 
-  const signIn = async (email: string, password: string, onSuccess?: () => void) => {
+  // Effect to load customer profile when businessId changes and user is already authenticated
+  useEffect(() => {
+    const loadCustomerProfile = async () => {
+      if (user && businessId && !customerProfile) {
+        try {
+          const profile = await customerAuthService.getCustomerProfile(user, businessId);
+          setCustomerProfile(profile);
+        } catch (error) {
+          console.error('Error loading customer profile on business change:', error);
+        }
+      }
+    };
+
+    loadCustomerProfile();
+  }, [user, businessId, customerProfile]);
+
+  const signIn = async (email: string, password: string, businessId: string, onSuccess?: () => void) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      setBusinessId(businessId);
+      await customerAuthService.signIn(email, password, businessId);
       if (onSuccess) onSuccess();
     } catch (error) {
       throw error;
     }
   };
 
-  const signUp = async (email: string, password: string, displayName: string, onSuccess?: () => void) => {
+  const signUp = async (email: string, password: string, displayName: string, businessId: string, onSuccess?: () => void) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Update Firebase Auth user's displayName
-      await updateProfile(userCredential.user, {
-        displayName: displayName
-      });
-      
-      // Create user document in users collection
-      await UserService.createUser({
-        uid: userCredential.user.uid,
-        email: userCredential.user.email!,
+      setBusinessId(businessId);
+      await customerAuthService.signUp({
+        email,
+        password,
         displayName,
-        role: 'customer'
+        businessId
       });
-      
-      // Create customer profile in customers collection
-      await CustomerService.createOrUpdateProfile({
-        uid: userCredential.user.uid,
-        email: userCredential.user.email!,
-        displayName
-      });
-      
       if (onSuccess) onSuccess();
     } catch (error) {
       throw error;
@@ -85,7 +108,9 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const signOut = async () => {
     try {
-      await firebaseSignOut(auth);
+      await customerAuthService.signOut();
+      setBusinessId(null);
+      setCustomerProfile(null);
     } catch (error) {
       throw error;
     }
@@ -96,9 +121,8 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (!user) {
         throw new Error('No user logged in');
       }
-      
-      await firebaseUpdatePassword(user, newPassword);
-      return true;
+
+      return await customerAuthService.updatePassword(newPassword);
     } catch (error) {
       console.error('Error updating password:', error);
       return false;
@@ -106,14 +130,17 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   return (
-    <CustomerAuthContext.Provider 
+    <CustomerAuthContext.Provider
       value={{
         user,
+        customerProfile,
+        businessId,
         isLoading,
         signIn,
         signUp,
         signOut,
         updatePassword,
+        setBusinessId,
       }}
     >
       {children}

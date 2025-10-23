@@ -4,6 +4,7 @@ import { X, Eye, EyeOff, User, Mail, Lock, ShoppingBag, Heart, Star, Shield, Ale
 import { useNavigate } from 'react-router-dom';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { useStore } from '../../pages/storefront/StorefrontLayout';
+import { OTPService } from '../../services/otpService';
 import toast from 'react-hot-toast';
 
 interface CustomerAuthModalProps {
@@ -31,6 +32,14 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     confirmPassword: '',
   });
 
+  // OTP related state
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const otpCooldownRef = React.useRef<number | null>(null);
+  const OTP_LENGTH = 4;
+
   // Sync mode with initialMode when modal opens or initialMode changes
   useEffect(() => {
     if (isOpen) {
@@ -54,11 +63,122 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       confirmPassword: '',
     });
     setShowPassword(false);
+    setShowOtpInput(false);
+    setOtpCode('');
+    setOtpLoading(false);
+    setOtpCooldown(0);
+    if (otpCooldownRef.current) {
+      window.clearInterval(otpCooldownRef.current);
+      otpCooldownRef.current = null;
+    }
+  };
+
+  // OTP helpers
+  const triggerSendOtp = async () => {
+    if (!formData.email) {
+      toast.error('Please enter your email first');
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      const result = await OTPService.sendOTP(formData.email, business?.name);
+      if (result.success) {
+        toast.success(result.message);
+        setShowOtpInput(true);
+        // Start cooldown
+        const cooldownSec = 30;
+        setOtpCooldown(cooldownSec);
+        if (otpCooldownRef.current) window.clearInterval(otpCooldownRef.current);
+        otpCooldownRef.current = window.setInterval(() => {
+          setOtpCooldown(prev => {
+            if (prev <= 1) {
+              if (otpCooldownRef.current) window.clearInterval(otpCooldownRef.current);
+              otpCooldownRef.current = null;
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      toast.error('Failed to send verification code. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.length !== OTP_LENGTH) {
+      toast.error(`Please enter the ${OTP_LENGTH}-digit code`);
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      const result = await OTPService.verifyOTP(formData.email, otpCode);
+      if (result.valid) {
+        toast.success(result.message);
+        // Now complete the signup
+        await completeSignUp();
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      toast.error('Failed to verify code. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   // Simple handler for forgot-password since email/OTP flows were removed.
   const handleForgotPassword = () => {
     toast('Password reset is not available in this build. Please contact support for help.');
+  };
+
+  const completeSignUp = async () => {
+    try {
+      const businessId = business?.id;
+      if (!businessId) {
+        throw new Error('Store information not available');
+      }
+
+      await signUp(
+        formData.email,
+        formData.password,
+        formData.displayName,
+        businessId,
+        () => {
+          toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
+          resetForm();
+          setShowOtpInput(false);
+          setOtpCode('');
+          onClose();
+          navigate('/');
+        }
+      );
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      
+      // Handle specific Firebase auth errors
+      if (error.code === 'auth/email-already-in-use') {
+        toast.error('An account with this email already exists. Please sign in instead.');
+      } else if (error.code === 'auth/invalid-email') {
+        toast.error('Invalid email address format.');
+      } else if (error.code === 'auth/weak-password') {
+        toast.error('Password is too weak. Please choose a stronger password.');
+      } else if (error.code === 'auth/too-many-requests') {
+        toast.error('Too many signup attempts. Please try again later.');
+      } else {
+        toast.error(error.message || 'Failed to create account. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -67,7 +187,12 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      await signIn(formData.email, formData.password, () => {
+      const businessId = business?.id;
+      if (!businessId) {
+        throw new Error('Store information not available');
+      }
+
+      await signIn(formData.email, formData.password, businessId, () => {
         // Success callback - redirect to homepage
         toast.success(`Welcome back to ${business?.name || 'our store'}! 🛍️`);
         resetForm();
@@ -114,39 +239,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      // Create account directly without OTP verification
-      await signUp(
-        formData.email,
-        formData.password,
-        formData.displayName,
-        () => {
-          toast.success(`Welcome to ${business?.name || 'our store'}! 🎉`);
-          resetForm();
-          onClose();
-          navigate('/');
-        }
-      );
-    } catch (error: any) {
-      console.error('Signup error:', error);
-      
-      // Handle specific Firebase auth errors
-      if (error.code === 'auth/email-already-in-use') {
-        toast.error('An account with this email already exists. Please sign in instead.');
-      } else if (error.code === 'auth/invalid-email') {
-        toast.error('Invalid email address format.');
-      } else if (error.code === 'auth/weak-password') {
-        toast.error('Password is too weak. Please choose a stronger password.');
-      } else if (error.code === 'auth/too-many-requests') {
-        toast.error('Too many signup attempts. Please try again later.');
-      } else {
-        toast.error(error.message || 'Failed to create account. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    // Send OTP instead of immediately creating account
+    await triggerSendOtp();
   };
 
   // OTP and email-based password reset removed.
@@ -536,33 +630,105 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                     </div>
                   </motion.div>
 
-                  {/* Create Account Button */}
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full py-3.5 px-4 rounded-xl text-white font-semibold text-lg transition-all duration-200 transform focus:outline-none focus:ring-4 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl auth-button shimmer-effect"
-                      style={{ 
-                        backgroundColor: primaryColor,
-                        '--tw-ring-color': `${primaryColor}50`
-                      } as React.CSSProperties}
+                  {/* OTP Input - shown after form submission */}
+                  {showOtpInput && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="space-y-3"
                     >
-                      {isLoading ? (
-                        <div className="flex items-center justify-center space-x-3">
-                          <div className="relative">
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            <div className="absolute inset-0 border-2 border-transparent border-t-white/50 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }}></div>
-                          </div>
-                          <span className="animate-pulse">Creating your account...</span>
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <Mail className="h-5 w-5 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-800">Verify your email</span>
                         </div>
-                      ) : (
-                        <span className="relative z-10">Join {storeName}</span>
-                      )}
-                    </button>
-                  </motion.div>
+                        <p className="text-sm text-blue-600 mb-3">
+                          We've sent a {OTP_LENGTH}-digit code to {formData.email}
+                        </p>
+                        <div className="flex space-x-2">
+                          <input
+                            type="text"
+                            value={otpCode}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '').slice(0, OTP_LENGTH);
+                              setOtpCode(value);
+                            }}
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-center text-lg font-mono"
+                            style={{ 
+                              '--tw-ring-color': primaryColor 
+                            } as React.CSSProperties}
+                            placeholder="0000"
+                            maxLength={OTP_LENGTH}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleVerifyOtp}
+                            disabled={otpLoading || otpCode.length !== OTP_LENGTH}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                          >
+                            {otpLoading ? 'Verifying...' : 'Verify'}
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center mt-3">
+                          <button
+                            type="button"
+                            onClick={triggerSendOtp}
+                            disabled={otpLoading || otpCooldown > 0}
+                            className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+                          >
+                            {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Resend code'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowOtpInput(false);
+                              setOtpCode('');
+                              setOtpCooldown(0);
+                              if (otpCooldownRef.current) {
+                                window.clearInterval(otpCooldownRef.current);
+                                otpCooldownRef.current = null;
+                              }
+                            }}
+                            className="text-sm text-gray-600 hover:text-gray-800"
+                          >
+                            Change email
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Create Account Button - hidden when OTP input is shown */}
+                  {!showOtpInput && (
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <button
+                        type="submit"
+                        disabled={isLoading || otpLoading}
+                        className="w-full py-3.5 px-4 rounded-xl text-white font-semibold text-lg transition-all duration-200 transform focus:outline-none focus:ring-4 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl auth-button shimmer-effect"
+                        style={{ 
+                          backgroundColor: primaryColor,
+                          '--tw-ring-color': `${primaryColor}50`
+                        } as React.CSSProperties}
+                      >
+                        {isLoading ? (
+                          <div className="flex items-center justify-center space-x-3">
+                            <div className="relative">
+                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              <div className="absolute inset-0 border-2 border-transparent border-t-white/50 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }}></div>
+                            </div>
+                            <span className="animate-pulse">Sending verification...</span>
+                          </div>
+                        ) : (
+                          <span className="relative z-10">Join {storeName}</span>
+                        )}
+                      </button>
+                    </motion.div>
+                  )}
                 </motion.form>
               )}
 
