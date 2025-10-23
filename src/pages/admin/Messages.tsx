@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Send, User, Mail, Clock, Search, RefreshCw } from 'lucide-react';
+import { MessageSquare, Send, User, Mail, Clock, Search, RefreshCw, Building } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { MessagingService, Conversation, Message } from '../../services/messagingService';
+import { BusinessService } from '../../services/business';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 export const Messages: React.FC = () => {
-  const { business } = useAuth();
+  const { userData } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -16,27 +17,42 @@ export const Messages: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [businesses, setBusinesses] = useState<{[key: string]: any}>({});
 
   useEffect(() => {
-    if (business?.id) {
+    if (userData?.role === 'admin') {
       loadConversations();
+      loadBusinesses();
     }
-  }, [business]);
+  }, [userData]);
 
   useEffect(() => {
     if (selectedConversation) {
-      loadMessages(selectedConversation.customerId);
+      loadMessages(selectedConversation.businessId, selectedConversation.customerId);
       // Mark messages as read when conversation is selected
-      MessagingService.markMessagesAsRead(business!.id, selectedConversation.customerId, 'admin');
+      MessagingService.markMessagesAsRead(selectedConversation.businessId, selectedConversation.customerId, 'admin');
     }
-  }, [selectedConversation, business]);
+  }, [selectedConversation]);
+
+  const loadBusinesses = async () => {
+    try {
+      const businessesList = await BusinessService.getAllBusinesses();
+      const businessesMap = businessesList.reduce((acc, business) => {
+        acc[business.id] = business;
+        return acc;
+      }, {} as {[key: string]: any});
+      setBusinesses(businessesMap);
+    } catch (error) {
+      console.error('Error loading businesses:', error);
+    }
+  };
 
   const loadConversations = async () => {
-    if (!business?.id) return;
+    if (userData?.role !== 'admin') return;
 
     try {
       setLoading(true);
-      const convos = await MessagingService.getBusinessConversations(business.id);
+      const convos = await MessagingService.getAllConversations();
       setConversations(convos);
 
       // Calculate total unread count
@@ -50,11 +66,9 @@ export const Messages: React.FC = () => {
     }
   };
 
-  const loadMessages = async (customerId: string) => {
-    if (!business?.id) return;
-
+  const loadMessages = async (businessId: string, customerId: string) => {
     try {
-      const msgs = await MessagingService.getCustomerMessages(business.id, customerId);
+      const msgs = await MessagingService.getAllCustomerMessages(businessId, customerId);
       setMessages(msgs);
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -63,22 +77,24 @@ export const Messages: React.FC = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!selectedConversation || !newMessage.trim() || !business?.id) return;
+    if (!selectedConversation || !newMessage.trim()) return;
 
     setSending(true);
     try {
+      const business = businesses[selectedConversation.businessId];
+      
       await MessagingService.sendMessageToCustomer(
-        business.id,
+        selectedConversation.businessId,
         selectedConversation.customerId,
         newMessage.trim(),
         'admin',
-        business.name || 'Store Admin',
-        business.email || ''
+        business?.name || 'Store Admin',
+        business?.email || ''
       );
 
       setNewMessage('');
       // Reload messages
-      await loadMessages(selectedConversation.customerId);
+      await loadMessages(selectedConversation.businessId, selectedConversation.customerId);
       // Reload conversations to update last message
       await loadConversations();
 
@@ -93,7 +109,8 @@ export const Messages: React.FC = () => {
 
   const filteredConversations = conversations.filter(convo =>
     convo.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    convo.customerEmail.toLowerCase().includes(searchTerm.toLowerCase())
+    convo.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (businesses[convo.businessId]?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -154,17 +171,17 @@ export const Messages: React.FC = () => {
               ) : (
                 filteredConversations.map((convo) => (
                   <div
-                    key={convo.customerId}
+                    key={`${convo.businessId}-${convo.customerId}`}
                     onClick={() => setSelectedConversation(convo)}
                     className={`p-3 rounded-lg cursor-pointer transition-all ${
-                      selectedConversation?.customerId === convo.customerId
+                      selectedConversation?.customerId === convo.customerId && selectedConversation?.businessId === convo.businessId
                         ? 'bg-blue-50 border border-blue-200'
                         : 'hover:bg-gray-50'
                     }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 mb-1">
                           <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
                           <p className="font-medium text-gray-900 truncate">
                             {convo.customerName}
@@ -175,7 +192,13 @@ export const Messages: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500 truncate mt-1">
+                        <div className="flex items-center space-x-1 text-sm text-gray-500 mb-1">
+                          <Building className="h-3 w-3" />
+                          <span className="truncate">
+                            {businesses[convo.businessId]?.name || 'Unknown Business'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500 truncate">
                           {convo.customerEmail}
                         </p>
                         <p className="text-sm text-gray-600 truncate mt-1">
@@ -207,6 +230,10 @@ export const Messages: React.FC = () => {
                   <div>
                     <h3 className="font-medium text-gray-900">{selectedConversation.customerName}</h3>
                     <p className="text-sm text-gray-500">{selectedConversation.customerEmail}</p>
+                    <p className="text-xs text-gray-400 flex items-center mt-1">
+                      <Building className="h-3 w-3 mr-1" />
+                      {businesses[selectedConversation.businessId]?.name || 'Unknown Business'}
+                    </p>
                   </div>
                 </div>
               </div>

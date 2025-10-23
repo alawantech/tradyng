@@ -312,37 +312,88 @@ export class MessagingService {
     }
   }
 
-  // Send system message (for automated notifications)
-  static async sendSystemMessage(
+  // Get all conversations across all businesses (super admin view)
+  static async getAllConversations(): Promise<Conversation[]> {
+    try {
+      // Get all businesses
+      const businessesRef = collection(db, 'businesses');
+      const businessesSnapshot = await getDocs(businessesRef);
+
+      const allConversations: Conversation[] = [];
+
+      for (const businessDoc of businessesSnapshot.docs) {
+        const businessId = businessDoc.id;
+        const businessData = businessDoc.data();
+
+        // Get all customers for this business
+        const customersRef = collection(db, 'businesses', businessId, 'customers');
+        const customersSnapshot = await getDocs(customersRef);
+
+        for (const customerDoc of customersSnapshot.docs) {
+          const customerId = customerDoc.id;
+          const customerData = customerDoc.data();
+
+          // Get the latest message for this customer
+          const messagesRef = collection(db, 'businesses', businessId, 'customers', customerId, 'messages');
+          const q = query(messagesRef, orderBy('createdAt', 'desc'), limit(1));
+          const messagesSnapshot = await getDocs(q);
+
+          if (!messagesSnapshot.empty) {
+            const lastMessage = {
+              id: messagesSnapshot.docs[0].id,
+              ...messagesSnapshot.docs[0].data()
+            } as Message;
+
+            // Count unread messages for admin
+            const allMessagesRef = collection(db, 'businesses', businessId, 'customers', customerId, 'messages');
+            const unreadQuery = query(allMessagesRef, where('isReadByAdmin', '==', false));
+            const unreadSnapshot = await getDocs(unreadQuery);
+
+            allConversations.push({
+              businessId,
+              customerId,
+              customerEmail: customerData.email,
+              customerName: customerData.name || 'Customer',
+              lastMessage,
+              unreadCount: unreadSnapshot.size,
+              totalMessages: messagesSnapshot.size,
+              createdAt: lastMessage.createdAt,
+              updatedAt: lastMessage.updatedAt
+            });
+          }
+        }
+      }
+
+      // Sort by last message date (newest first)
+      return allConversations.sort((a, b) =>
+        b.lastMessage.createdAt.toMillis() - a.lastMessage.createdAt.toMillis()
+      );
+    } catch (error) {
+      console.error('Error getting all conversations:', error);
+      throw error;
+    }
+  }
+
+  // Get all messages for a customer conversation (admin view across businesses)
+  static async getAllCustomerMessages(
     businessId: string,
     customerId: string,
-    message: string
-  ): Promise<string> {
+    limitCount: number = 50
+  ): Promise<Message[]> {
     try {
-      const messageData: Omit<Message, 'id'> = {
-        businessId,
-        customerId,
-        customerEmail: '', // Will be filled by the function
-        customerName: '', // Will be filled by the function
-        sender: 'admin',
-        senderName: 'System',
-        message: message.trim(),
-        status: 'sent',
-        messageType: 'system',
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-        isReadByAdmin: true,
-        isReadByCustomer: false
-      };
+      const messagesRef = collection(db, 'businesses', businessId, 'customers', customerId, 'messages');
+      const q = query(messagesRef, orderBy('createdAt', 'desc'), limit(limitCount));
+      const querySnapshot = await getDocs(q);
 
-      const docRef = await addDoc(
-        collection(db, 'businesses', businessId, 'customers', customerId, 'messages'),
-        messageData
-      );
+      const messages = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Message[];
 
-      return docRef.id;
+      // Reverse to show oldest first
+      return messages.reverse();
     } catch (error) {
-      console.error('Error sending system message:', error);
+      console.error('Error getting all customer messages:', error);
       throw error;
     }
   }
