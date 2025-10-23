@@ -4,6 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { CustomerService, Customer } from '../../services/customer';
+import { MessagingService } from '../../services/messagingService';
 import { Timestamp, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -102,7 +103,7 @@ export const Customers: React.FC = () => {
     }
     setSendingChat(true);
     try {
-      await CustomerService.sendMessageToCustomer(
+      await MessagingService.sendMessageToCustomer(
         business.id,
         chatCustomerId,
         chatInput.trim(),

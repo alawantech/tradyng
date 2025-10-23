@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateUploadUrl = exports.healthCheck = exports.debugResetOtp = exports.testFullOtpFlow = exports.testOtpHash = exports.resetPassword = exports.verifyResetOtp = exports.sendResetOtp = exports.verifyOtp = exports.sendOtp = void 0;
+exports.generateUploadUrl = exports.sendMessageNotification = exports.healthCheck = exports.debugResetOtp = exports.testFullOtpFlow = exports.testOtpHash = exports.resetPassword = exports.verifyResetOtp = exports.sendResetOtp = exports.verifyOtp = exports.sendOtp = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const crypto_1 = __importDefault(require("crypto"));
@@ -172,7 +172,7 @@ async function sendEmailViaMailerSend(to, subject, html) {
         throw new Error(`MailerSend failed and no fallback provider configured. ${mailerMsg}`);
     }
 }
-// sendOtp: POST { email }
+// sendOtp: POST { email, businessName }
 exports.sendOtp = functions.https.onRequest({
     secrets: ['MAIL_SENDER_API_TOKEN']
 }, async (req, res) => {
@@ -195,7 +195,7 @@ exports.sendOtp = functions.https.onRequest({
             res.status(405).send({ error: 'Method not allowed, use POST' });
             return;
         }
-        const { email } = req.body || {};
+        const { email, businessName } = req.body || {};
         if (!email || typeof email !== 'string') {
             res.status(400).send({ error: 'Missing email' });
             return;
@@ -232,7 +232,7 @@ exports.sendOtp = functions.https.onRequest({
             createdAt: Date.now()
         });
         // send email
-        const subject = 'Your Rady.ng verification code';
+        const subject = `Your ${businessName || 'Rady.ng'} verification code`;
         const html = `<p>Your verification code is:</p><h1 style="font-size: 48px; font-weight: bold; color: #333; text-align: center;">${otp}</h1><p>This code expires in 10 minutes.</p>`;
         await sendEmailViaMailerSend(email, subject, html);
         res.json({ ok: true });
@@ -678,6 +678,109 @@ exports.healthCheck = functions.https.onRequest((req, res) => {
 // Temporary test endpoint: create OTP record and send OTP email via MailerSend
 // Usage (POST JSON): { "email": "user@example.com", "businessId": "", "businessName": "Test Store" }
 // testSendOTP has been removed as part of removing email-sending functions.
+// sendMessageNotification: POST { businessId, customerId, message, sender, senderName, customerEmail, customerName, businessName, businessEmail }
+exports.sendMessageNotification = functions.https.onRequest({
+    secrets: ['MAIL_SENDER_API_TOKEN']
+}, async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+    try {
+        if (req.method !== 'POST') {
+            res.status(405).send({ error: 'Method not allowed, use POST' });
+            return;
+        }
+        const { businessId, customerId, message, sender, senderName, customerEmail, customerName, businessName, businessEmail } = req.body || {};
+        if (!businessId || !customerId || !message || !sender || !customerEmail) {
+            res.status(400).send({ error: 'Missing required fields' });
+            return;
+        }
+        let subject;
+        let html;
+        let recipientEmail;
+        if (sender === 'admin') {
+            // Admin sent message to customer
+            subject = `New message from ${businessName || 'your store'}`;
+            recipientEmail = customerEmail;
+            // Create customer reply URL (assuming customer dashboard has messages section)
+            const replyUrl = `https://yourstore.com/customer/messages?customerId=${customerId}&businessId=${businessId}`;
+            html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333; margin-bottom: 20px;">New Message from ${businessName || 'Your Store'}</h2>
+
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0 0 10px 0;"><strong>From:</strong> ${senderName} (${businessName || 'Store Admin'})</p>
+            <p style="margin: 0 0 15px 0;"><strong>Message:</strong></p>
+            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff;">
+              ${message.replace(/\n/g, '<br>')}
+            </div>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${replyUrl}" style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Reply to Message
+            </a>
+          </div>
+
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+            You can also reply by logging into your customer account and visiting the Messages section.
+          </p>
+
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #999; font-size: 12px; text-align: center;">
+            This message was sent to ${customerEmail}
+          </p>
+        </div>
+      `;
+        }
+        else {
+            // Customer sent message to admin
+            subject = `New message from ${customerName} (${businessName || 'Store'})`;
+            recipientEmail = businessEmail || 'admin@yourstore.com'; // Fallback admin email
+            // Create admin reply URL (assuming admin dashboard has messages section)
+            const replyUrl = `https://admin.yourstore.com/messages?customerId=${customerId}&businessId=${businessId}`;
+            html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333; margin-bottom: 20px;">New Customer Message</h2>
+
+          <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+            <p style="margin: 0 0 10px 0;"><strong>From:</strong> ${customerName} (${customerEmail})</p>
+            <p style="margin: 0 0 10px 0;"><strong>Store:</strong> ${businessName || 'Your Store'}</p>
+            <p style="margin: 0 0 15px 0;"><strong>Message:</strong></p>
+            <div style="background: white; padding: 15px; border-radius: 6px;">
+              ${message.replace(/\n/g, '<br>')}
+            </div>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${replyUrl}" style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Reply to Customer
+            </a>
+          </div>
+
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+            You can also reply by logging into your admin dashboard and visiting the Messages section.
+          </p>
+
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #999; font-size: 12px; text-align: center;">
+            Customer: ${customerName} (${customerEmail})
+          </p>
+        </div>
+      `;
+        }
+        await sendEmailViaMailerSend(recipientEmail, subject, html);
+        res.json({ ok: true, recipient: recipientEmail });
+    }
+    catch (errAny) {
+        console.error('sendMessageNotification error:', errAny);
+        res.status(500).send({ error: String(errAny) });
+    }
+});
 // Generate signed upload URL (v4) for direct-to-GCS uploads
 // Expects POST { path: 'folder/file.jpg', contentType: 'image/jpeg' }
 // Alternative: POST { path: 'folder/file.jpg', fileData: base64string, contentType: 'image/jpeg' }

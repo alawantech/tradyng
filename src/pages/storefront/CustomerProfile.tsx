@@ -13,7 +13,9 @@ import {
   X,
   ExternalLink,
   Menu,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -21,6 +23,7 @@ import { Input } from '../../components/ui/Input';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { useStore } from './StorefrontLayout';
 import { CustomerService, CustomerProfile, CustomerAddress, CustomerOrderHistory } from '../../services/customer';
+import { MessagingService, Message } from '../../services/messagingService';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { useColorScheme } from '../../hooks/useColorScheme';
 import toast from 'react-hot-toast';
@@ -59,10 +62,13 @@ export const CustomerProfilePage: React.FC = () => {
   const colorScheme = useColorScheme(business?.branding?.storeBackgroundColor);
   
   // State management
-  const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'orders'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'orders' | 'messages'>('profile');
   const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
   const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
   const [orderHistory, setOrderHistory] = useState<CustomerOrderHistory[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
   
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -179,15 +185,15 @@ export const CustomerProfilePage: React.FC = () => {
         setCustomerAddresses([]);
       }
       
-      // Load order history for this business
+      // Load messages for this customer and business
       if (business?.id) {
         try {
-          const orders = await CustomerService.getOrderHistory(user.uid, business.id);
-          setOrderHistory(orders);
+          const msgs = await MessagingService.getCustomerMessages(business.id, user.uid);
+          setMessages(msgs);
         } catch (error) {
-          console.error('Error loading order history:', error);
+          console.error('Error loading messages:', error);
           // Set empty array as fallback
-          setOrderHistory([]);
+          setMessages([]);
         }
       }
       
@@ -339,6 +345,36 @@ export const CustomerProfilePage: React.FC = () => {
     }
   };
 
+  const handleSendMessage = async () => {
+    if (!user || !business?.id || !newMessage.trim()) return;
+
+    setSendingMessage(true);
+    try {
+      await MessagingService.sendMessageToCustomer(
+        business.id,
+        user.uid,
+        newMessage.trim(),
+        'customer',
+        customerProfile?.displayName || user.displayName || 'Customer',
+        user.email || ''
+      );
+
+      setNewMessage('');
+      // Reload messages
+      if (business?.id) {
+        const msgs = await MessagingService.getCustomerMessages(business.id, user.uid);
+        setMessages(msgs);
+      }
+
+      toast.success('Message sent successfully!');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -441,6 +477,7 @@ export const CustomerProfilePage: React.FC = () => {
                   {activeTab === 'profile' && 'Profile'}
                   {activeTab === 'addresses' && 'Addresses'}
                   {activeTab === 'orders' && 'Recent Orders'}
+                  {activeTab === 'messages' && 'Messages'}
                 </span>
               </div>
               <ChevronRight className={`h-5 w-5 text-gray-400 transform transition-transform ${isMobileMenuOpen ? 'rotate-90' : ''}`} />
@@ -495,19 +532,19 @@ export const CustomerProfilePage: React.FC = () => {
                   
                   <button
                     onClick={() => {
-                      setActiveTab('orders');
+                      setActiveTab('messages');
                       setIsMobileMenuOpen(false);
                     }}
                     className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200 ${
-                      activeTab === 'orders'
+                      activeTab === 'messages'
                         ? 'bg-blue-50 text-blue-700 border border-blue-200'
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <Package className="h-5 w-5" />
+                    <MessageSquare className="h-5 w-5" />
                     <div>
-                      <span className="font-medium">Recent Orders</span>
-                      <p className="text-xs text-gray-500 mt-0.5">Latest purchases</p>
+                      <span className="font-medium">Messages</span>
+                      <p className="text-xs text-gray-500 mt-0.5">Chat with store</p>
                     </div>
                   </button>
                   
@@ -573,17 +610,17 @@ export const CustomerProfilePage: React.FC = () => {
                   </button>
                   
                   <button
-                    onClick={() => setActiveTab('orders')}
+                    onClick={() => setActiveTab('messages')}
                     className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${
-                      activeTab === 'orders'
+                      activeTab === 'messages'
                         ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
                         : 'text-gray-700 hover:bg-gray-50 hover:shadow-sm'
                     }`}
                   >
-                    <Package className="h-5 w-5" />
+                    <MessageSquare className="h-5 w-5" />
                     <div>
-                      <span className="font-medium">Recent Orders</span>
-                      <p className="text-xs text-gray-500 mt-0.5">Latest purchases</p>
+                      <span className="font-medium">Messages</span>
+                      <p className="text-xs text-gray-500 mt-0.5">Chat with store</p>
                     </div>
                   </button>
                   
@@ -982,6 +1019,89 @@ export const CustomerProfilePage: React.FC = () => {
                     ))}
                   </div>
                 )}
+              </Card>
+            )}
+
+            {activeTab === 'messages' && (
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">Messages</h2>
+                  <div className="text-sm text-gray-500">
+                    Chat with {business?.name || 'the store'}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <MessageSquare className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600">
+                        Send messages to {business?.name || 'the store'} and get responses via email.
+                        Your conversation history is saved here.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Messages Display */}
+                <div className="bg-white border rounded-lg p-4 mb-4 max-h-96 overflow-y-auto">
+                  {messages.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                      <p>No messages yet</p>
+                      <p className="text-sm">Start a conversation by sending a message below</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {messages.map((message) => (
+                        <div
+                          key={message.id}
+                          className={`flex ${message.sender === 'customer' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                              message.sender === 'customer'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-900'
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                            <p className={`text-xs mt-1 ${
+                              message.sender === 'customer' ? 'text-blue-100' : 'text-gray-500'
+                            }`}>
+                              {message.createdAt.toDate().toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Message Input */}
+                <div className="flex space-x-2">
+                  <textarea
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder={`Send a message to ${business?.name || 'the store'}...`}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={3}
+                    disabled={sendingMessage}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={sendingMessage || !newMessage.trim()}
+                    className="px-4 self-end"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  Messages are sent to the store admin and you'll receive responses via email.
+                </p>
               </Card>
             )}
           </div>
