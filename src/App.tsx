@@ -38,7 +38,6 @@ import { SubdomainTest } from './pages/demo/SubdomainTest';
 // Admin
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { Businesses } from './pages/admin/Businesses';
-import { Messages } from './pages/admin/Messages';
 import { Subscriptions } from './pages/admin/Subscriptions';
 import { AdminAnalytics } from './pages/admin/AdminAnalytics';
 import { AdminSettings } from './pages/admin/AdminSettings';
@@ -128,7 +127,6 @@ function App() {
                 <Route index element={<Businesses />} />
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="businesses" element={<Businesses />} />
-                <Route path="messages" element={<Messages />} />
                 <Route path="subscriptions" element={<Subscriptions />} />
                 <Route path="analytics" element={<AdminAnalytics />} />
                 <Route path="settings" element={<AdminSettings />} />

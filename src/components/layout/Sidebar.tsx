@@ -9,8 +9,7 @@ import {
   Building2,
   CreditCard,
   LogOut,
-  X,
-  MessageSquare
+  X
 } from 'lucide-react';
 import { AuthService } from '../../services/auth';
 import toast from 'react-hot-toast';
@@ -35,7 +34,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
 
   const adminMenuItems = [
     { path: '/admin/businesses', icon: Building2, label: 'Businesses' },
-    { path: '/admin/messages', icon: MessageSquare, label: 'Messages' },
     { path: '/admin/subscriptions', icon: CreditCard, label: 'Subscriptions' },
     { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },
