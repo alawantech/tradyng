@@ -26,6 +26,7 @@ import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { OrderService } from '../../services/order';
 import { CustomerService, CustomerAddress, CustomerProfile } from '../../services/customer';
+import { customerAuthService } from '../../services/customerAuth';
 import toast from 'react-hot-toast';
 
 interface CheckoutFormData {
@@ -691,7 +692,7 @@ export const EnhancedCheckout: React.FC = () => {
                         </motion.div>
                         <div className="flex-1">
                           <h3 className="text-xl font-bold text-gray-900 mb-3">
-                            Signed in as {customerProfile?.displayName || user.email}
+                            Signed in as {customerProfile?.displayName || (user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : 'User')}
                           </h3>
                           <p className="text-gray-600 text-lg">
                             Your information will be saved and you can track your orders.

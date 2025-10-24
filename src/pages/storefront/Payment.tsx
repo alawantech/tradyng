@@ -8,6 +8,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { OrderService, Order } from '../../services/order';
 import toast from 'react-hot-toast';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../config/firebase';
 
 export const Payment: React.FC = () => {
   const { business } = useStore();
@@ -176,7 +178,36 @@ export const Payment: React.FC = () => {
         });
       }
 
-      // Email sending disabled — skipping order confirmation email.
+      // Send payment receipt notification email to customer
+      try {
+        const sendNotification = httpsCallable(functions, 'sendPaymentReceiptNotification');
+        await sendNotification({
+          customerEmail: order.customerEmail,
+          customerName: order.customerName,
+          orderId: order.orderId,
+          businessName: business.name,
+          businessEmail: business.email
+        });
+      } catch (emailError) {
+        console.warn('Failed to send payment receipt notification email:', emailError);
+        // Don't fail the payment submission if email fails
+      }
+
+      // Send payment receipt notification email to admin
+      try {
+        const sendAdminNotification = httpsCallable(functions, 'sendAdminPaymentReceiptNotification');
+        await sendAdminNotification({
+          adminEmail: business.email,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail,
+          orderId: order.orderId,
+          businessName: business.name,
+          businessId: businessId
+        });
+      } catch (adminEmailError) {
+        console.warn('Failed to send admin payment receipt notification email:', adminEmailError);
+        // Don't fail the payment submission if admin email fails
+      }
 
       toast.success('Payment receipt uploaded successfully! Your order is now awaiting admin approval.');
       // Redirect to order history page and pass orderId in state

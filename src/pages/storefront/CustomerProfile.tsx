@@ -23,6 +23,7 @@ import { useStore } from './StorefrontLayout';
 import { CustomerService, CustomerProfile, CustomerAddress, CustomerOrderHistory } from '../../services/customer';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { useColorScheme } from '../../hooks/useColorScheme';
+import { customerAuthService } from '../../services/customerAuth';
 import toast from 'react-hot-toast';
 
 interface ProfileFormData {
@@ -592,7 +593,7 @@ export const CustomerProfilePage: React.FC = () => {
                               ? profileForm.displayName
                               : user.displayName || 'Welcome'}
                           </h2>
-                          <p className="text-gray-600 mb-3 break-all">{user.email}</p>
+                          <p className="text-gray-600 mb-3 break-all">{user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : ''}</p>
                           <div className="flex flex-col sm:flex-row items-center sm:space-x-4 space-y-2 sm:space-y-0 text-sm">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                               <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
@@ -704,7 +705,7 @@ export const CustomerProfilePage: React.FC = () => {
                         <div>
                           <Input
                             label="Email Address"
-                            value={user.email || ''}
+                            value={user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : ''}
                             disabled
                             className="bg-gray-50"
                           />

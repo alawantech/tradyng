@@ -11,6 +11,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { OrderService } from '../../services/order';
+import { customerAuthService } from '../../services/customerAuth';
 import toast from 'react-hot-toast';
 
 interface CheckoutFormData {
@@ -35,7 +36,7 @@ export const Checkout: React.FC = () => {
   const [formData, setFormData] = useState<CheckoutFormData>({
     firstName: '',
     lastName: '',
-    email: user?.email || '',
+    email: user?.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : '',
     phone: '',
     address: '',
     city: '',

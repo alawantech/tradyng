@@ -800,6 +800,162 @@ export const sendMessageNotification = functions.https.onRequest({
   }
 });
 
+// sendPaymentReceiptNotification: POST { customerEmail, customerName, orderId, businessName, businessEmail }
+export const sendPaymentReceiptNotification = functions.https.onRequest({
+  secrets: ['MAIL_SENDER_API_TOKEN']
+}, async (req: Request, res: Response) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  try {
+    if (req.method !== 'POST') {
+      res.status(405).send({ error: 'Method not allowed, use POST' });
+      return;
+    }
+
+    const {
+      customerEmail,
+      customerName,
+      orderId,
+      businessName,
+      businessEmail
+    } = req.body || {};
+
+    if (!customerEmail || !orderId || !businessName) {
+      res.status(400).send({ error: 'Missing required fields: customerEmail, orderId, businessName' });
+      return;
+    }
+
+    const subject = `Payment Receipt Submitted - ${businessName}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333; margin-bottom: 20px;">Payment Receipt Submitted Successfully</h2>
+
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 10px 0;"><strong>Hello ${customerName || 'Valued Customer'},</strong></p>
+          <p style="margin: 0 0 15px 0;">Thank you for submitting your payment receipt for order #${orderId}.</p>
+
+          <div style="background: #e8f5e8; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+            <p style="margin: 0 0 10px 0;"><strong>Order Details:</strong></p>
+            <p style="margin: 0 0 5px 0;">Order ID: ${orderId}</p>
+            <p style="margin: 0 0 5px 0;">Store: ${businessName}</p>
+            <p style="margin: 0;">Status: Awaiting Admin Approval</p>
+          </div>
+        </div>
+
+        <p style="margin: 20px 0;">
+          Your payment receipt has been uploaded and is currently under review by our team.
+          You will receive another email once your payment is approved and your order is processed.
+        </p>
+
+        <p style="margin: 20px 0;">
+          If you have any questions, please contact ${businessName} directly at ${businessEmail || 'their support email'}.
+        </p>
+
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          This is an automated notification from ${businessName}
+        </p>
+      </div>
+    `;
+
+    await sendEmailViaMailerSend(customerEmail, subject, html);
+
+    res.json({ ok: true, recipient: customerEmail });
+  } catch (errAny) {
+    console.error('sendPaymentReceiptNotification error:', errAny);
+    res.status(500).send({ error: String(errAny) });
+  }
+});
+
+// sendAdminPaymentReceiptNotification: POST { adminEmail, customerName, customerEmail, orderId, businessName, businessId }
+export const sendAdminPaymentReceiptNotification = functions.https.onRequest({
+  secrets: ['MAIL_SENDER_API_TOKEN']
+}, async (req: Request, res: Response) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  try {
+    if (req.method !== 'POST') {
+      res.status(405).send({ error: 'Method not allowed, use POST' });
+      return;
+    }
+
+    const {
+      adminEmail,
+      customerName,
+      customerEmail,
+      orderId,
+      businessName,
+      businessId
+    } = req.body || {};
+
+    if (!adminEmail || !orderId || !businessName || !businessId) {
+      res.status(400).send({ error: 'Missing required fields: adminEmail, orderId, businessName, businessId' });
+      return;
+    }
+
+    const subject = `New Payment Receipt Submitted - ${businessName}`;
+    const dashboardUrl = `https://admin.yourstore.com/dashboard/orders?orderId=${orderId}&businessId=${businessId}`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333; margin-bottom: 20px;">New Payment Receipt Submitted</h2>
+
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 10px 0;"><strong>New payment receipt received for your store!</strong></p>
+
+          <div style="background: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin: 15px 0;">
+            <p style="margin: 0 0 10px 0;"><strong>Order Details:</strong></p>
+            <p style="margin: 0 0 5px 0;">Order ID: <strong>${orderId}</strong></p>
+            <p style="margin: 0 0 5px 0;">Customer: <strong>${customerName}</strong> (${customerEmail})</p>
+            <p style="margin: 0 0 5px 0;">Store: ${businessName}</p>
+            <p style="margin: 0;">Status: Payment Receipt Submitted - Awaiting Review</p>
+          </div>
+        </div>
+
+        <p style="margin: 20px 0;">
+          A customer has submitted a payment receipt for their order. Please review the payment details and approve or reject the order.
+        </p>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${dashboardUrl}" style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+            View Order in Dashboard
+          </a>
+        </div>
+
+        <p style="margin: 20px 0; color: #666; font-size: 14px;">
+          Click the button above to go directly to this order in your admin dashboard.
+        </p>
+
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          This is an automated notification for ${businessName}
+        </p>
+      </div>
+    `;
+
+    await sendEmailViaMailerSend(adminEmail, subject, html);
+
+    res.json({ ok: true, recipient: adminEmail });
+  } catch (errAny) {
+    console.error('sendAdminPaymentReceiptNotification error:', errAny);
+    res.status(500).send({ error: String(errAny) });
+  }
+});
+
 // Generate signed upload URL (v4) for direct-to-GCS uploads
 // Expects POST { path: 'folder/file.jpg', contentType: 'image/jpeg' }
 // Alternative: POST { path: 'folder/file.jpg', fileData: base64string, contentType: 'image/jpeg' }

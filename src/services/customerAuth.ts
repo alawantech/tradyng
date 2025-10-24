@@ -44,8 +44,22 @@ class CustomerAuthService {
    * Extract the real email from Firebase Auth email
    */
   private extractRealEmail(firebaseEmail: string): string {
-    const parts = firebaseEmail.split('@')[0].split('_at_');
-    return `${parts[0]}@${parts[1]}`;
+    // Remove @customer.local suffix
+    const withoutDomain = firebaseEmail.split('@')[0];
+    // Find the last underscore (business ID separator)
+    const lastUnderscoreIndex = withoutDomain.lastIndexOf('_');
+    if (lastUnderscoreIndex === -1) return firebaseEmail; // fallback
+    // Extract the email part (everything before the business ID)
+    const emailWithAtReplaced = withoutDomain.substring(0, lastUnderscoreIndex);
+    // Replace _at_ back to @
+    return emailWithAtReplaced.replace('_at_', '@');
+  }
+
+  /**
+   * Public method to extract real email from Firebase Auth email
+   */
+  extractRealEmailFromFirebase(firebaseEmail: string): string {
+    return this.extractRealEmail(firebaseEmail);
   }
 
   /**

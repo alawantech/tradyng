@@ -9,6 +9,7 @@ import { CategoryService, Category } from '../../services/category';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
+import { customerAuthService } from '../../services/customerAuth';
 import StoreNotFound from '../../components/sections/StoreNotFound';
 import toast from 'react-hot-toast';
 
@@ -290,7 +291,7 @@ export const StorefrontLayout: React.FC = () => {
                               {user.displayName || 'Customer'}
                             </p>
                             <p className="text-xs text-gray-500 truncate">
-                              {user.email}
+                              {user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : ''}
                             </p>
                           </div>
                           
@@ -463,7 +464,7 @@ export const StorefrontLayout: React.FC = () => {
                         {user.displayName || 'Customer'}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
-                        {user.email}
+                        {user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : ''}
                       </p>
                     </div>
                     
