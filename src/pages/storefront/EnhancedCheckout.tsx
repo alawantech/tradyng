@@ -342,65 +342,41 @@ export const EnhancedCheckout: React.FC = () => {
         return;
       }
 
-      // Create order using OrderService
-      const orderData = {
-        customerId: currentUser?.uid || 'guest',
-        customerName: `${formData.firstName} ${formData.lastName}`,
-        customerEmail: formData.email,
-        customerPhone: formData.phone,
-        shippingAddress: {
-          street: formData.address,
-          city: formData.city,
-          state: formData.state,
-          country: formData.country
-        },
-        items: items.map(item => ({
-          productId: item.id,
-          productName: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          total: item.price * item.quantity,
-          image: item.image
-        })),
-        subtotal: total,
-        tax: 0,
-        shipping: 0,
-        total: total,
-        status: 'pending' as const,
-        paymentMethod: (formData.paymentMethod === 'card' ? 'automatic' : 'manual') as 'manual' | 'automatic',
-        paymentStatus: 'pending' as const,
-        notes: formData.notes
-      };
+      // Clear cart and redirect to payment with checkout data
+      clearCart();
+      toast.success('Proceeding to payment. Please upload your receipt to complete the order.');
 
-      // Create order in database
-      const orderId = await OrderService.createOrder(business.id, orderData);
-
-      // Save address if user is logged in and it's a new address
-      if (currentUser && (selectedAddressId === 'new' || !selectedAddressId)) {
-        try {
-          await CustomerService.addAddress({
-            customerId: currentUser.uid,
-            label: 'Checkout Address',
-            isDefault: customerAddresses.length === 0,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            phone: formData.phone,
+      if (formData.paymentMethod === 'manual') {
+        // Pass checkout data instead of creating order
+        const checkoutData = {
+          customerId: currentUser?.uid || 'guest',
+          customerName: `${formData.firstName} ${formData.lastName}`,
+          customerEmail: formData.email,
+          customerPhone: formData.phone,
+          shippingAddress: {
             street: formData.address,
             city: formData.city,
             state: formData.state,
             country: formData.country
-          });
-        } catch (error) {
-          console.error('Error saving address:', error);
-        }
-      }
+          },
+          items: items.map(item => ({
+            productId: item.id,
+            productName: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.price * item.quantity,
+            image: item.image
+          })),
+          subtotal: total,
+          tax: 0,
+          shipping: 0,
+          total: total,
+          paymentMethod: 'manual' as const,
+          notes: formData.notes,
+          businessId: business.id
+        };
 
-      // Clear cart and redirect to payment
-      clearCart();
-      toast.success(`Order ${orderId} created successfully!`);
-
-      if (formData.paymentMethod === 'manual') {
-        navigate('/payment', { state: { orderId, businessId: business.id } });
+        navigate('/payment', { state: { checkoutData } });
       } else {
         toast.success('Card payment integration coming soon!');
       }

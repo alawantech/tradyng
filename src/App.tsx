@@ -34,6 +34,7 @@ import { Payment } from './pages/storefront/Payment';
 // Demo
 import { StoreSubdomainDemo } from './pages/demo/StoreSubdomainDemo';
 import { SubdomainTest } from './pages/demo/SubdomainTest';
+import { EmailTest } from './pages/demo/EmailTest';
 
 // Admin
 import { AdminLayout } from './pages/admin/AdminLayout';
@@ -107,6 +108,7 @@ function App() {
               <Route path="/features" element={<FeaturesPage />} />
               <Route path="/demo/subdomains" element={<StoreSubdomainDemo />} />
               <Route path="/demo/test" element={<SubdomainTest />} />
+              <Route path="/demo/email-test" element={<EmailTest />} />
               
               {/* Authentication */}
               <Route path="/auth/signup" element={<SignUp />} />

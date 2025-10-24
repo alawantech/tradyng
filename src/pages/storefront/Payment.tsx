@@ -8,54 +8,25 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import { OrderService, Order } from '../../services/order';
 import toast from 'react-hot-toast';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../config/firebase';
 
 export const Payment: React.FC = () => {
   const { business } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Get order ID and business ID from location state
-  const { orderId, businessId } = location.state || {};
+  // Get checkout data from location state
+  const { checkoutData } = location.state || {};
   
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
   const [paymentReceipt, setPaymentReceipt] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (orderId && businessId) {
-      loadOrder();
-    } else {
-      toast.error('Order information not found');
+    if (!checkoutData) {
+      toast.error('Checkout information not found');
       navigate('/');
     }
-  }, [orderId, businessId]);
-
-  const loadOrder = async () => {
-    if (!orderId || !businessId) return;
-
-    try {
-      // Find order by professional order ID (not Firebase document ID)
-      const orders = await OrderService.getOrdersByBusinessId(businessId);
-      const foundOrder = orders.find(o => o.orderId === orderId);
-      
-      if (foundOrder) {
-        setOrder(foundOrder);
-      } else {
-        toast.error('Order not found');
-        navigate('/');
-      }
-    } catch (error) {
-      console.error('Error loading order:', error);
-      toast.error('Failed to load order details');
-      navigate('/');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [checkoutData]);
 
   if (!business) {
     return (
@@ -74,29 +45,7 @@ export const Payment: React.FC = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <div className="w-24 h-24 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
-              <Star className="w-12 h-12 text-white animate-spin" />
-            </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">
-              Loading Your Order...
-            </h1>
-            <p className="text-gray-600 text-lg">Please wait while we prepare your payment details</p>
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!order) {
+  if (!checkoutData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -109,9 +58,9 @@ export const Payment: React.FC = () => {
               <FileText className="w-12 h-12 text-white" />
             </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
-              Order Not Found
+              Checkout Information Not Found
             </h1>
-            <p className="text-gray-600 mb-8 text-lg">No order data found. Please start a new order.</p>
+            <p className="text-gray-600 mb-8 text-lg">Please start your checkout process again.</p>
             <Link to="/products">
               <motion.div
                 whileHover={{ scale: 1.05 }}
@@ -157,8 +106,8 @@ export const Payment: React.FC = () => {
       return;
     }
 
-    if (!order || !businessId) {
-      toast.error('Order information not found');
+    if (!checkoutData || !business?.id) {
+      toast.error('Checkout information not found');
       return;
     }
 
@@ -169,25 +118,37 @@ export const Payment: React.FC = () => {
       // For now, simulate the upload process
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // For manual payment, set status to 'pending' and paymentStatus to 'pending'
-      if (order.id) {
-        await OrderService.updateOrder(businessId, order.id, {
-          status: 'pending',
-          paymentStatus: 'pending',
-          notes: order.notes ? `${order.notes}\n\nPayment receipt uploaded` : 'Payment receipt uploaded'
-        });
-      }
+      // Create the order now that payment receipt is uploaded
+      const orderData = {
+        ...checkoutData,
+        status: 'pending' as const,
+        paymentStatus: 'pending' as const,
+        notes: checkoutData.notes ? `${checkoutData.notes}\n\nPayment receipt uploaded` : 'Payment receipt uploaded'
+      };
+
+      // Create order in database
+      const orderId = await OrderService.createOrder(business.id, orderData);
 
       // Send payment receipt notification email to customer
       try {
-        const sendNotification = httpsCallable(functions, 'sendPaymentReceiptNotification');
-        await sendNotification({
-          customerEmail: order.customerEmail,
-          customerName: order.customerName,
-          orderId: order.orderId,
-          businessName: business.name,
-          businessEmail: business.email
+        const response = await fetch('https://sendpaymentreceiptnotification-rv5lqk7lxa-uc.a.run.app', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customerEmail: checkoutData.customerEmail,
+            customerName: checkoutData.customerName,
+            orderId: orderId,
+            businessName: business.name,
+            businessEmail: business.email
+          })
         });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.warn('Failed to send payment receipt notification email:', errorData);
+        }
       } catch (emailError) {
         console.warn('Failed to send payment receipt notification email:', emailError);
         // Don't fail the payment submission if email fails
@@ -195,23 +156,33 @@ export const Payment: React.FC = () => {
 
       // Send payment receipt notification email to admin
       try {
-        const sendAdminNotification = httpsCallable(functions, 'sendAdminPaymentReceiptNotification');
-        await sendAdminNotification({
-          adminEmail: business.email,
-          customerName: order.customerName,
-          customerEmail: order.customerEmail,
-          orderId: order.orderId,
-          businessName: business.name,
-          businessId: businessId
+        const response = await fetch('https://sendadminpaymentreceiptnotification-rv5lqk7lxa-uc.a.run.app', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            adminEmail: business.email,
+            customerName: checkoutData.customerName,
+            customerEmail: checkoutData.customerEmail,
+            orderId: orderId,
+            businessName: business.name,
+            businessId: business.id
+          })
         });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.warn('Failed to send admin payment receipt notification email:', errorData);
+        }
       } catch (adminEmailError) {
         console.warn('Failed to send admin payment receipt notification email:', adminEmailError);
         // Don't fail the payment submission if admin email fails
       }
 
-      toast.success('Payment receipt uploaded successfully! Your order is now awaiting admin approval.');
+      toast.success('Payment receipt uploaded successfully! Your order has been created and is now awaiting admin approval.');
       // Redirect to order history page and pass orderId in state
-      navigate('/orders', { state: { orderSubmitted: true, orderId: order.orderId } });
+      navigate('/orders', { state: { orderSubmitted: true, orderId: orderId } });
       
     } catch (error) {
       console.error('Error processing payment:', error);
@@ -281,7 +252,7 @@ export const Payment: React.FC = () => {
                     transition={{ duration: 0.6, delay: 0.3 }}
                     className="text-gray-700 text-lg font-medium"
                   >
-                    Secure bank transfer for {formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}
+                    Secure bank transfer for {formatCurrency(checkoutData?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}
                   </motion.p>
                 </div>
                 <motion.div
@@ -374,7 +345,7 @@ export const Payment: React.FC = () => {
                       >
                         <span className="text-gray-700 font-semibold">Amount to Transfer</span>
                         <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                          {formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}
+                          {formatCurrency(checkoutData?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}
                         </span>
                       </motion.div>
                       
@@ -385,7 +356,7 @@ export const Payment: React.FC = () => {
                         className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-xl"
                       >
                         <span className="text-gray-700 font-semibold">Reference</span>
-                        <span className="text-gray-900 font-mono font-bold">{order?.orderId || 'N/A'}</span>
+                        <span className="text-gray-900 font-mono font-bold">Will be generated after order creation</span>
                       </motion.div>
                     </div>
                     
@@ -540,12 +511,12 @@ export const Payment: React.FC = () => {
                               />
                               Uploading Receipt...
                             </div>
-                          ) : (
-                            <div className="flex items-center">
-                              <Zap className="h-5 w-5 mr-2" />
-                              Submit Payment Receipt
-                            </div>
-                          )}
+                        ) : (
+                          <div className="flex items-center">
+                            <Zap className="h-5 w-5 mr-2" />
+                            Submit Payment Receipt & Create Order
+                          </div>
+                        )}
                         </Button>
                       </motion.div>
                     </div>
@@ -596,20 +567,20 @@ export const Payment: React.FC = () => {
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between">
                           <span className="text-gray-600 font-medium">Name:</span>
-                          <span className="text-gray-900 font-semibold">{order?.customerName}</span>
+                          <span className="text-gray-900 font-semibold">{checkoutData?.customerName}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600 font-medium">Email:</span>
-                          <span className="text-gray-900 font-semibold">{order?.customerEmail}</span>
+                          <span className="text-gray-900 font-semibold">{checkoutData?.customerEmail}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600 font-medium">Phone:</span>
-                          <span className="text-gray-900 font-semibold">{order?.customerPhone}</span>
+                          <span className="text-gray-900 font-semibold">{checkoutData?.customerPhone}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600 font-medium">Address:</span>
                           <span className="text-gray-900 font-semibold text-right">
-                            {order?.shippingAddress?.street}, {order?.shippingAddress?.city}
+                            {checkoutData?.shippingAddress?.street}, {checkoutData?.shippingAddress?.city}
                           </span>
                         </div>
                       </div>
@@ -622,7 +593,7 @@ export const Payment: React.FC = () => {
                         Order Items
                       </h3>
                       <AnimatePresence>
-                        {order?.items.map((item, index) => (
+                        {checkoutData?.items.map((item, index) => (
                           <motion.div
                             key={item.productId}
                             initial={{ opacity: 0, x: 20 }}
@@ -650,15 +621,15 @@ export const Payment: React.FC = () => {
                     <div className="space-y-4 mb-8 border-t border-gray-200/50 pt-6">
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600 font-medium">Subtotal</span>
-                        <span className="font-semibold text-gray-900">{formatCurrency(order?.subtotal || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(checkoutData?.subtotal || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600 font-medium">Tax</span>
-                        <span className="font-semibold text-gray-900">{formatCurrency(order?.tax || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(checkoutData?.tax || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                       </div>
                       <div className="flex justify-between items-center text-xl font-bold border-t border-gray-300/50 pt-4">
                         <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Total</span>
-                        <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">{formatCurrency(order?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+                        <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">{formatCurrency(checkoutData?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
                       </div>
                     </div>
 
