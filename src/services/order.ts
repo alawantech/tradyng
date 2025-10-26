@@ -8,6 +8,7 @@ import {
   updateDoc, 
   query,
   orderBy,
+  where,
   Timestamp
 } from 'firebase/firestore';
 import { OrderIdService } from './orderIdService';
@@ -91,11 +92,15 @@ export class OrderService {
   // Get order by ID
   static async getOrderById(businessId: string, orderId: string): Promise<Order | null> {
     try {
-      const docRef = doc(db, 'businesses', businessId, 'orders', orderId);
-      const docSnap = await getDoc(docRef);
+      const q = query(
+        collection(db, 'businesses', businessId, 'orders'),
+        where('orderId', '==', orderId)
+      );
+      const querySnapshot = await getDocs(q);
       
-      if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as Order;
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        return { id: doc.id, ...doc.data() } as Order;
       }
       return null;
     } catch (error) {
@@ -106,7 +111,30 @@ export class OrderService {
   // Update order status
   static async updateOrderStatus(businessId: string, orderId: string, status: Order['status']): Promise<void> {
     try {
-      const docRef = doc(db, 'businesses', businessId, 'orders', orderId);
+      // Try to find the document by professional orderId field first
+      const q = query(
+        collection(db, 'businesses', businessId, 'orders'),
+        where('orderId', '==', orderId)
+      );
+      const querySnapshot = await getDocs(q);
+
+      let docRefPath: string | null = null;
+      if (!querySnapshot.empty) {
+        docRefPath = querySnapshot.docs[0].id;
+      } else {
+        // Fallback: maybe caller passed a Firestore document ID instead of professional orderId
+        // Verify the document exists using the passed ID
+        const possibleDoc = await getDoc(doc(db, 'businesses', businessId, 'orders', orderId));
+        if (possibleDoc.exists()) {
+          docRefPath = orderId; // it's a document ID
+        }
+      }
+
+      if (!docRefPath) {
+        throw new Error('No document to update');
+      }
+
+      const docRef = doc(db, 'businesses', businessId, 'orders', docRefPath);
       await updateDoc(docRef, {
         status,
         updatedAt: Timestamp.now()
@@ -119,7 +147,29 @@ export class OrderService {
   // Update order
   static async updateOrder(businessId: string, orderId: string, updates: Partial<Order>): Promise<void> {
     try {
-      const docRef = doc(db, 'businesses', businessId, 'orders', orderId);
+      // Try to find the document by professional orderId field first
+      const q = query(
+        collection(db, 'businesses', businessId, 'orders'),
+        where('orderId', '==', orderId)
+      );
+      const querySnapshot = await getDocs(q);
+
+      let docRefPath: string | null = null;
+      if (!querySnapshot.empty) {
+        docRefPath = querySnapshot.docs[0].id;
+      } else {
+        // Fallback: maybe caller passed a Firestore document ID instead of professional orderId
+        const possibleDoc = await getDoc(doc(db, 'businesses', businessId, 'orders', orderId));
+        if (possibleDoc.exists()) {
+          docRefPath = orderId; // it's a document ID
+        }
+      }
+
+      if (!docRefPath) {
+        throw new Error('No document to update');
+      }
+
+      const docRef = doc(db, 'businesses', businessId, 'orders', docRefPath);
       await updateDoc(docRef, {
         ...updates,
         updatedAt: Timestamp.now()

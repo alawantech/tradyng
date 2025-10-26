@@ -404,14 +404,14 @@ export const Orders: React.FC = () => {
     }
   };
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Delivered':
+    switch (status.toLowerCase()) {
+      case 'delivered':
         return 'bg-green-100 text-green-800';
-      case 'Processing':
+      case 'processing':
         return 'bg-blue-100 text-blue-800';
-      case 'Pending':
+      case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'Cancelled':
+      case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -419,14 +419,14 @@ export const Orders: React.FC = () => {
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Delivered':
+    switch (status.toLowerCase()) {
+      case 'delivered':
         return <CheckCircle className="h-4 w-4" />;
-      case 'Processing':
+      case 'processing':
         return <Package className="h-4 w-4" />;
-      case 'Pending':
+      case 'pending':
         return <Clock className="h-4 w-4" />;
-      case 'Cancelled':
+      case 'cancelled':
         return <XCircle className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
@@ -439,9 +439,13 @@ export const Orders: React.FC = () => {
 
   const handleApproveOrder = async (orderId: string) => {
     if (!business?.id) return;
-    
+
     try {
-      await OrderService.updateOrderStatus(business.id, orderId, 'processing');
+      // Update both order status and payment status when admin approves
+      await OrderService.updateOrder(business.id, orderId, {
+        status: 'processing',
+        paymentStatus: 'completed'
+      });
       toast.success(`Order ${orderId} approved successfully`);
       loadData(); // Reload orders
     } catch (error) {
@@ -916,20 +920,21 @@ export const Orders: React.FC = () => {
                       <td className="px-4 py-3 text-sm">
                         <span className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                           {getStatusIcon(order.status)}
-                          <span>{order.status}</span>
+                          <span>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-2">
                           <input
                             type="checkbox"
-                            checked={order.delivered}
+                            checked={!!order.delivered}
                             onChange={async e => {
                               const newDelivered = e.target.checked;
                               setOrders(prev => prev.map(o => o.id === order.id ? { ...o, delivered: newDelivered } : o));
                               try {
-                                await OrderService.updateOrder(business.id, order.id, { delivered: newDelivered });
+                                await OrderService.updateOrder(business.id, order.orderId || order.id, { delivered: newDelivered });
                               } catch (err) {
+                                console.error('Failed to update delivered status:', err);
                                 toast.error('Failed to update delivered status');
                               }
                             }}

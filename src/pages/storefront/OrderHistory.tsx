@@ -127,6 +127,7 @@ const OrderHistory: React.FC = () => {
     switch (status.toLowerCase()) {
       case 'pending': return 'from-yellow-400 to-orange-500';
       case 'paid': return 'from-green-400 to-emerald-500';
+      case 'processing': return 'from-blue-400 to-indigo-500';
       case 'shipped': return 'from-blue-400 to-indigo-500';
       case 'delivered': return 'from-emerald-400 to-green-500';
       default: return 'from-gray-400 to-gray-500';
@@ -137,6 +138,7 @@ const OrderHistory: React.FC = () => {
     switch (status.toLowerCase()) {
       case 'pending': return <Clock className="w-4 h-4" />;
       case 'paid': return <CreditCard className="w-4 h-4" />;
+      case 'processing': return <Package className="w-4 h-4" />;
       case 'shipped': return <Truck className="w-4 h-4" />;
       case 'delivered': return <CheckCircle className="w-4 h-4" />;
       default: return <Package className="w-4 h-4" />;
@@ -459,7 +461,7 @@ const OrderHistory: React.FC = () => {
                         </div>
 
                         {/* Order Summary */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
                           <motion.div
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -512,13 +514,32 @@ const OrderHistory: React.FC = () => {
                               </div>
                             </div>
                           </motion.div>
+
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.4, delay: 0.4 }}
+                            className="bg-gradient-to-r from-orange-50 to-red-50 p-3 sm:p-4 rounded-xl border border-orange-200/50 sm:col-span-2 lg:col-span-1"
+                          >
+                            <div className="flex items-center space-x-2 sm:space-x-3">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">Delivery Status</p>
+                                <p className={`text-sm sm:text-base lg:text-lg font-bold ${order.delivered ? 'text-green-600' : 'text-orange-600'}`}>
+                                  {order.delivered ? 'Delivered' : 'In Transit'}
+                                </p>
+                              </div>
+                            </div>
+                          </motion.div>
                         </div>
 
                         {/* Items Preview */}
                         <motion.div
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.4, delay: 0.4 }}
+                          transition={{ duration: 0.4, delay: 0.5 }}
                           className="mb-4 sm:mb-6"
                         >
                           <h4 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
