@@ -126,6 +126,7 @@ const OrderHistory: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending': return 'from-yellow-400 to-orange-500';
+      case 'approved': return 'from-green-400 to-emerald-500';
       case 'paid': return 'from-green-400 to-emerald-500';
       case 'processing': return 'from-blue-400 to-indigo-500';
       case 'shipped': return 'from-blue-400 to-indigo-500';
@@ -137,6 +138,7 @@ const OrderHistory: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending': return <Clock className="w-4 h-4" />;
+      case 'approved': return <CheckCircle className="w-4 h-4" />;
       case 'paid': return <CreditCard className="w-4 h-4" />;
       case 'processing': return <Package className="w-4 h-4" />;
       case 'shipped': return <Truck className="w-4 h-4" />;

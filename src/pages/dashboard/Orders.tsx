@@ -405,6 +405,7 @@ export const Orders: React.FC = () => {
   };
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
+      case 'approved': return 'bg-green-100 text-green-800';
       case 'delivered':
         return 'bg-green-100 text-green-800';
       case 'processing':
@@ -420,6 +421,7 @@ export const Orders: React.FC = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
+      case 'approved': return <CheckCircle className="h-4 w-4" />;
       case 'delivered':
         return <CheckCircle className="h-4 w-4" />;
       case 'processing':
@@ -439,11 +441,11 @@ export const Orders: React.FC = () => {
 
   const handleApproveOrder = async (orderId: string) => {
     if (!business?.id) return;
-
+    
     try {
       // Update both order status and payment status when admin approves
       await OrderService.updateOrder(business.id, orderId, {
-        status: 'processing',
+        status: 'approved',
         paymentStatus: 'completed'
       });
       toast.success(`Order ${orderId} approved successfully`);
@@ -452,9 +454,7 @@ export const Orders: React.FC = () => {
       console.error('Error approving order:', error);
       toast.error('Failed to approve order');
     }
-  };
-
-  // Handler for adding a product to the order
+  };  // Handler for adding a product to the order
   function handleAddProduct() {
     setOrderData(prev => ({
       ...prev,
@@ -925,27 +925,31 @@ export const Orders: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={!!order.delivered}
-                            onChange={async e => {
-                              const newDelivered = e.target.checked;
-                              const newStatus = newDelivered ? 'delivered' : 'processing';
-                              setOrders(prev => prev.map(o => o.id === order.id ? { ...o, delivered: newDelivered, status: newStatus } : o));
-                              try {
-                                await OrderService.updateOrder(business.id, order.orderId || order.id, { 
-                                  delivered: newDelivered,
-                                  status: newStatus
-                                });
-                              } catch (err) {
-                                console.error('Failed to update delivery status:', err);
-                                toast.error('Failed to update delivery status');
-                              }
-                            }}
-                          />
-                          <span className={order.delivered ? 'text-green-600 font-semibold' : 'text-gray-600'}>
-                            {order.delivered ? 'Product is delivered' : 'Check if product is delivered'}
-                          </span>
+                          {(order.status === 'approved' || order.status === 'delivered') && (
+                            <>
+                              <input
+                                type="checkbox"
+                                checked={!!order.delivered}
+                                onChange={async e => {
+                                  const newDelivered = e.target.checked;
+                                  const newStatus = newDelivered ? 'delivered' : 'approved';
+                                  setOrders(prev => prev.map(o => o.id === order.id ? { ...o, delivered: newDelivered, status: newStatus } : o));
+                                  try {
+                                    await OrderService.updateOrder(business.id, order.orderId || order.id, { 
+                                      delivered: newDelivered,
+                                      status: newStatus
+                                    });
+                                  } catch (err) {
+                                    console.error('Failed to update delivery status:', err);
+                                    toast.error('Failed to update delivery status');
+                                  }
+                                }}
+                              />
+                              <span className={order.delivered ? 'text-green-600 font-semibold' : 'text-gray-600'}>
+                                {order.delivered ? 'Product is delivered' : 'Check if product is delivered'}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm">

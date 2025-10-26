@@ -39,10 +39,11 @@ export interface Order {
   tax: number;
   shipping: number;
   total: number;
-  status: 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+  status: 'pending' | 'approved' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
   paymentMethod: 'manual' | 'automatic';
   paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
   paymentId?: string;
+  delivered?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   notes?: string;
