@@ -4,8 +4,42 @@ import * as admin from 'firebase-admin';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 
-// Initialize Firebase Admin early
-admin.initializeApp();
+// Helper function to format currency
+function formatCurrency(amount: number, currencyCode: string): string {
+  const currencySymbols: { [key: string]: string } = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'NGN': '₦',
+    'KES': 'KSh',
+    'GHS': '₵',
+    'ZAR': 'R',
+    'TZS': 'TSh',
+    'UGX': 'USh',
+    'ZMW': 'ZK',
+    'BWP': 'P',
+    'MUR': '₨',
+    'SCR': '₨',
+    'MAD': 'MAD',
+    'DZD': 'DZD',
+    'TND': 'TND',
+    'EGP': 'EGP',
+    'LYD': 'LYD',
+    'SDG': 'SDG',
+    'SSP': 'SSP',
+    'ETB': 'ETB',
+    'XAF': 'FCFA',
+    'XOF': 'CFA',
+    'CDF': 'CDF',
+    'BIF': 'FBu',
+    'RWF': 'RF',
+    'DJF': 'Fdj',
+    'SOS': 'Sh'
+  };
+
+  const symbol = currencySymbols[currencyCode] || currencyCode;
+  return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 const OTP_COLLECTION = 'emailOtps';
 const RESET_OTP_COLLECTION = 'passwordResetOtps';
@@ -970,9 +1004,509 @@ export const sendAdminPaymentReceiptNotification = functions.https.onRequest({
   }
 });
 
-// Generate signed upload URL (v4) for direct-to-GCS uploads
-// Expects POST { path: 'folder/file.jpg', contentType: 'image/jpeg' }
-// Alternative: POST { path: 'folder/file.jpg', fileData: base64string, contentType: 'image/jpeg' }
+// sendOrderDeliveryEmail: POST { customerEmail, customerName, customerPhone, shippingAddress, orderId, businessName, businessEmail, businessPhone, items, total, paymentMethod, createdAt, currency, pdfBase64 }
+export const sendOrderDeliveryEmail = functions.https.onRequest({
+  secrets: ['MAIL_SENDER_API_TOKEN']
+}, async (req: Request, res: Response) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  try {
+    if (req.method !== 'POST') {
+      res.status(405).send({ error: 'Method not allowed, use POST' });
+      return;
+    }
+
+    const {
+      customerEmail,
+      customerName,
+      customerPhone,
+      shippingAddress,
+      orderId,
+      businessName,
+      businessPhone,
+      items,
+      total,
+      paymentMethod,
+      createdAt,
+      currency,
+      pdfBase64
+    } = req.body || {};
+
+    if (!customerEmail || !orderId || !businessName || !pdfBase64) {
+      res.status(400).send({ error: 'Missing required fields: customerEmail, orderId, businessName, pdfBase64' });
+      return;
+    }
+
+    const subject = `Order Delivered - ${businessName}`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333; margin-bottom: 20px;">🚚 Order Delivered Successfully!</h2>
+
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 10px 0;"><strong>Hello ${customerName || 'Valued Customer'},</strong></p>
+          <p style="margin: 0 0 15px 0;">Great news! Your order has been successfully delivered.</p>
+
+          <div style="background: #e8f4fd; padding: 15px; border-radius: 6px; border-left: 4px solid #3b82f6; margin: 15px 0;">
+            <p style="margin: 0 0 10px 0;"><strong>📄 Order Receipt:</strong></p>
+            <p style="margin: 0; font-size: 14px; color: #1e40af;">
+              Your detailed order receipt is attached below. Click to view or download your PDF receipt for your records.
+            </p>
+          </div>
+
+          <div style="background: #d4edda; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+            <p style="margin: 0 0 10px 0;"><strong>Order Details:</strong></p>
+            <p style="margin: 0 0 5px 0;">Order ID: <strong>${orderId}</strong></p>
+            <p style="margin: 0 0 5px 0;">Store: ${businessName}</p>
+            <p style="margin: 0;">Status: ✅ Delivered</p>
+          </div>
+        </div>
+
+        <!-- Customer Information -->
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #e5e7eb; margin: 20px 0;">
+          <h3 style="color: #333; margin-bottom: 15px; font-size: 18px;">👤 Customer Information</h3>
+          <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+            <div style="display: flex; align-items: center;">
+              <span style="font-weight: 600; color: #374151; width: 80px;">Name:</span>
+              <span style="color: #111827;">${customerName}</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+              <span style="font-weight: 600; color: #374151; width: 80px;">Email:</span>
+              <span style="color: #111827;">${customerEmail}</span>
+            </div>
+            ${customerPhone ? `
+            <div style="display: flex; align-items: center;">
+              <span style="font-weight: 600; color: #374151; width: 80px;">Phone:</span>
+              <span style="color: #111827;">${customerPhone}</span>
+            </div>
+            ` : ''}
+            ${shippingAddress ? `
+            <div style="display: flex; align-items: flex-start; margin-top: 10px;">
+              <span style="font-weight: 600; color: #374151; width: 80px; flex-shrink: 0;">Address:</span>
+              <span style="color: #111827;">${shippingAddress.street}${shippingAddress.city ? ', ' + shippingAddress.city : ''}${shippingAddress.state ? ', ' + shippingAddress.state : ''}${shippingAddress.country ? ', ' + shippingAddress.country : ''}</span>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Order Items -->
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #e5e7eb; margin: 20px 0;">
+          <h3 style="color: #333; margin-bottom: 15px; font-size: 18px;">🛒 Order Items</h3>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            ${items && items.length > 0 ? items.map((item: any) => `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: #111827; font-size: 16px;">${item.productName}</div>
+                  <div style="font-size: 14px; color: #6b7280; margin-top: 4px;">
+                    Qty: <span style="font-weight: 500;">${item.quantity}</span> × ${formatCurrency(item.price, currency)}
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 18px; font-weight: bold; color: #059669;">
+                    ${formatCurrency(item.price * item.quantity, currency)}
+                  </div>
+                </div>
+              </div>
+            `).join('') : '<p>No items found</p>'}
+          </div>
+        </div>
+
+        <!-- Order Total & Payment -->
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #e5e7eb; margin: 20px 0;">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Total Amount -->
+            <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 16px; border-radius: 8px; border: 2px solid #10b981;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 20px; font-weight: bold; color: #065f46;">Total Amount:</span>
+                <span style="font-size: 24px; font-weight: 900; color: #065f46;">
+                  ${formatCurrency(total, currency)}
+                </span>
+              </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div style="background: #f9fafb; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 16px; font-weight: 600; color: #374151;">💳 Payment Method:</span>
+                <span style="font-size: 16px; font-weight: bold; color: #111827; background: white; padding: 6px 12px; border-radius: 6px; border: 1px solid #d1d5db;">
+                  ${paymentMethod || 'Manual'}
+                </span>
+              </div>
+            </div>
+
+            <!-- Order Date -->
+            <div style="background: #f9fafb; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 16px; font-weight: 600; color: #374151;">📅 Order Date:</span>
+                <span style="font-size: 16px; font-weight: bold; color: #111827;">
+                  ${createdAt ? new Date(createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  }) : 'N/A'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p style="margin: 20px 0;">
+          Thank you for shopping with us! We hope you enjoy your purchase.
+        </p>
+
+        <p style="margin: 20px 0;">
+          If you have any questions or concerns about your order, please don't hesitate to contact us.
+        </p>
+
+        ${businessPhone ? `
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://wa.me/${businessPhone.replace(/[^0-9]/g, '')}" style="background: #25D366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-flex; align-items: center; font-weight: bold; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+            <svg style="width: 20px; height: 20px; margin-right: 8px;" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+            </svg>
+            Contact ${businessName}
+          </a>
+        </div>
+
+        <p style="text-align: center; margin: 15px 0; color: #666; font-size: 14px;">
+          Questions about your order? Contact us anytime.
+        </p>
+        ` : `
+        <p style="margin: 20px 0;">
+          If you have any questions about your order, please contact ${businessName} directly.
+        </p>
+        `}
+
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          This is an automated notification from ${businessName}
+        </p>
+      </div>
+    `;
+
+    // Convert base64 PDF to buffer for attachment
+    const pdfBuffer = Buffer.from(pdfBase64, 'base64');
+
+    // Send email with PDF attachment
+    await sendEmailWithAttachment(customerEmail, subject, html, pdfBuffer, `receipt-${orderId}.pdf`);
+
+    res.json({ success: true, recipient: customerEmail });
+  } catch (error) {
+    console.error('sendOrderDeliveryEmail error:', error);
+    res.status(500).send({ error: 'Failed to send delivery email' });
+  }
+});
+
+// sendOrderApprovalEmail: POST { customerEmail, customerName, customerPhone, shippingAddress, orderId, businessName, businessEmail, businessPhone, items, total, paymentMethod, createdAt, currency, pdfBase64 }
+export const sendOrderApprovalEmail = functions.https.onRequest({
+  secrets: ['MAIL_SENDER_API_TOKEN']
+}, async (req: Request, res: Response) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  try {
+    if (req.method !== 'POST') {
+      res.status(405).send({ error: 'Method not allowed, use POST' });
+      return;
+    }
+
+    const {
+      customerEmail,
+      customerName,
+      customerPhone,
+      shippingAddress,
+      orderId,
+      businessName,
+      businessPhone,
+      items,
+      total,
+      paymentMethod,
+      createdAt,
+      currency,
+      pdfBase64
+    } = req.body || {};
+
+    if (!customerEmail || !orderId || !businessName || !pdfBase64) {
+      res.status(400).send({ error: 'Missing required fields: customerEmail, orderId, businessName, pdfBase64' });
+      return;
+    }
+
+    const subject = `Order Approved - ${businessName}`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333; margin-bottom: 20px;">🎉 Order Approved!</h2>
+
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 10px 0;"><strong>Hello ${customerName || 'Valued Customer'},</strong></p>
+          <p style="margin: 0 0 15px 0;">Great news! Your order has been approved and is now being processed.</p>
+
+          <div style="background: #e8f4fd; padding: 15px; border-radius: 6px; border-left: 4px solid #3b82f6; margin: 15px 0;">
+            <p style="margin: 0 0 10px 0;"><strong>📄 Order Receipt:</strong></p>
+            <p style="margin: 0; font-size: 14px; color: #1e40af;">
+              Your detailed order receipt is attached below. Click to view or download your PDF receipt for your records.
+            </p>
+          </div>
+
+          <div style="background: #d4edda; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+            <p style="margin: 0 0 10px 0;"><strong>Order Details:</strong></p>
+            <p style="margin: 0 0 5px 0;">Order ID: <strong>${orderId}</strong></p>
+            <p style="margin: 0 0 5px 0;">Store: ${businessName}</p>
+            <p style="margin: 0;">Status: ✅ Approved & Processing</p>
+          </div>
+        </div>
+
+        <!-- Customer Information -->
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #e5e7eb; margin: 20px 0;">
+          <h3 style="color: #333; margin-bottom: 15px; font-size: 18px;">👤 Customer Information</h3>
+          <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+            <div style="display: flex; align-items: center;">
+              <span style="font-weight: 600; color: #374151; width: 80px;">Name:</span>
+              <span style="color: #111827;">${customerName}</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+              <span style="font-weight: 600; color: #374151; width: 80px;">Email:</span>
+              <span style="color: #111827;">${customerEmail}</span>
+            </div>
+            ${customerPhone ? `
+            <div style="display: flex; align-items: center;">
+              <span style="font-weight: 600; color: #374151; width: 80px;">Phone:</span>
+              <span style="color: #111827;">${customerPhone}</span>
+            </div>
+            ` : ''}
+            ${shippingAddress ? `
+            <div style="display: flex; align-items: flex-start; margin-top: 10px;">
+              <span style="font-weight: 600; color: #374151; width: 80px; flex-shrink: 0;">Address:</span>
+              <span style="color: #111827;">${shippingAddress.street}${shippingAddress.city ? ', ' + shippingAddress.city : ''}${shippingAddress.state ? ', ' + shippingAddress.state : ''}${shippingAddress.country ? ', ' + shippingAddress.country : ''}</span>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Order Items -->
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #e5e7eb; margin: 20px 0;">
+          <h3 style="color: #333; margin-bottom: 15px; font-size: 18px;">🛒 Order Items</h3>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            ${items && items.length > 0 ? items.map((item: any) => `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: #111827; font-size: 16px;">${item.productName}</div>
+                  <div style="font-size: 14px; color: #6b7280; margin-top: 4px;">
+                    Qty: <span style="font-weight: 500;">${item.quantity}</span> × ${formatCurrency(item.price, currency)}
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 18px; font-weight: bold; color: #059669;">
+                    ${formatCurrency(item.price * item.quantity, currency)}
+                  </div>
+                </div>
+              </div>
+            `).join('') : '<p>No items found</p>'}
+          </div>
+        </div>
+
+        <!-- Order Total & Payment -->
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #e5e7eb; margin: 20px 0;">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Total Amount -->
+            <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 16px; border-radius: 8px; border: 2px solid #10b981;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 20px; font-weight: bold; color: #065f46;">Total Amount:</span>
+                <span style="font-size: 24px; font-weight: 900; color: #065f46;">
+                  ${formatCurrency(total, currency)}
+                </span>
+              </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div style="background: #f9fafb; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 16px; font-weight: 600; color: #374151;">💳 Payment Method:</span>
+                <span style="font-size: 16px; font-weight: bold; color: #111827; background: white; padding: 6px 12px; border-radius: 6px; border: 1px solid #d1d5db;">
+                  ${paymentMethod || 'Manual'}
+                </span>
+              </div>
+            </div>
+
+            <!-- Order Date -->
+            <div style="background: #f9fafb; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 16px; font-weight: 600; color: #374151;">📅 Order Date:</span>
+                <span style="font-size: 16px; font-weight: bold; color: #111827;">
+                  ${createdAt ? new Date(createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  }) : 'N/A'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p style="margin: 20px 0;">
+          We'll send you another update once your order is ready for delivery or pickup.
+        </p>
+
+        ${businessPhone ? `
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://wa.me/${businessPhone.replace(/[^0-9]/g, '')}" style="background: #25D366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-flex; align-items: center; font-weight: bold; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+            <svg style="width: 20px; height: 20px; margin-right: 8px;" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.888 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+            </svg>
+            Contact ${businessName}
+          </a>
+        </div>
+
+        <p style="text-align: center; margin: 15px 0; color: #666; font-size: 14px;">
+          Questions about your order? Contact us anytime.
+        </p>
+        ` : `
+        <p style="margin: 20px 0;">
+          If you have any questions about your order, please contact ${businessName} directly.
+        </p>
+        `}
+
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          This is an automated notification from ${businessName}
+        </p>
+      </div>
+    `;
+
+    // Convert base64 PDF to buffer for attachment
+    const pdfBuffer = Buffer.from(pdfBase64, 'base64');
+
+    // Send email with PDF attachment
+    await sendEmailWithAttachment(customerEmail, subject, html, pdfBuffer, `receipt-${orderId}.pdf`);
+
+    res.json({ success: true, recipient: customerEmail });
+  } catch (error) {
+    console.error('sendOrderApprovalEmail error:', error);
+    res.status(500).send({ error: 'Failed to send approval email' });
+  }
+});
+
+// Helper function to send email with attachment
+async function sendEmailWithAttachment(to: string, subject: string, html: string, attachmentBuffer: Buffer, attachmentName: string) {
+  // Try MailerSend first if configured
+  const configuredUrl = process.env.MAIL_SENDER_API_URL;
+  const mailerToken = process.env.MAIL_SENDER_API_TOKEN?.trim();
+  const sendgridKey = process.env.SENDGRID_API_KEY?.trim();
+
+  // helper: attempt MailerSend with attachment
+  const tryMailerSendWithAttachment = async () => {
+    if (!mailerToken) throw new Error('MailerSend token not configured');
+
+    const candidateUrls: string[] = [];
+    if (configuredUrl) candidateUrls.push(configuredUrl);
+    candidateUrls.push('https://api.mailersend.com/v1/email');
+
+    const payload = {
+      from: { email: 'no-reply@rady.ng', name: 'Rady.ng' },
+      to: [{ email: to }],
+      subject,
+      html,
+      attachments: [{
+        content: attachmentBuffer.toString('base64'),
+        filename: attachmentName,
+        type: 'application/pdf'
+      }]
+    };
+
+    let lastErr: any = null;
+    for (const url of candidateUrls) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mailerToken}` },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          if (res.status === 404) { lastErr = { url, status: res.status, body: text.slice(0,200) }; continue; }
+          throw new Error(`MailerSend error: ${res.status} ${text}`);
+        }
+        const txt = await res.text().catch(() => '');
+        try { return JSON.parse(txt); } catch (_) { return txt; }
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('MailerSend unknown error');
+  };
+
+  // helper: attempt SendGrid with attachment
+  const trySendGridWithAttachment = async () => {
+    if (!sendgridKey) throw new Error('SendGrid API key not configured');
+    const payload = {
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: 'no-reply@rady.ng', name: 'Rady.ng' },
+      subject,
+      content: [{ type: 'text/html', value: html }],
+      attachments: [{
+        content: attachmentBuffer.toString('base64'),
+        filename: attachmentName,
+        type: 'application/pdf',
+        disposition: 'attachment'
+      }]
+    };
+    const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sendgridKey}` },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`SendGrid error: ${res.status} ${body}`);
+    }
+    return { ok: true };
+  };
+
+  // Try providers in order
+  const extractMsg = (e: unknown) => {
+    if (!e) return String(e);
+    if (typeof e === 'string') return e;
+    if (e instanceof Error) return e.message;
+    try { return JSON.stringify(e); } catch { return String(e); }
+  };
+
+  try {
+    return await tryMailerSendWithAttachment();
+  } catch (mailerErrUnknown) {
+    const mailerMsg = extractMsg(mailerErrUnknown);
+    console.warn('MailerSend with attachment failed:', mailerMsg);
+    if (sendgridKey) {
+      try { return await trySendGridWithAttachment(); } catch (sgErrUnknown) {
+        const sgMsg = extractMsg(sgErrUnknown);
+        console.error('SendGrid with attachment also failed:', sgMsg);
+        throw new Error(`Email providers failed: ${mailerMsg} ; ${sgMsg}`);
+      }
+    }
+
+    // If no other provider and we're in non-production, log and continue
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('No email provider configured; running in non-production mode — logging email content instead of sending.');
+      console.info(`DEV EMAIL TO=${to} SUBJECT=${subject} HTML=${html} ATTACHMENT=${attachmentName}`);
+      return { ok: true, debug: true } as any;
+    }
+
+    throw new Error(`MailerSend failed and no fallback provider configured. ${mailerMsg}`);
+  }
+}
   export const generateUploadUrl = functions.https.onRequest(async (req, res) => {
     // CORS
     res.set('Access-Control-Allow-Origin', '*');

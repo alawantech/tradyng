@@ -9,8 +9,8 @@ import { CustomerService, Customer } from '../../services/customer';
 import { useAuth } from '../../hooks/useAuth';
 import { OrderReceipt } from '../../components/ui/OrderReceipt';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
-import { Timestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import html2pdf from 'html2pdf.js';
 
 export const Orders: React.FC = () => {
   const { business } = useAuth();
@@ -439,15 +439,241 @@ export const Orders: React.FC = () => {
     setShowReceipt(orderId);
   };
 
+  // Generate PDF receipt for email attachment
+  const generateOrderPDF = async (order: Order): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      try {
+        // Create a temporary container for the receipt
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.top = '-9999px';
+        document.body.appendChild(tempContainer);
+
+        // Create the receipt component
+        const receiptElement = document.createElement('div');
+        receiptElement.innerHTML = `
+          <div style="max-width: 400px; margin: 0 auto; background: white; shadow-2xl rounded-2xl overflow-hidden border-2; font-family: system-ui, -apple-system, sans-serif;">
+            <!-- Store Header -->
+            <div style="relative; padding: 16px; background: linear-gradient(135deg, ${business?.settings?.primaryColor || '#3B82F6'} 0%, ${business?.settings?.secondaryColor || '#1E40AF'} 100%); color: white; text-align: center;">
+              <div style="relative; z-index: 10;">
+                <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                  <div style="background: white; border-radius: 50%; padding: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); margin-right: 12px;">
+                    <img src="${business?.logo || ''}" alt="Store Logo" style="height: 40px; width: 40px; object-fit: contain;" />
+                  </div>
+                  <div>
+                    <h1 style="font-size: 24px; font-weight: bold; tracking-tight;">${business?.name || 'Rady.ng'}</h1>
+                  </div>
+                </div>
+
+                ${business?.address ? `<p style="font-size: 14px; font-weight: 500; margin-bottom: 4px;">${business.address}</p>` : ''}
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px;">
+                  ${business?.email ? `<span style="display: flex; align-items: center;"><span style="margin-right: 4px;">📧</span>${business.email}</span>` : ''}
+                  ${business?.phone ? `<span style="display: flex; align-items: center;"><span style="margin-right: 4px;">📞</span>${business.phone}</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <!-- Receipt Header -->
+            <div style="background: #F9FAFB; padding: 12px; border-bottom: 2px solid ${business?.settings?.primaryColor || '#3B82F6'};">
+              <div style="text-align: center;">
+                <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 4px; color: ${business?.settings?.primaryColor || '#3B82F6'};">Order Receipt</h2>
+                <p style="color: #6B7280; font-size: 14px; margin-bottom: 8px;">Thank you for your business!</p>
+              </div>
+
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <div style="background: white; padding: 6px 12px; border-radius: 4px; border: 1px solid ${business?.settings?.primaryColor || '#3B82F6'}; font-size: 12px;">
+                  <span style="font-weight: 600; color: #374151;">Order ID:</span>
+                  <span style="margin-left: 4px; font-weight: bold; color: ${business?.settings?.primaryColor || '#3B82F6'};">${order.orderId || order.id}</span>
+                </div>
+                <div style="background: white; padding: 6px 12px; border-radius: 4px; border: 1px solid ${business?.settings?.primaryColor || '#3B82F6'}; font-size: 12px;">
+                  <span style="font-weight: 600; color: #374151;">Date:</span>
+                  <span style="margin-left: 4px; font-weight: bold; color: #111827;">${order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Customer Information -->
+            <div style="padding: 16px; background: white;">
+              <div style="background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%); padding: 12px; border-radius: 8px; border: 2px solid ${business?.settings?.primaryColor || '#3B82F6'}; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; color: ${business?.settings?.primaryColor || '#3B82F6'};">
+                  <span style="margin-right: 4px;">👤</span>Customer Information
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
+                  <div>
+                    <p style="display: flex; align-items: center; font-size: 14px;">
+                      <span style="font-weight: 600; color: #374151; width: 56px;">Name:</span>
+                      <span style="color: #111827;">${order.customerName}</span>
+                    </p>
+                    <p style="display: flex; align-items: center; font-size: 14px;">
+                      <span style="font-weight: 600; color: #374151; width: 56px;">Email:</span>
+                      <span style="color: #111827;">${order.customerEmail}</span>
+                    </p>
+                  </div>
+                  ${order.customerPhone ? `
+                  <div>
+                    <p style="display: flex; align-items: center; font-size: 14px;">
+                      <span style="font-weight: 600; color: #374151; width: 56px;">Phone:</span>
+                      <span style="color: #111827;">${order.customerPhone}</span>
+                    </p>
+                  </div>
+                  ` : ''}
+                </div>
+                ${order.shippingAddress ? `
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E5E7EB;">
+                  <p style="display: flex; align-items: flex-start; font-size: 14px;">
+                    <span style="font-weight: 600; color: #374151; width: 64px; flex-shrink: 0;">Address:</span>
+                    <span style="color: #111827; margin-left: 4px; word-break: break-word;">${order.shippingAddress.street}${order.shippingAddress.city ? ', ' + order.shippingAddress.city : ''}${order.shippingAddress.state ? ', ' + order.shippingAddress.state : ''}${order.shippingAddress.country ? ', ' + order.shippingAddress.country : ''}</span>
+                  </p>
+                </div>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Items -->
+            <div style="padding: 16px; background: #F9FAFB;">
+              <div style="background: white; padding: 12px; border-radius: 8px; border: 2px solid ${business?.settings?.primaryColor || '#3B82F6'}; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; color: ${business?.settings?.primaryColor || '#3B82F6'};">
+                  <span style="margin-right: 4px;">🛒</span>Order Items
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  ${order.items.map((item, idx) => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #F9FAFB; border-radius: 4px; border: 1px solid rgba(${business?.settings?.primaryColor?.replace('#', '') || '59, 130, 246'}, 0.3);">
+                      <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #111827; font-size: 14px;">${item.productName}</div>
+                        <div style="font-size: 12px; color: #6B7280; margin-top: 2px;">
+                          Qty: <span style="font-weight: 500;">${item.quantity}</span> × ${formatCurrency(item.price, business?.settings?.currency || DEFAULT_CURRENCY)}
+                        </div>
+                      </div>
+                      <div style="text-align: right;">
+                        <div style="font-size: 18px; font-weight: bold; color: ${business?.settings?.primaryColor || '#3B82F6'};">
+                          ${formatCurrency(item.price * item.quantity, business?.settings?.currency || DEFAULT_CURRENCY)}
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+
+            <!-- Total & Payment -->
+            <div style="padding: 16px; background: white;">
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Total Amount -->
+                <div style="background: linear-gradient(135deg, rgba(${business?.settings?.primaryColor?.replace('#', '') || '59, 130, 246'}, 0.1) 0%, rgba(${business?.settings?.secondaryColor?.replace('#', '') || '30, 64, 175'}, 0.1) 100%); padding: 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); border: 2px solid ${business?.settings?.primaryColor || '#3B82F6'};">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 18px; font-weight: bold; color: ${business?.settings?.primaryColor || '#3B82F6'};">Total Amount:</span>
+                    <span style="font-size: 24px; font-weight: 900; color: ${business?.settings?.primaryColor || '#3B82F6'};">
+                      ${formatCurrency(order.total, business?.settings?.currency || DEFAULT_CURRENCY)}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div style="background: #F9FAFB; padding: 8px; border-radius: 8px; border: 2px solid ${business?.settings?.primaryColor || '#3B82F6'}; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 14px; font-weight: 600; display: flex; align-items: center; color: ${business?.settings?.primaryColor || '#3B82F6'};">
+                      <span style="margin-right: 4px;">💳</span>Payment Method:
+                    </span>
+                    <span style="font-size: 14px; font-weight: bold; color: #111827; background: white; padding: 4px 8px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); capitalize;">
+                      ${order.paymentMethod}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="background: #1F2937; color: white; padding: 12px; text-align: center;">
+              <p style="font-size: 14px; font-weight: 500; margin-bottom: 4px;">Thank you for choosing ${business?.name || 'Rady.ng'}!</p>
+              <p style="font-size: 12px; opacity: 0.75;">We appreciate your business and hope to serve you again soon.</p>
+            </div>
+          </div>
+        `;
+
+        tempContainer.appendChild(receiptElement);
+
+        // Generate PDF
+        const opt = {
+          margin: 0.3,
+          filename: `receipt-${order.orderId || order.id}.pdf`,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 1.2, useCORS: true },
+          jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(receiptElement).outputPdf('datauristring').then((pdfDataUri: string) => {
+          // Convert data URI to base64
+          const base64 = pdfDataUri.split(',')[1];
+          document.body.removeChild(tempContainer);
+          resolve(base64);
+        }).catch((error: any) => {
+          document.body.removeChild(tempContainer);
+          reject(error);
+        });
+
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
+
   const handleApproveOrder = async (orderId: string) => {
     if (!business?.id) return;
-    
+
     try {
-      // Update both order status and payment status when admin approves
+      // First, get the order details to generate PDF
+      const order = orders.find(o => o.orderId === orderId || o.id === orderId);
+      if (!order) {
+        toast.error('Order not found');
+        return;
+      }
+
+      // Generate PDF receipt
+      const pdfBase64 = await generateOrderPDF(order);
+
+      // Update order status
       await OrderService.updateOrder(business.id, orderId, {
         status: 'approved',
         paymentStatus: 'completed'
       });
+
+      // Send approval email with PDF attachment
+      try {
+        const response = await fetch('https://sendorderapprovalemail-rv5lqk7lxa-uc.a.run.app', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customerEmail: order.customerEmail,
+            customerName: order.customerName,
+            customerPhone: order.customerPhone,
+            shippingAddress: order.shippingAddress,
+            orderId: order.orderId || order.id,
+            businessName: business.name || 'Rady.ng',
+            businessEmail: business.email,
+            businessPhone: business.phone,
+            items: order.items,
+            total: order.total,
+            paymentMethod: order.paymentMethod,
+            createdAt: order.createdAt?.toDate ? order.createdAt.toDate().toISOString() : new Date().toISOString(),
+            currency: business?.settings?.currency || 'NGN',
+            pdfBase64
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Email sent successfully:', result);
+      } catch (emailError) {
+        console.warn('Error sending approval email:', emailError);
+        // Don't fail the approval if email fails
+      }
+
       toast.success(`Order ${orderId} approved successfully`);
       loadData(); // Reload orders
     } catch (error) {
@@ -939,6 +1165,50 @@ export const Orders: React.FC = () => {
                                       delivered: newDelivered,
                                       status: newStatus
                                     });
+
+                                    // Send delivery notification email if order is marked as delivered
+                                    if (newDelivered) {
+                                      try {
+                                        // Generate PDF receipt for email attachment
+                                        const pdfBase64 = await generateOrderPDF(order);
+
+                                        const response = await fetch('https://sendorderdeliveryemail-rv5lqk7lxa-uc.a.run.app', {
+                                          method: 'POST',
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                          },
+                                          body: JSON.stringify({
+                                            customerEmail: order.customerEmail,
+                                            customerName: order.customerName,
+                                            customerPhone: order.customerPhone,
+                                            shippingAddress: order.shippingAddress,
+                                            orderId: order.orderId || order.id,
+                                            businessName: business.name || 'Rady.ng',
+                                            businessEmail: business.email,
+                                            businessPhone: business.phone,
+                                            items: order.items,
+                                            total: order.total,
+                                            paymentMethod: order.paymentMethod,
+                                            createdAt: order.createdAt?.toDate ? order.createdAt.toDate().toISOString() : new Date().toISOString(),
+                                            currency: business?.settings?.currency || 'NGN',
+                                            pdfBase64
+                                          })
+                                        });
+
+                                        if (!response.ok) {
+                                          throw new Error(`HTTP error! status: ${response.status}`);
+                                        }
+
+                                        const result = await response.json();
+                                        console.log('Delivery email sent successfully:', result);
+                                        toast.success('Order marked as delivered and notification email sent!');
+                                      } catch (emailError) {
+                                        console.warn('Error sending delivery email:', emailError);
+                                        toast.success('Order marked as delivered (email notification failed)');
+                                      }
+                                    } else {
+                                      toast.success('Order delivery status updated');
+                                    }
                                   } catch (err) {
                                     console.error('Failed to update delivery status:', err);
                                     toast.error('Failed to update delivery status');
