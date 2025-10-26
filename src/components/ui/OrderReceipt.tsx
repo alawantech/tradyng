@@ -1,7 +1,7 @@
-import React from 'react';
-import { Card } from './Card';
+import React, { useState } from 'react';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import logo from '../../assets/logo.png';
+import html2pdf from 'html2pdf.js';
 
 interface ReceiptItem {
   productName: string;
@@ -25,6 +25,7 @@ interface OrderReceiptProps {
   storePhone?: string;
   storeEmail?: string;
   storeLogo?: string;
+  storeCountry?: string;
   primaryColor?: string;
   secondaryColor?: string;
   accentColor?: string;
@@ -46,111 +47,213 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
   storePhone,
   storeEmail,
   storeLogo,
+  storeCountry,
   primaryColor = '#3B82F6',
   secondaryColor = '#1E40AF',
   accentColor = '#F59E0B'
 }) => {
+  const receiptRef = React.useRef<HTMLDivElement>(null);
+
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadPDF = async () => {
+    setIsDownloading(true);
+    try {
+      if (receiptRef.current) {
+        const opt = {
+          margin: 1,
+          filename: `receipt-${orderId}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+        await html2pdf().set(opt).from(receiptRef.current).save();
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
-    <Card
-      className="max-w-lg mx-auto p-0 print:shadow-none rounded-2xl shadow-xl border"
-      style={{
-        borderColor: primaryColor,
-        background: `linear-gradient(135deg, ${primaryColor}22 0%, #fff 100%)`
-      }}
-    >
+    <div ref={receiptRef} className="max-w-2xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border-2" style={{ borderColor: primaryColor }}>
       {/* Store Header */}
       <div
-        className="rounded-t-2xl p-6 text-white text-center mb-0 border-b-4"
+        className="relative p-8 text-white text-center"
         style={{
-          background: `linear-gradient(90deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
-          borderColor: accentColor
+          background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
         }}
       >
-        <div className="flex items-center justify-center mb-2">
-          <img src={storeLogo || logo} alt="Store Logo" className="h-14 w-14 object-contain mr-3 drop-shadow-lg" />
-          <h1 className="text-3xl font-extrabold tracking-tight drop-shadow-lg">{storeName}</h1>
+        {/* Decorative background pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-4 left-4 w-16 h-16 border-2 rounded-full" style={{ borderColor: accentColor }}></div>
+          <div className="absolute top-8 right-8 w-8 h-8 border-2 rounded-full" style={{ borderColor: accentColor }}></div>
+          <div className="absolute bottom-4 left-1/4 w-12 h-12 border-2 rounded-full" style={{ borderColor: accentColor }}></div>
         </div>
-        {storeAddress && (
-          <p className="text-sm opacity-90">{storeAddress}</p>
-        )}
-        <div className="flex flex-col items-center text-sm gap-1 mt-2">
-          {storeEmail && <span className="opacity-90">Email: {storeEmail}</span>}
-          {storePhone && <span className="opacity-90">Phone: {storePhone}</span>}
+
+        <div className="relative z-10">
+          <div className="flex items-center justify-center mb-4">
+            <div className="bg-white rounded-full p-3 shadow-lg mr-4">
+              <img src={storeLogo || logo} alt="Store Logo" className="h-16 w-16 object-contain" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight">{storeName}</h1>
+            </div>
+          </div>
+
+          {storeAddress && (
+            <p className="text-lg font-medium mb-2">{storeAddress}</p>
+          )}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm">
+            {storeEmail && <span className="flex items-center"><span className="mr-2">📧</span>{storeEmail}</span>}
+            {storePhone && <span className="flex items-center"><span className="mr-2">📞</span>{storeCountry === 'Nigeria' ? '+' : ''}{storePhone}</span>}
+          </div>
         </div>
       </div>
 
-      {/* Receipt Title & Order Info */}
-      <div className="text-center py-6 px-8">
-        <h2 className="text-2xl font-bold mb-2" style={{ color: primaryColor }}>Order Receipt</h2>
-        <div className="flex justify-center gap-4 text-sm mb-2">
-          <span className="px-3 py-1 rounded-full font-semibold shadow" style={{ background: `${primaryColor}22`, color: primaryColor }}>Order ID: {orderId}</span>
-          <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-semibold shadow">Date: {createdAt}</span>
+      {/* Receipt Header */}
+      <div className="bg-gray-50 px-8 py-6 border-b-2" style={{ borderColor: primaryColor }}>
+        <div className="text-center">
+          <h2 className="text-3xl font-bold mb-2" style={{ color: primaryColor }}>Order Receipt</h2>
+          <p className="text-gray-600 mb-4">Thank you for your business!</p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <div className="bg-white px-4 py-2 rounded-lg shadow-sm border" style={{ borderColor: primaryColor }}>
+            <span className="text-sm font-semibold text-gray-600">Order ID:</span>
+            <span className="ml-2 font-bold" style={{ color: primaryColor }}>{orderId}</span>
+          </div>
+          <div className="bg-white px-4 py-2 rounded-lg shadow-sm border" style={{ borderColor: primaryColor }}>
+            <span className="text-sm font-semibold text-gray-600">Date:</span>
+            <span className="ml-2 font-bold text-gray-800">{createdAt}</span>
+          </div>
         </div>
       </div>
 
       {/* Customer Information */}
-      <div className="px-8 pb-6">
-        <div className="bg-white rounded-lg border p-4 mb-4 shadow-sm" style={{ borderColor: primaryColor }}>
-          <p className="font-semibold mb-2" style={{ color: primaryColor }}>Customer Information</p>
-          <div className="text-sm space-y-1">
-            <p><span className="font-medium text-gray-700">Name:</span> {customerName}</p>
-            <p><span className="font-medium text-gray-700">Email:</span> {customerEmail}</p>
-            {customerPhone && (
-              <p><span className="font-medium text-gray-700">Phone:</span> {customerPhone}</p>
-            )}
+      <div className="px-8 py-6 bg-white">
+        <div className="bg-gradient-to-r from-gray-50 to-white p-6 rounded-xl border-2 shadow-sm" style={{ borderColor: primaryColor }}>
+          <h3 className="text-xl font-bold mb-4 flex items-center" style={{ color: primaryColor }}>
+            <span className="mr-2">👤</span>Customer Information
+          </h3>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <p className="flex items-center">
+                  <span className="font-semibold text-gray-700 w-16">Name:</span>
+                  <span className="text-gray-900">{customerName}</span>
+                </p>
+                <p className="flex items-center">
+                  <span className="font-semibold text-gray-700 w-16">Email:</span>
+                  <span className="text-gray-900">{customerEmail}</span>
+                </p>
+              </div>
+              <div className="space-y-2">
+                {customerPhone && (
+                  <p className="flex items-center">
+                    <span className="font-semibold text-gray-700 w-16">Phone:</span>
+                    <span className="text-gray-900">{customerPhone}</span>
+                  </p>
+                )}
+              </div>
+            </div>
             {customerAddress && (
-              <p><span className="font-medium text-gray-700">Address:</span> {customerAddress}</p>
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="flex items-start">
+                  <span className="font-semibold text-gray-700 w-20 flex-shrink-0">Address:</span>
+                  <span className="text-gray-900 ml-2 break-words">{customerAddress}</span>
+                </p>
+              </div>
             )}
           </div>
         </div>
       </div>
 
       {/* Items */}
-      <div className="px-8 pb-6">
-        <div className="bg-white rounded-lg border p-4 shadow-sm" style={{ borderColor: primaryColor }}>
-          <p className="font-semibold mb-3" style={{ color: primaryColor }}>Items</p>
-          <ul className="divide-y" style={{ borderColor: primaryColor }}>
+      <div className="px-8 py-6 bg-gray-50">
+        <div className="bg-white p-6 rounded-xl border-2 shadow-sm" style={{ borderColor: primaryColor }}>
+          <h3 className="text-xl font-bold mb-4 flex items-center" style={{ color: primaryColor }}>
+            <span className="mr-2">🛒</span>Order Items
+          </h3>
+          <div className="space-y-3">
             {items.map((item, idx) => (
-              <li key={idx} className="py-3 px-2 flex justify-between items-center">
-                <div>
-                  <span className="font-medium text-gray-900">{item.quantity}x {item.productName}</span>
-                  <p className="text-xs text-gray-500">
-                    {formatCurrency(item.price, currencyCode)} each
-                  </p>
+              <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border" style={{ borderColor: `${primaryColor}30` }}>
+                <div className="flex-1">
+                  <div className="font-semibold text-gray-900 text-lg">{item.productName}</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Quantity: <span className="font-medium">{item.quantity}</span> × {formatCurrency(item.price, currencyCode)} each
+                  </div>
                 </div>
-                <span className="font-bold" style={{ color: primaryColor }}>
-                  {formatCurrency(item.price * item.quantity, currencyCode)}
-                </span>
-              </li>
+                <div className="text-right">
+                  <div className="text-xl font-bold" style={{ color: primaryColor }}>
+                    {formatCurrency(item.price * item.quantity, currencyCode)}
+                  </div>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       </div>
 
       {/* Total & Payment */}
-      <div className="px-8 pb-8">
-        <div className="rounded-lg border p-4 shadow-sm mb-4 flex justify-between items-center" style={{ background: `${primaryColor}22`, borderColor: accentColor }}>
-          <span className="text-lg font-bold" style={{ color: primaryColor }}>Total:</span>
-          <span className="text-2xl font-extrabold" style={{ color: primaryColor }}>
-            {formatCurrency(total, currencyCode)}
-          </span>
-        </div>
-        <div className="bg-white rounded-lg border p-4 shadow-sm flex justify-between items-center" style={{ borderColor: primaryColor }}>
-          <span className="font-semibold" style={{ color: primaryColor }}>Payment Method:</span>
-          <span className="capitalize text-gray-900 font-bold">{paymentMethod}</span>
+      <div className="px-8 py-6 bg-white">
+        <div className="space-y-4">
+          {/* Total Amount */}
+          <div className="bg-gradient-to-r p-6 rounded-xl shadow-lg border-2" style={{ background: `linear-gradient(135deg, ${primaryColor}10 0%, ${secondaryColor}10 100%)`, borderColor: primaryColor }}>
+            <div className="flex justify-between items-center">
+              <span className="text-2xl font-bold" style={{ color: primaryColor }}>Total Amount:</span>
+              <span className="text-4xl font-extrabold" style={{ color: primaryColor }}>
+                {formatCurrency(total, currencyCode)}
+              </span>
+            </div>
+          </div>
+
+          {/* Payment Method */}
+          <div className="bg-gray-50 p-4 rounded-xl border-2 shadow-sm" style={{ borderColor: primaryColor }}>
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-semibold flex items-center" style={{ color: primaryColor }}>
+                <span className="mr-2">💳</span>Payment Method:
+              </span>
+              <span className="text-lg font-bold text-gray-900 capitalize bg-white px-4 py-2 rounded-lg shadow-sm">
+                {paymentMethod}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Print Button */}
-      <div className="text-center pb-8">
-        <button
-          className="px-10 py-3 rounded-xl font-bold shadow-lg transition-colors print:hidden"
-          style={{ background: `linear-gradient(90deg, ${primaryColor} 0%, ${secondaryColor} 100%)`, color: '#fff' }}
-          onClick={() => window.print()}
-        >
-          Download / Print Receipt
-        </button>
+      {/* Footer */}
+      <div className="bg-gray-900 text-white px-8 py-6 text-center">
+        <p className="text-lg font-medium mb-2">Thank you for choosing {storeName}!</p>
+        <p className="text-sm opacity-75">We appreciate your business and hope to serve you again soon.</p>
+
+        {/* Print Button */}
+        <div className="mt-6">
+          <button
+            className="px-8 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:scale-105 print:hidden flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: `linear-gradient(90deg, ${primaryColor} 0%, ${secondaryColor} 100%)`, color: '#fff' }}
+            onClick={downloadPDF}
+            disabled={isDownloading}
+            title="Download Receipt as PDF"
+          >
+            {isDownloading ? (
+              <>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Downloading...</span>
+              </>
+            ) : (
+              <>
+                <span className="print:hidden">📄</span>
+                <span>Download</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 };

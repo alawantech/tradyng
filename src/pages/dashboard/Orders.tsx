@@ -1010,6 +1010,7 @@ export const Orders: React.FC = () => {
                                 storePhone={business?.phone}
                                 storeEmail={business?.email}
                                 storeLogo={business?.logo}
+                                storeCountry={business?.country}
                                 primaryColor={business?.settings?.primaryColor}
                                 secondaryColor={business?.settings?.secondaryColor}
                                 accentColor={business?.settings?.accentColor}
