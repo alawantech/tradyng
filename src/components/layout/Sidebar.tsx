@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { AuthService } from '../../services/auth';
 import toast from 'react-hot-toast';
-import logo from '../../assets/logo.png';
 
 interface SidebarProps {
   type?: 'business' | 'admin';
@@ -70,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
       >
         <div className="p-6 flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
-            <img src={logo} alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
+            <img src="/logo.png" alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
             <span className="text-xl font-bold text-gray-900">rady.ng</span>
           </Link>
           {/* Close button for mobile/tablet */}
