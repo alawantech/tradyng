@@ -61,10 +61,10 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
     try {
       if (receiptRef.current) {
         const opt = {
-          margin: 1,
+          margin: 0.3,
           filename: `receipt-${orderId}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 1.2, useCORS: true },
           jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
         await html2pdf().set(opt).from(receiptRef.current).save();
@@ -77,92 +77,85 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
   };
 
   return (
-    <div ref={receiptRef} className="max-w-2xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border-2" style={{ borderColor: primaryColor }}>
+    <div ref={receiptRef} className="max-w-md mx-auto bg-white shadow-2xl rounded-2xl overflow-hidden border-2" style={{ borderColor: primaryColor }}>
       {/* Store Header */}
       <div
-        className="relative p-8 text-white text-center"
+        className="relative p-4 text-white text-center"
         style={{
           background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
         }}
       >
-        {/* Decorative background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-4 left-4 w-16 h-16 border-2 rounded-full" style={{ borderColor: accentColor }}></div>
-          <div className="absolute top-8 right-8 w-8 h-8 border-2 rounded-full" style={{ borderColor: accentColor }}></div>
-          <div className="absolute bottom-4 left-1/4 w-12 h-12 border-2 rounded-full" style={{ borderColor: accentColor }}></div>
-        </div>
-
         <div className="relative z-10">
-          <div className="flex items-center justify-center mb-4">
-            <div className="bg-white rounded-full p-3 shadow-lg mr-4">
-              <img src={storeLogo || logo} alt="Store Logo" className="h-16 w-16 object-contain" />
+          <div className="flex items-center justify-center mb-2">
+            <div className="bg-white rounded-full p-2 shadow-lg mr-3">
+              <img src={storeLogo || logo} alt="Store Logo" className="h-10 w-10 object-contain" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold tracking-tight">{storeName}</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{storeName}</h1>
             </div>
           </div>
 
           {storeAddress && (
-            <p className="text-lg font-medium mb-2">{storeAddress}</p>
+            <p className="text-sm font-medium mb-1">{storeAddress}</p>
           )}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm">
-            {storeEmail && <span className="flex items-center"><span className="mr-2">📧</span>{storeEmail}</span>}
-            {storePhone && <span className="flex items-center"><span className="mr-2">📞</span>{storeCountry === 'Nigeria' ? '+' : ''}{storePhone}</span>}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-xs">
+            {storeEmail && <span className="flex items-center"><span className="mr-1">📧</span>{storeEmail}</span>}
+            {storePhone && <span className="flex items-center"><span className="mr-1">📞</span>{storeCountry === 'Nigeria' ? '+' : ''}{storePhone}</span>}
           </div>
         </div>
       </div>
 
       {/* Receipt Header */}
-      <div className="bg-gray-50 px-8 py-6 border-b-2" style={{ borderColor: primaryColor }}>
+      <div className="bg-gray-50 px-4 py-3 border-b-2" style={{ borderColor: primaryColor }}>
         <div className="text-center">
-          <h2 className="text-3xl font-bold mb-2" style={{ color: primaryColor }}>Order Receipt</h2>
-          <p className="text-gray-600 mb-4">Thank you for your business!</p>
+          <h2 className="text-xl font-bold mb-1" style={{ color: primaryColor }}>Order Receipt</h2>
+          <p className="text-gray-600 text-sm mb-2">Thank you for your business!</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <div className="bg-white px-4 py-2 rounded-lg shadow-sm border" style={{ borderColor: primaryColor }}>
-            <span className="text-sm font-semibold text-gray-600">Order ID:</span>
-            <span className="ml-2 font-bold" style={{ color: primaryColor }}>{orderId}</span>
+        <div className="flex flex-col sm:flex-row justify-center gap-2">
+          <div className="bg-white px-3 py-1 rounded border text-xs" style={{ borderColor: primaryColor }}>
+            <span className="font-semibold text-gray-600">Order ID:</span>
+            <span className="ml-1 font-bold" style={{ color: primaryColor }}>{orderId}</span>
           </div>
-          <div className="bg-white px-4 py-2 rounded-lg shadow-sm border" style={{ borderColor: primaryColor }}>
-            <span className="text-sm font-semibold text-gray-600">Date:</span>
-            <span className="ml-2 font-bold text-gray-800">{createdAt}</span>
+          <div className="bg-white px-3 py-1 rounded border text-xs" style={{ borderColor: primaryColor }}>
+            <span className="font-semibold text-gray-600">Date:</span>
+            <span className="ml-1 font-bold text-gray-800">{createdAt}</span>
           </div>
         </div>
       </div>
 
       {/* Customer Information */}
-      <div className="px-8 py-6 bg-white">
-        <div className="bg-gradient-to-r from-gray-50 to-white p-6 rounded-xl border-2 shadow-sm" style={{ borderColor: primaryColor }}>
-          <h3 className="text-xl font-bold mb-4 flex items-center" style={{ color: primaryColor }}>
-            <span className="mr-2">👤</span>Customer Information
+      <div className="px-4 py-3 bg-white">
+        <div className="bg-gradient-to-r from-gray-50 to-white p-3 rounded-lg border-2 shadow-sm" style={{ borderColor: primaryColor }}>
+          <h3 className="text-lg font-bold mb-2 flex items-center" style={{ color: primaryColor }}>
+            <span className="mr-1">👤</span>Customer Information
           </h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <p className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-16">Name:</span>
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <p className="flex items-center text-sm">
+                  <span className="font-semibold text-gray-700 w-14">Name:</span>
                   <span className="text-gray-900">{customerName}</span>
                 </p>
-                <p className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-16">Email:</span>
+                <p className="flex items-center text-sm">
+                  <span className="font-semibold text-gray-700 w-14">Email:</span>
                   <span className="text-gray-900">{customerEmail}</span>
                 </p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {customerPhone && (
-                  <p className="flex items-center">
-                    <span className="font-semibold text-gray-700 w-16">Phone:</span>
+                  <p className="flex items-center text-sm">
+                    <span className="font-semibold text-gray-700 w-14">Phone:</span>
                     <span className="text-gray-900">{customerPhone}</span>
                   </p>
                 )}
               </div>
             </div>
             {customerAddress && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="flex items-start">
-                  <span className="font-semibold text-gray-700 w-20 flex-shrink-0">Address:</span>
-                  <span className="text-gray-900 ml-2 break-words">{customerAddress}</span>
+              <div className="mt-2 pt-2 border-t border-gray-200">
+                <p className="flex items-start text-sm">
+                  <span className="font-semibold text-gray-700 w-16 flex-shrink-0">Address:</span>
+                  <span className="text-gray-900 ml-1 break-words">{customerAddress}</span>
                 </p>
               </div>
             )}
@@ -171,22 +164,22 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
       </div>
 
       {/* Items */}
-      <div className="px-8 py-6 bg-gray-50">
-        <div className="bg-white p-6 rounded-xl border-2 shadow-sm" style={{ borderColor: primaryColor }}>
-          <h3 className="text-xl font-bold mb-4 flex items-center" style={{ color: primaryColor }}>
-            <span className="mr-2">🛒</span>Order Items
+      <div className="px-4 py-3 bg-gray-50">
+        <div className="bg-white p-3 rounded-lg border-2 shadow-sm" style={{ borderColor: primaryColor }}>
+          <h3 className="text-lg font-bold mb-2 flex items-center" style={{ color: primaryColor }}>
+            <span className="mr-1">🛒</span>Order Items
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {items.map((item, idx) => (
-              <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border" style={{ borderColor: `${primaryColor}30` }}>
+              <div key={idx} className="flex justify-between items-center p-2 bg-gray-50 rounded border" style={{ borderColor: `${primaryColor}30` }}>
                 <div className="flex-1">
-                  <div className="font-semibold text-gray-900 text-lg">{item.productName}</div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    Quantity: <span className="font-medium">{item.quantity}</span> × {formatCurrency(item.price, currencyCode)} each
+                  <div className="font-semibold text-gray-900 text-sm">{item.productName}</div>
+                  <div className="text-xs text-gray-600 mt-0.5">
+                    Qty: <span className="font-medium">{item.quantity}</span> × {formatCurrency(item.price, currencyCode)}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xl font-bold" style={{ color: primaryColor }}>
+                  <div className="text-lg font-bold" style={{ color: primaryColor }}>
                     {formatCurrency(item.price * item.quantity, currencyCode)}
                   </div>
                 </div>
@@ -197,25 +190,25 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
       </div>
 
       {/* Total & Payment */}
-      <div className="px-8 py-6 bg-white">
-        <div className="space-y-4">
+      <div className="px-4 py-3 bg-white">
+        <div className="space-y-2">
           {/* Total Amount */}
-          <div className="bg-gradient-to-r p-6 rounded-xl shadow-lg border-2" style={{ background: `linear-gradient(135deg, ${primaryColor}10 0%, ${secondaryColor}10 100%)`, borderColor: primaryColor }}>
+          <div className="bg-gradient-to-r p-3 rounded-lg shadow border-2" style={{ background: `linear-gradient(135deg, ${primaryColor}10 0%, ${secondaryColor}10 100%)`, borderColor: primaryColor }}>
             <div className="flex justify-between items-center">
-              <span className="text-2xl font-bold" style={{ color: primaryColor }}>Total Amount:</span>
-              <span className="text-4xl font-extrabold" style={{ color: primaryColor }}>
+              <span className="text-lg font-bold" style={{ color: primaryColor }}>Total Amount:</span>
+              <span className="text-2xl font-extrabold" style={{ color: primaryColor }}>
                 {formatCurrency(total, currencyCode)}
               </span>
             </div>
           </div>
 
           {/* Payment Method */}
-          <div className="bg-gray-50 p-4 rounded-xl border-2 shadow-sm" style={{ borderColor: primaryColor }}>
+          <div className="bg-gray-50 p-2 rounded-lg border-2 shadow-sm" style={{ borderColor: primaryColor }}>
             <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold flex items-center" style={{ color: primaryColor }}>
-                <span className="mr-2">💳</span>Payment Method:
+              <span className="text-sm font-semibold flex items-center" style={{ color: primaryColor }}>
+                <span className="mr-1">💳</span>Payment Method:
               </span>
-              <span className="text-lg font-bold text-gray-900 capitalize bg-white px-4 py-2 rounded-lg shadow-sm">
+              <span className="text-sm font-bold text-gray-900 capitalize bg-white px-2 py-1 rounded shadow-sm">
                 {paymentMethod}
               </span>
             </div>
@@ -224,14 +217,14 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="bg-gray-900 text-white px-8 py-6 text-center">
-        <p className="text-lg font-medium mb-2">Thank you for choosing {storeName}!</p>
-        <p className="text-sm opacity-75">We appreciate your business and hope to serve you again soon.</p>
+      <div className="bg-gray-900 text-white px-4 py-3 text-center">
+        <p className="text-sm font-medium mb-1">Thank you for choosing {storeName}!</p>
+        <p className="text-xs opacity-75">We appreciate your business and hope to serve you again soon.</p>
 
         {/* Print Button */}
-        <div className="mt-6">
+        <div className="mt-3 print:hidden">
           <button
-            className="px-8 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:scale-105 print:hidden flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 rounded-lg font-bold shadow-lg transition-all duration-300 hover:scale-105 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             style={{ background: `linear-gradient(90deg, ${primaryColor} 0%, ${secondaryColor} 100%)`, color: '#fff' }}
             onClick={downloadPDF}
             disabled={isDownloading}
@@ -239,7 +232,7 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
           >
             {isDownloading ? (
               <>
-                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -247,7 +240,7 @@ export const OrderReceipt: React.FC<OrderReceiptProps> = ({
               </>
             ) : (
               <>
-                <span className="print:hidden">📄</span>
+                <span>📄</span>
                 <span>Download</span>
               </>
             )}
