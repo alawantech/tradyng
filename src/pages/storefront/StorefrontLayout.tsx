@@ -97,6 +97,8 @@ export const StorefrontLayout: React.FC = () => {
         if (detectedSubdomain.businessId) {
           const business = await BusinessService.getBusinessById(detectedSubdomain.businessId);
           if (business) {
+            console.log('Fetched business:', business);
+            console.log('Business phone:', business.phone);
             setStoreData({
               business,
               isLoading: false,

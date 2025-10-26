@@ -18,7 +18,8 @@ export const EmailTest: React.FC = () => {
           customerName: 'Test Customer',
           orderId: 'TEST-12345',
           businessName: 'Test Store',
-          businessEmail: 'admin@teststore.com'
+          businessEmail: 'admin@teststore.com',
+          businessPhone: '+1234567890'
         })
       });
 

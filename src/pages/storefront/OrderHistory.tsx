@@ -21,23 +21,52 @@ import { ProductService } from '../../services/product';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { Card } from '../../components/ui/Card';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
+import { useLocation } from 'react-router-dom';
+import { customerAuthService } from '../../services/customerAuth';
 
 const OrderHistory: React.FC = () => {
   const { business } = useStore();
   const { user, isLoading: authLoading } = useCustomerAuth();
+  const location = useLocation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [justSubmittedOrderId, setJustSubmittedOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (business?.id && user?.email) {
-      loadOrders();
+    console.log('OrderHistory useEffect triggered');
+    console.log('Business ID:', business?.id);
+    console.log('User email (Firebase):', user?.email);
+    
+    // Extract real email from Firebase Auth email
+    const realEmail = user?.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : null;
+    console.log('Real email extracted:', realEmail);
+    console.log('Auth loading:', authLoading);
+
+    if (business?.id && realEmail) {
+      console.log('Calling loadOrders');
+      loadOrders(realEmail);
+    } else {
+      console.log('Not calling loadOrders - missing business or realEmail');
     }
   }, [business?.id, user?.email]);
 
-  const loadOrders = async () => {
+  // Handle order submission state from Payment.tsx
+  useEffect(() => {
+    const state = location.state as { orderSubmitted?: boolean; orderId?: string } | null;
+    if (state?.orderSubmitted && state?.orderId) {
+      setJustSubmittedOrderId(state.orderId);
+      // Reload orders to show the newly created order
+      const realEmail = user?.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : null;
+      if (business?.id && realEmail) {
+        loadOrders(realEmail);
+      }
+    }
+  }, [location.state, business?.id, user?.email]);
+
+  const loadOrders = async (realEmail: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -46,13 +75,23 @@ const OrderHistory: React.FC = () => {
         setLoading(false);
         return;
       }
-      if (!user?.email) {
+      if (!realEmail) {
         setError('User email not found. Please sign in again.');
         setLoading(false);
         return;
       }
+
+      console.log('Loading orders for business:', business.id);
+      console.log('Using real email for filtering:', realEmail);
+
       const allOrders = await OrderService.getOrdersByBusinessId(business.id);
-      const customerOrders = allOrders.filter(o => o.customerEmail === user?.email);
+      console.log('All orders fetched:', allOrders.length);
+      console.log('All orders details:', allOrders.map(o => ({ id: o.orderId, email: o.customerEmail, status: o.status })));
+
+      const customerOrders = allOrders.filter(o => o.customerEmail === realEmail);
+      console.log('Filtered customer orders:', customerOrders.length);
+      console.log('Customer orders:', customerOrders.map(o => ({ id: o.orderId, email: o.customerEmail })));
+
       // Sort by most recent first
       customerOrders.sort((a, b) => {
         const aTime = a.createdAt?.seconds || 0;
@@ -213,7 +252,73 @@ const OrderHistory: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Loading State */}
+          {/* Success Message for Just Submitted Order */}
+          <AnimatePresence>
+            {justSubmittedOrderId && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{ duration: 0.5 }}
+                className="relative mb-6 sm:mb-8"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-400/20 backdrop-blur-xl rounded-2xl" />
+                <div className="relative p-4 sm:p-6 lg:p-8">
+                  <div className="flex items-center space-x-3 sm:space-x-4">
+                    <motion.div
+                      animate={{ 
+                        rotate: [0, 10, -10, 0],
+                        scale: [1, 1.1, 1]
+                      }}
+                      transition={{ 
+                        rotate: { duration: 0.6, repeat: Infinity, repeatDelay: 2 },
+                        scale: { duration: 0.3, repeat: Infinity, repeatDelay: 2 }
+                      }}
+                      className="flex-shrink-0"
+                    >
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                        <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+                      </div>
+                    </motion.div>
+                    <div className="flex-1 min-w-0">
+                      <motion.h3
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6, delay: 0.1 }}
+                        className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-1 sm:mb-2"
+                      >
+                        Payment Receipt Submitted Successfully! 🎉
+                      </motion.h3>
+                      <motion.p
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        className="text-gray-700 text-sm sm:text-base lg:text-lg font-medium"
+                      >
+                        Your order #{justSubmittedOrderId} has been created and is awaiting admin approval.
+                      </motion.p>
+                      <motion.p
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6, delay: 0.3 }}
+                        className="text-gray-600 text-xs sm:text-sm mt-2"
+                      >
+                        You'll receive an email confirmation once your payment is verified and your order is processed.
+                      </motion.p>
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setJustSubmittedOrderId(null)}
+                      className="flex-shrink-0 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-xl shadow-lg font-semibold text-sm sm:text-base min-h-[44px] touch-manipulation"
+                    >
+                      ✕
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           {authLoading || loading ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -244,7 +349,10 @@ const OrderHistory: React.FC = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={loadOrders}
+                onClick={() => {
+                  const realEmail = user?.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : null;
+                  if (realEmail) loadOrders(realEmail);
+                }}
                 className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-xl shadow-lg font-semibold text-sm sm:text-base min-h-[44px] touch-manipulation"
               >
                 Try Again

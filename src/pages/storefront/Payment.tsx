@@ -114,9 +114,16 @@ export const Payment: React.FC = () => {
     setIsUploading(true);
     
     try {
+      console.log('Business ID:', business.id);
+      console.log('Business phone:', business.phone);
+      console.log('Business object:', business);
+      
       // TODO: Implement actual file upload to Firebase Storage
       // For now, simulate the upload process
       await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log('Creating order with checkoutData:', checkoutData);
+      console.log('Customer email from checkoutData:', checkoutData.customerEmail);
       
       // Create the order now that payment receipt is uploaded
       const orderData = {
@@ -125,6 +132,8 @@ export const Payment: React.FC = () => {
         paymentStatus: 'pending' as const,
         notes: checkoutData.notes ? `${checkoutData.notes}\n\nPayment receipt uploaded` : 'Payment receipt uploaded'
       };
+
+      console.log('Order data being created:', orderData);
 
       // Create order in database
       const orderId = await OrderService.createOrder(business.id, orderData);
@@ -141,7 +150,8 @@ export const Payment: React.FC = () => {
             customerName: checkoutData.customerName,
             orderId: orderId,
             businessName: business.name,
-            businessEmail: business.email
+            businessEmail: business.email,
+            businessPhone: business.phone || '2348100681294'
           })
         });
 
