@@ -21,6 +21,7 @@ export const Orders: React.FC = () => {
   const [showReceipt, setShowReceipt] = useState<string | null>(null);
   const [customerOption, setCustomerOption] = useState<'existing' | 'manual'>('existing');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [approvingOrders, setApprovingOrders] = useState<Set<string>>(new Set());
   type OrderProduct = { productId: string; quantity: number };
   const [orderData, setOrderData] = useState<{
     // Customer data for manual entry
@@ -621,6 +622,9 @@ export const Orders: React.FC = () => {
   const handleApproveOrder = async (orderId: string) => {
     if (!business?.id) return;
 
+    // Set loading state
+    setApprovingOrders(prev => new Set(prev).add(orderId));
+
     try {
       // First, get the order details to generate PDF
       const order = orders.find(o => o.orderId === orderId || o.id === orderId);
@@ -679,6 +683,13 @@ export const Orders: React.FC = () => {
     } catch (error) {
       console.error('Error approving order:', error);
       toast.error('Failed to approve order');
+    } finally {
+      // Clear loading state
+      setApprovingOrders(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
+      });
     }
   };  // Handler for adding a product to the order
   function handleAddProduct() {
@@ -1237,9 +1248,19 @@ export const Orders: React.FC = () => {
                           <Button
                             size="sm"
                             onClick={() => handleApproveOrder(order.orderId || order.id || 'unknown')}
+                            disabled={approvingOrders.has(order.orderId || order.id || 'unknown')}
                           >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Approve
+                            {approvingOrders.has(order.orderId || order.id || 'unknown') ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
+                                Approving...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Approve
+                              </>
+                            )}
                           </Button>
                         )}
                         {/* Receipt Modal */}
