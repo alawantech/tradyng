@@ -930,12 +930,16 @@ export const Orders: React.FC = () => {
                             checked={!!order.delivered}
                             onChange={async e => {
                               const newDelivered = e.target.checked;
-                              setOrders(prev => prev.map(o => o.id === order.id ? { ...o, delivered: newDelivered } : o));
+                              const newStatus = newDelivered ? 'delivered' : 'processing';
+                              setOrders(prev => prev.map(o => o.id === order.id ? { ...o, delivered: newDelivered, status: newStatus } : o));
                               try {
-                                await OrderService.updateOrder(business.id, order.orderId || order.id, { delivered: newDelivered });
+                                await OrderService.updateOrder(business.id, order.orderId || order.id, { 
+                                  delivered: newDelivered,
+                                  status: newStatus
+                                });
                               } catch (err) {
-                                console.error('Failed to update delivered status:', err);
-                                toast.error('Failed to update delivered status');
+                                console.error('Failed to update delivery status:', err);
+                                toast.error('Failed to update delivery status');
                               }
                             }}
                           />
