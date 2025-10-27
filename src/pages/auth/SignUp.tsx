@@ -409,7 +409,7 @@ export const SignUp: React.FC = () => {
               placeholder="Kemi's Fashion Store"
               value={formData.storeName}
               onChange={(e) => handleInputChange('storeName', e.target.value)}
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
             />
             
             {/* URL Preview */}
@@ -471,7 +471,7 @@ export const SignUp: React.FC = () => {
               placeholder="kemi@gmail.com"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
             />
             {otpCooldown > 0 && (
               <div className="mt-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded-lg">
@@ -491,7 +491,7 @@ export const SignUp: React.FC = () => {
                 placeholder="Create a secure password"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className={`w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 pr-10 ${passwordMismatch ? 'border-red-500' : ''}`}
+                className={`w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none pr-10 ${passwordMismatch ? 'border-red-500' : ''}`}
               />
               <button
                 type="button"
@@ -508,7 +508,7 @@ export const SignUp: React.FC = () => {
                 placeholder="Repeat password"
                 value={formData.repeatPassword}
                 onChange={(e) => handleInputChange('repeatPassword', e.target.value)}
-                className={`w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 pr-10 ${passwordMismatch ? 'border-red-500' : ''}`}
+                className={`w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none pr-10 ${passwordMismatch ? 'border-red-500' : ''}`}
                 error={passwordMismatch ? 'Passwords do not match' : ''}
               />
               <button
@@ -551,7 +551,7 @@ export const SignUp: React.FC = () => {
                 placeholder="e.g. 8012345678 (no leading zero)"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value.replace(/^0+/, ''))}
-                className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
               />
             </div>
             <p className="text-xs text-gray-400">Select your country code and enter your Whatsapp number without the first zero.</p>
@@ -592,7 +592,7 @@ export const SignUp: React.FC = () => {
                 placeholder="Enter your state/province"
                 value={formData.state}
                 onChange={(e) => handleInputChange('state', e.target.value)}
-                className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
               />
             )}
           </div>
@@ -729,7 +729,7 @@ export const SignUp: React.FC = () => {
                   setOtpCode(v);
                   if (v.length === OTP_LENGTH) verifyOtpAuto(v);
                 }}
-                className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg text-center tracking-widest text-xl"
+                className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg text-center tracking-widest text-xl border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                 placeholder="_ _ _ _"
               />
             </div>

@@ -363,7 +363,7 @@ export const SignIn: React.FC = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="adebayo@example.com"
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-semibold shadow-lg"
+              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-medium"
               labelClassName="text-white font-bold drop-shadow-lg"
             />
 
@@ -375,7 +375,7 @@ export const SignIn: React.FC = () => {
               value={formData.password}
               onChange={handleChange}
               placeholder="••••••••"
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-semibold shadow-lg"
+              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-medium"
               labelClassName="text-white font-bold drop-shadow-lg"
             />
 
@@ -449,7 +449,7 @@ export const SignIn: React.FC = () => {
                   placeholder="your@email.com"
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg mb-4"
+                  className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                 />
                 <div className="flex justify-between">
                   <button
@@ -488,7 +488,7 @@ export const SignIn: React.FC = () => {
                     const v = e.target.value.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH);
                     setOtpCode(v);
                   }}
-                  className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg text-center tracking-widest text-xl mb-4"
+                  className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg text-center tracking-widest text-xl border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   placeholder="_ _ _ _"
                   disabled={otpCountdown === 0}
                 />
@@ -535,14 +535,14 @@ export const SignIn: React.FC = () => {
                   placeholder="New password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg mb-4"
+                  className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                 />
                 <input
                   type="password"
                   placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg mb-4"
+                  className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                 />
                 <div className="flex justify-between">
                   <button
