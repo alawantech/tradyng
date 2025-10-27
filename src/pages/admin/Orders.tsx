@@ -29,7 +29,7 @@ export const AdminOrders: React.FC = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 sm:pt-20">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Orders</h1>
       <Button onClick={() => setShowModal(true)} className="mb-6">Create New Order</Button>
       {/* Modal */}
