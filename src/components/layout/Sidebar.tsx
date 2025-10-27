@@ -9,7 +9,8 @@ import {
   Building2,
   CreditCard,
   LogOut,
-  X
+  X,
+  LayoutDashboard
 } from 'lucide-react';
 import { AuthService } from '../../services/auth';
 import toast from 'react-hot-toast';
@@ -24,6 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
   const location = useLocation();
   
   const businessMenuItems = [
+    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/dashboard/products', icon: Package, label: 'Products' },
     { path: '/dashboard/orders', icon: ShoppingCart, label: 'Orders' },
     { path: '/dashboard/customers', icon: Users, label: 'Customers' },

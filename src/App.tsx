@@ -15,6 +15,7 @@ import { SignIn } from './pages/auth/SignIn';
 
 // Dashboard
 import { DashboardLayout } from './pages/dashboard/DashboardLayout';
+import { Dashboard } from './pages/dashboard/Dashboard';
 import { Products } from './pages/dashboard/Products';
 import { Orders } from './pages/dashboard/Orders';
 import { Customers } from './pages/dashboard/Customers';
@@ -116,7 +117,7 @@ function App() {
               
               {/* Dashboard */}
               <Route path="/dashboard" element={<DashboardLayout />}>
-                <Route index element={<Products />} />
+                <Route index element={<Dashboard />} />
                 <Route path="products" element={<Products />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="customers" element={<Customers />} />
