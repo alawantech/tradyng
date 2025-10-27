@@ -5,6 +5,8 @@ import {
   getDocs, 
   query, 
   where,
+  deleteDoc,
+  doc,
   Timestamp
 } from 'firebase/firestore';
 
@@ -25,10 +27,36 @@ export class CategoryService {
         where('businessId', '==', businessId)
       );
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
+      const categories = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Category[];
+
+      // Filter out default categories that may have been created previously
+      const defaultCategories = [
+        'Perfume', 'Body Mist', 'Body Spray', 'Beauty', 'Fashion', 'Electronics',
+        'Home & Garden', 'Health & Wellness', 'Sports & Outdoors', 'Food & Beverages',
+        'Books & Media', 'Toys & Games', 'Automotive', 'Arts & Crafts', 'Jewelry & Accessories'
+      ];
+
+      const filteredCategories = categories.filter(cat => !defaultCategories.includes(cat.name));
+
+      // If we filtered out any categories, clean them up in the background
+      if (filteredCategories.length < categories.length) {
+        const categoriesToDelete = categories.filter(cat => defaultCategories.includes(cat.name));
+        categoriesToDelete.forEach(async (cat) => {
+          try {
+            if (cat.id) {
+              await deleteDoc(doc(db, 'categories', cat.id));
+              console.log(`Cleaned up default category: ${cat.name}`);
+            }
+          } catch (error) {
+            console.warn(`Failed to delete default category ${cat.name}:`, error);
+          }
+        });
+      }
+
+      return filteredCategories;
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw error;
@@ -78,42 +106,6 @@ export class CategoryService {
     } catch (error) {
       console.error('Error finding category:', error);
       throw error;
-    }
-  }
-
-  // Get default categories (common categories for new businesses)
-  static getDefaultCategories(): string[] {
-    return [
-      'Perfume',
-      'Body Mist',
-      'Body Spray',
-      'Beauty',
-      'Fashion',
-      'Electronics',
-      'Home & Garden',
-      'Health & Wellness',
-      'Sports & Outdoors',
-      'Food & Beverages',
-      'Books & Media',
-      'Toys & Games',
-      'Automotive',
-      'Arts & Crafts',
-      'Jewelry & Accessories'
-    ];
-  }
-
-  // Initialize default categories for a new business
-  static async initializeDefaultCategories(businessId: string): Promise<void> {
-    try {
-      const defaultCategories = this.getDefaultCategories();
-      const promises = defaultCategories.map(categoryName => 
-        this.createCategory(businessId, categoryName)
-      );
-      
-      await Promise.all(promises);
-    } catch (error) {
-      console.error('Error initializing default categories:', error);
-      // Don't throw - this is optional initialization
     }
   }
 }
