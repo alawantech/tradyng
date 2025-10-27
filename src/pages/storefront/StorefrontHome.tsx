@@ -97,12 +97,8 @@ export const StorefrontHome: React.FC = () => {
       try {
         setIsLoadingProducts(true);
         const products = await ProductService.getProductsByBusinessId(business.id);
-        // Show all products, not just first 4 when category is selected
-        if (selectedCategory) {
-          setFeaturedProducts(products);
-        } else {
-          setFeaturedProducts(products.slice(0, 4));
-        }
+        // Show all products on the homepage
+        setFeaturedProducts(products);
       } catch (error) {
         console.error('Error loading products:', error);
         setFeaturedProducts([]);
