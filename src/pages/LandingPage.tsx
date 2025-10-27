@@ -76,7 +76,7 @@ export const LandingPage: React.FC = () => {
             >
               <div className="bg-white rounded-lg shadow-2xl p-8 transform rotate-1 hover:rotate-0 transition-transform duration-300">
                 <img 
-                  src="/src/assets/images/dashboard.PNG" 
+                  src="/images/dashboard.PNG" 
                   alt="Dashboard Preview" 
                   className="w-full h-auto rounded-lg"
                 />
@@ -140,7 +140,7 @@ export const LandingPage: React.FC = () => {
               <div className="relative">
                 <div className="bg-gray-900 rounded-xl shadow-2xl p-2 transform hover:scale-105 transition-transform duration-300">
                   <img
-                    src="/src/assets/images/dashboard.PNG"
+                    src="/images/dashboard.PNG"
                     alt="Admin Dashboard"
                     className="w-full h-auto rounded-lg"
                   />
@@ -169,7 +169,7 @@ export const LandingPage: React.FC = () => {
               </div>
               <div className="bg-white rounded-xl shadow-lg p-3">
                 <img
-                  src="/src/assets/images/customers.PNG"
+                  src="/images/customers.PNG"
                   alt="Customer Management"
                   className="w-full h-auto rounded-lg"
                 />
@@ -194,7 +194,7 @@ export const LandingPage: React.FC = () => {
               </div>
               <div className="bg-white rounded-xl shadow-lg p-3">
                 <img
-                  src="/src/assets/images/analitics.PNG"
+                  src="/images/analitics.PNG"
                   alt="Store Analytics"
                   className="w-full h-auto rounded-lg"
                 />
@@ -227,7 +227,7 @@ export const LandingPage: React.FC = () => {
                   <p className="text-sm text-gray-600">Make a stunning first impression</p>
                 </div>
                 <img
-                  src="/src/assets/images/hero.PNG"
+                  src="/images/hero.PNG"
                   alt="Storefront Hero"
                   className="w-full h-auto rounded-lg"
                 />
@@ -240,7 +240,7 @@ export const LandingPage: React.FC = () => {
                   <p className="text-sm text-gray-600">Beautiful product listings</p>
                 </div>
                 <img
-                  src="/src/assets/images/products.PNG"
+                  src="/images/products.PNG"
                   alt="Product Display"
                   className="w-full h-auto rounded-lg"
                 />
@@ -278,7 +278,7 @@ export const LandingPage: React.FC = () => {
               </div>
               <div className="bg-white rounded-xl shadow-lg p-4">
                 <img
-                  src="/src/assets/images/orders.PNG"
+                  src="/images/orders.PNG"
                   alt="Order Management"
                   className="w-full h-auto rounded-lg"
                 />
