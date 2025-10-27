@@ -14,6 +14,7 @@ export const Customers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { business } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerAddresses, setCustomerAddresses] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -27,6 +28,9 @@ export const Customers: React.FC = () => {
     country: '',
     notes: ''
   });
+  const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
+  const [viewingAddresses, setViewingAddresses] = useState<any[]>([]);
+  const [viewingLoading, setViewingLoading] = useState(false);
   // Chat modal state - removed
 
   useEffect(() => {
@@ -53,6 +57,21 @@ export const Customers: React.FC = () => {
       setLoading(true);
       const businessCustomers = await CustomerService.getCustomersByBusinessId(business.id);
       setCustomers(businessCustomers);
+
+      // Fetch addresses for all customers
+      const addressesMap: Record<string, any[]> = {};
+      await Promise.all(
+        businessCustomers.map(async (customer) => {
+          try {
+            const addresses = await CustomerService.getAddresses(customer.id!);
+            addressesMap[customer.id!] = addresses || [];
+          } catch (error) {
+            // If addresses can't be fetched, just set empty array
+            addressesMap[customer.id!] = [];
+          }
+        })
+      );
+      setCustomerAddresses(addressesMap);
     } catch (error) {
       console.error('Error loading customers:', error);
       toast.error('Failed to load customers');
@@ -62,7 +81,32 @@ export const Customers: React.FC = () => {
   };
 
   const handleViewCustomer = (customerId: string) => {
-    toast.success(`View customer ${customerId} details`);
+    // Fetch and display customer details (phone, address, stored addresses)
+    (async () => {
+      if (!business?.id) {
+        toast.error('No business selected');
+        return;
+      }
+      try {
+        setViewingLoading(true);
+        const customer = await CustomerService.getCustomerById(business.id, customerId);
+        setViewingCustomer(customer);
+
+        // Try to fetch saved addresses (if any)
+        try {
+          const addresses = await CustomerService.getAddresses(customerId);
+          setViewingAddresses(addresses || []);
+        } catch (addrErr) {
+          // Not critical - some customers may not have addresses in the addresses collection
+          setViewingAddresses([]);
+        }
+      } catch (error) {
+        console.error('Error fetching customer details:', error);
+        toast.error('Failed to load customer details');
+      } finally {
+        setViewingLoading(false);
+      }
+    })();
   };
 
   const handleAddCustomer = () => {
@@ -232,26 +276,77 @@ export const Customers: React.FC = () => {
                 .filter(customer => {
                   if (!searchTerm) return true;
                   const term = searchTerm.toLowerCase();
-                  return (
+                  
+                  // Check basic customer fields
+                  if (
                     (customer.name && customer.name.toLowerCase().includes(term)) ||
                     (customer.email && customer.email.toLowerCase().includes(term)) ||
                     (customer.phone && customer.phone.toLowerCase().includes(term))
+                  ) {
+                    return true;
+                  }
+                  
+                  // Check phone numbers from saved addresses
+                  const savedAddresses = customerAddresses[customer.id!] || [];
+                  const hasMatchingPhone = savedAddresses.some(addr => 
+                    addr.phone && addr.phone.toLowerCase().includes(term)
                   );
+                  
+                  return hasMatchingPhone;
                 })
                 .map((customer) => (
                 <tr key={customer.id} className="border-b last:border-b-0 hover:bg-gray-50 transition">
                   <td className="px-4 py-3 text-sm font-semibold text-gray-900">{customer.name}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{customer.email}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{customer.phone || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">
-                    {customer.address ? (
-                      <span>
-                        {customer.address.street ? customer.address.street + ', ' : ''}
-                        {customer.address.city ? customer.address.city + ', ' : ''}
-                        {customer.address.state ? customer.address.state + ', ' : ''}
-                        {customer.address.country || ''}
-                      </span>
-                    ) : '—'}
+                    {(() => {
+                      // Show customer phone if exists
+                      if (customer.phone) {
+                        return customer.phone;
+                      }
+                      
+                      // Show phone from first saved address if no customer phone
+                      const savedAddresses = customerAddresses[customer.id!] || [];
+                      if (savedAddresses.length > 0) {
+                        const addr = savedAddresses.find(a => a.phone) || savedAddresses[0];
+                        if (addr.phone) {
+                          return <span className="text-blue-600">{addr.phone}</span>;
+                        }
+                      }
+                      
+                      // No phone number found
+                      return '—';
+                    })()}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {(() => {
+                      // Show primary address if exists
+                      if (customer.address) {
+                        return (
+                          <span>
+                            {customer.address.street ? customer.address.street + ', ' : ''}
+                            {customer.address.city ? customer.address.city + ', ' : ''}
+                            {customer.address.state ? customer.address.state + ', ' : ''}
+                            {customer.address.country || ''}
+                          </span>
+                        );
+                      }
+                      
+                      // Show first saved address if no primary address
+                      const savedAddresses = customerAddresses[customer.id!] || [];
+                      if (savedAddresses.length > 0) {
+                        const addr = savedAddresses[0];
+                        return (
+                          <span className="text-blue-600">
+                            {addr.street}{addr.city ? ', ' + addr.city : ''}{addr.state ? ', ' + addr.state : ''}{addr.country ? ', ' + addr.country : ''}
+                            {savedAddresses.length > 1 && ` (+${savedAddresses.length - 1} more)`}
+                          </span>
+                        );
+                      }
+                      
+                      // No addresses
+                      return '—';
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">{customer.createdAt?.toDate().toLocaleDateString() || 'N/A'}</td>
                   <td className="px-4 py-3 text-sm text-gray-900 font-bold">{customer.totalOrders}</td>
@@ -420,6 +515,86 @@ export const Customers: React.FC = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* View Customer Modal */}
+      {viewingCustomer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">Customer Details</h2>
+              <div>
+                <button
+                  onClick={() => { setViewingCustomer(null); setViewingAddresses([]); }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {viewingLoading ? (
+                <div className="text-center text-gray-600">Loading...</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700">Name</h3>
+                      <div className="text-gray-900">{viewingCustomer.name}</div>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700">Email</h3>
+                      <div className="text-gray-900">{viewingCustomer.email}</div>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700">Phone</h3>
+                      <div className="text-gray-900">{viewingCustomer.phone || '—'}</div>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700">Joined</h3>
+                      <div className="text-gray-900">{viewingCustomer.createdAt?.toDate ? viewingCustomer.createdAt.toDate().toLocaleDateString() : viewingCustomer.createdAt?.toLocaleDateString?.() || 'N/A'}</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mt-2">Primary Address</h3>
+                    {viewingCustomer.address ? (
+                      <div className="text-gray-900 mt-1">
+                        {viewingCustomer.address.street ? viewingCustomer.address.street + ', ' : ''}
+                        {viewingCustomer.address.city ? viewingCustomer.address.city + ', ' : ''}
+                        {viewingCustomer.address.state ? viewingCustomer.address.state + ', ' : ''}
+                        {viewingCustomer.address.country || ''}
+                      </div>
+                    ) : (
+                      <div className="text-gray-500">No primary address set</div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mt-3">Saved Addresses</h3>
+                    {viewingAddresses.length > 0 ? (
+                      <div className="space-y-2 mt-2">
+                        {viewingAddresses.map((addr, idx) => (
+                          <div key={idx} className="p-3 bg-gray-50 rounded border">
+                            <div className="font-medium text-gray-900">{addr.label || `Address ${idx + 1}`}{addr.isDefault ? ' — Default' : ''}</div>
+                            <div className="text-sm text-gray-700 mt-1">
+                              {addr.firstName || ''} {addr.lastName || ''}{addr.phone ? ` • ${addr.phone}` : ''}
+                            </div>
+                            <div className="text-sm text-gray-700 mt-1">
+                              {addr.street}{addr.city ? ', ' + addr.city : ''}{addr.state ? ', ' + addr.state : ''}{addr.country ? ', ' + addr.country : ''}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-gray-500 mt-2">No saved addresses</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
