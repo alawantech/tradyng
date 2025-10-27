@@ -262,8 +262,8 @@ export const StorefrontHome: React.FC = () => {
                     ? '0 1px 2px rgba(0,0,0,0.3), 0 0 4px rgba(0,0,0,0.2)'
                     : '0 1px 2px rgba(0,0,0,0.1)',
                   backgroundColor: business?.branding?.heroBannerImage 
-                    ? 'rgba(0, 0, 0, 0.015)' 
-                    : 'rgba(0, 0, 0, 0.008)',
+                    ? 'rgba(0, 0, 0, 0.15)' 
+                    : 'rgba(0, 0, 0, 0.08)',
                   backdropFilter: business?.branding?.heroBannerImage ? 'blur(20px)' : 'blur(8px)',
                   border: 'none',
                   boxShadow: business?.branding?.heroBannerImage
