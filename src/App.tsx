@@ -10,6 +10,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { LandingPage } from './pages/LandingPage';
 import { PricingPage } from './pages/PricingPage';
 import { FeaturesPage } from './pages/features/FeaturesPage';
+import { StoreExamples } from './pages/StoreExamples';
 import { SignUp } from './pages/auth/SignUp';
 import { SignIn } from './pages/auth/SignIn';
 
@@ -107,6 +108,7 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/features" element={<FeaturesPage />} />
+              <Route path="/store-examples" element={<StoreExamples />} />
               <Route path="/demo/subdomains" element={<StoreSubdomainDemo />} />
               <Route path="/demo/test" element={<SubdomainTest />} />
               <Route path="/demo/email-test" element={<EmailTest />} />

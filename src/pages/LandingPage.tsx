@@ -50,18 +50,19 @@ export const LandingPage: React.FC = () => {
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link to="/auth/signup">
-                  <Button size="lg" className="hero-btn-primary px-8 py-4 text-lg">
-                    Start Your Store Free
+                  <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100 hover:text-black px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+                    Start Your Store Today
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  className="border-white text-white hover:bg-white hover:theme-primary-text px-8 py-4 text-lg"
-                >
-                  Watch Demo
-                </Button>
+                <Link to="/store-examples">
+                  <Button
+                    size="lg"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                  >
+                    🛍️ View Store Examples
+                  </Button>
+                </Link>
               </div>
               <p className="text-blue-200 text-sm mt-4">
                 ✨ No credit card required • Setup in under 5 minutes

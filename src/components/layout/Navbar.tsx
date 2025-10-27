@@ -45,6 +45,9 @@ export const Navbar: React.FC = () => {
                 Features
               </Link>
             )}
+            <Link to="/store-examples" className="text-gray-700 hover:theme-primary-text transition-colors">
+              Store Examples
+            </Link>
             <Link to="/pricing" className="text-gray-700 hover:theme-primary-text transition-colors">
               Pricing
             </Link>
