@@ -31,26 +31,46 @@ export const LandingPage: React.FC = () => {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative theme-hero-gradient text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <section className="relative bg-white overflow-hidden">
+        {/* Subtle Grid Background */}
+        <div className="absolute inset-0 opacity-[0.03]">
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `
+                linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '50px 50px'
+            }}
+          />
+        </div>
+
+        {/* Floating Geometric Elements */}
+        <div className="absolute top-20 left-10 w-32 h-32 border border-blue-100 rounded-full opacity-20"></div>
+        <div className="absolute top-40 right-20 w-24 h-24 border border-blue-200 rounded-lg opacity-30 transform rotate-45"></div>
+        <div className="absolute bottom-20 left-1/4 w-16 h-16 bg-blue-50 rounded-full opacity-40"></div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            {/* Left Column - Text Content */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <h1 className="text-4xl lg:text-6xl font-bold leading-tight mb-6">
-                Build Your
-                <span className="theme-primary-light-text"> Dream Store </span>
-                in Minutes
+              <h1 className="text-5xl lg:text-7xl font-bold text-gray-900 leading-tight mb-6">
+                Launch Your Store.
+                <span className="block text-blue-600">Sell Today.</span>
               </h1>
-              <p className="text-xl theme-primary-light-text mb-8 leading-relaxed">
-                Create a professional online store with your own custom domain. 
+              <p className="text-xl lg:text-2xl text-gray-600 max-w-2xl leading-relaxed font-light mb-10">
+                Create a professional online store with your own custom domain.
                 Start selling today with our powerful e-commerce platform.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
+
+              <div className="flex flex-col sm:flex-row gap-6 mb-12">
                 <Link to="/auth/signup">
-                  <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100 hover:text-black px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-lg">
                     Start Your Store Today
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -58,32 +78,41 @@ export const LandingPage: React.FC = () => {
                 <Link to="/store-examples">
                   <Button
                     size="lg"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                    variant="outline"
+                    className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 hover:text-blue-700 px-10 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-lg"
                   >
-                    🛍️ View Store Examples
+                    View Store Examples
                   </Button>
                 </Link>
               </div>
-              <p className="text-blue-200 text-sm mt-4">
-                ✨ No credit card required • Setup in under 5 minutes
-              </p>
             </motion.div>
-            
+
+            {/* Right Column - Dashboard Image */}
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative"
+              className="relative flex items-center justify-center"
             >
-              <div className="bg-white rounded-lg shadow-2xl p-8 transform rotate-1 hover:rotate-0 transition-transform duration-300">
-                <img 
-                  src="/images/dashboard.PNG" 
-                  alt="Dashboard Preview" 
-                  className="w-full h-auto rounded-lg"
-                />
+              <div className="bg-white rounded-2xl shadow-2xl p-4 transform hover:scale-105 transition-all duration-500 border border-gray-100 w-full max-w-lg">
+                <div className="relative overflow-hidden rounded-xl" style={{ height: '500px' }}>
+                  <img
+                    src="/images/dashboard.PNG"
+                    alt="Admin Dashboard Preview"
+                    className="w-full h-full object-cover object-left rounded-xl"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
+                </div>
               </div>
             </motion.div>
           </div>
+        </div>
+
+        {/* Bottom Wave Transition */}
+        <div className="absolute bottom-0 left-0 w-full">
+          <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="relative block w-full h-16 lg:h-20">
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="#f9fafb"></path>
+          </svg>
         </div>
       </section>
 

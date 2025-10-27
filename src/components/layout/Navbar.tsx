@@ -2,7 +2,6 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User } from 'lucide-react';
 import { Button } from '../ui/Button';
-import logo from '../../assets/logo.png';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -24,7 +23,7 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center space-x-2">
-            <img src={logo} alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
+            <img src="/logo.png" alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
             <span className="text-xl font-bold text-gray-900">rady.ng</span>
           </Link>
           

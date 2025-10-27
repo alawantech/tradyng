@@ -9,7 +9,6 @@ import toast from 'react-hot-toast';
 import { AuthService } from '../../services/auth';
 import { UserService } from '../../services/user';
 import { FirebaseTest } from '../../utils/firebaseTest';
-import logo from '../../assets/logo.png';
 
 export const SignIn: React.FC = () => {
   const navigate = useNavigate();
@@ -348,7 +347,7 @@ export const SignIn: React.FC = () => {
   <div className="bg-gray-800 rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <Link to="/" className="flex items-center justify-center space-x-2 mb-4">
-              <img src={logo} alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
+              <img src="/logo.png" alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
               <span className="text-xl font-bold text-white">rady.ng</span>
             </Link>
             <h2 className="text-2xl font-bold text-white mb-2">Welcome Back</h2>

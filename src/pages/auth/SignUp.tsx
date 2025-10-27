@@ -13,7 +13,6 @@ import { CountryService } from '../../data/countries';
 import type { Country, State } from '../../data/countries';
 import { getDefaultCurrencyForCountry } from '../../constants/currencies';
 import { COUNTRY_CALLING_CODES } from '../../data/countryCallingCodes';
-import logo from '../../assets/logo.png';
 
 interface FormData {
   storeName: string;
@@ -610,7 +609,7 @@ export const SignUp: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mx-auto h-12 w-12 flex items-center justify-center mb-4">
-            <img src={logo} alt="Rady.ng Logo" className="h-12 w-12 object-contain bg-white rounded-xl" />
+            <img src="/logo.png" alt="Rady.ng Logo" className="h-12 w-12 object-contain bg-white rounded-xl" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Create Your Store</h1>
           <p className="text-gray-400">Join thousands of successful merchants</p>
