@@ -563,3 +563,23 @@ html {
     filter: brightness(1.05) drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
   }
 }
+
+/* Geometric Pattern Animation */
+@keyframes moveGeometricPattern {
+  0% { background-position: 0 0; }
+  100% { background-position: 200px 200px; }
+}
+
+.geometric-pattern {
+  animation: moveGeometricPattern 5s linear infinite;
+}
+
+/* Rotating float animation for geometric elements */
+@keyframes rotateFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(180deg); }
+}
+
+.rotate-float {
+  animation: rotateFloat 8s ease-in-out infinite;
+}
