@@ -75,15 +75,11 @@ export const LandingPage: React.FC = () => {
               className="relative"
             >
               <div className="bg-white rounded-lg shadow-2xl p-8 transform rotate-1 hover:rotate-0 transition-transform duration-300">
-                <div className="space-y-4">
-                  <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-full"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    <div className="h-20 bg-blue-100 rounded-lg"></div>
-                    <div className="h-20 bg-green-100 rounded-lg"></div>
-                  </div>
-                </div>
+                <img 
+                  src="/src/assets/images/dashboard.PNG" 
+                  alt="Dashboard Preview" 
+                  className="w-full h-auto rounded-lg"
+                />
               </div>
             </motion.div>
           </div>
