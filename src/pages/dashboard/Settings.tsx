@@ -672,7 +672,7 @@ export const Settings: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-6 pt-20 max-w-4xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Store Settings</h1>
         <p className="text-gray-600">Customize your store appearance and details</p>

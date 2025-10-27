@@ -142,7 +142,7 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="p-6 space-y-8">
+      <div className="p-6 pt-20 space-y-8">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
           <div>
