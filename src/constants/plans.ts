@@ -143,7 +143,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: 'pro',
     name: 'Pro',
     monthlyPrice: 0, // Not used for yearly plans
-    yearlyPrice: 34000,
+    yearlyPrice: 32000,
     isPopular: false,
     description: 'For established businesses',
     features: [
