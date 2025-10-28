@@ -260,12 +260,13 @@ export const SignUp: React.FC = () => {
       // Always create account first with free plan
       await createAccount('free');
       
-      // If user selected a paid plan, redirect to payment for upgrading
+      // If user selected a paid plan, redirect to coupon page first
       if (selectedPlan.id !== 'free') {
-        console.log('💳 Redirecting to payment for plan upgrade:', selectedPlan.id);
-        toast.success('Account created! Redirecting to payment...');
+        console.log('🎫 Redirecting to coupon page for plan:', selectedPlan.id);
+        toast.success('Account created! Redirecting to coupon page...');
+        const couponUrl = `/coupon?plan=${selectedPlan.id}`;
         setTimeout(() => {
-          handlePlanUpgrade();
+          navigate(couponUrl);
         }, 1500); // Small delay to let account creation complete
         return;
       } else {
@@ -345,10 +346,10 @@ export const SignUp: React.FC = () => {
 
     setCheckingEmail(true);
     try {
-      const users = await UserService.getUsersByEmail(email);
-      const exists = users && users.length > 0;
-      setEmailExists(exists);
-      console.log('Email check result:', { email, exists });
+      // Check Firebase Auth first (source of truth for email registration)
+      const existsInAuth = await AuthService.checkEmailExists(email);
+      setEmailExists(existsInAuth);
+      console.log('Email check result:', { email, existsInAuth });
     } catch (error) {
       console.error('Error checking email existence:', error);
       setEmailExists(null);

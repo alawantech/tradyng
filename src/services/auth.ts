@@ -5,6 +5,7 @@ import {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
   User
 } from 'firebase/auth';
 
@@ -63,6 +64,18 @@ export class AuthService {
       await firebaseSendPasswordResetEmail(auth, email);
     } catch (error) {
       throw error;
+    }
+  }
+
+  // Check if email is already registered
+  static async checkEmailExists(email: string): Promise<boolean> {
+    try {
+      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+      return signInMethods.length > 0;
+    } catch (error) {
+      // If there's an error (like invalid email), assume it doesn't exist
+      console.error('Error checking email existence:', error);
+      return false;
     }
   }
 
