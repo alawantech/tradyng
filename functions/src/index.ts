@@ -4,6 +4,9 @@ import * as admin from 'firebase-admin';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 
+// Initialize Firebase Admin
+admin.initializeApp();
+
 // Helper function to format currency
 function formatCurrency(amount: number, currencyCode: string): string {
   const currencySymbols: { [key: string]: string } = {

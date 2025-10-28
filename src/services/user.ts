@@ -5,6 +5,9 @@ import {
   setDoc, 
   getDoc, 
   updateDoc,
+  query,
+  where,
+  getDocs,
   Timestamp
 } from 'firebase/firestore';
 
@@ -54,6 +57,23 @@ export class UserService {
     try {
       const docRef = doc(db, 'users', uid);
       await updateDoc(docRef, updates);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Get users by email
+  static async getUsersByEmail(email: string): Promise<User[]> {
+    try {
+      const q = query(collection(db, 'users'), where('email', '==', email));
+      const querySnapshot = await getDocs(q);
+      
+      const users: User[] = [];
+      querySnapshot.forEach((doc) => {
+        users.push(doc.data() as User);
+      });
+      
+      return users;
     } catch (error) {
       throw error;
     }

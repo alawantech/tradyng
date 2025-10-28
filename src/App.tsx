@@ -6,6 +6,9 @@ import { CartProvider } from './contexts/CartContext';
 import { CustomerAuthProvider } from './contexts/CustomerAuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
+// Initialize Firebase
+import './config/firebase';
+
 // Pages
 import { LandingPage } from './pages/LandingPage';
 import { PricingPage } from './pages/PricingPage';
@@ -13,6 +16,7 @@ import { FeaturesPage } from './pages/features/FeaturesPage';
 import { StoreExamples } from './pages/StoreExamples';
 import { SignUp } from './pages/auth/SignUp';
 import { SignIn } from './pages/auth/SignIn';
+import { PaymentCallback } from './pages/auth/PaymentCallback';
 
 // Dashboard
 import { DashboardLayout } from './pages/dashboard/DashboardLayout';
@@ -116,6 +120,7 @@ function App() {
               {/* Authentication */}
               <Route path="/auth/signup" element={<SignUp />} />
               <Route path="/auth/signin" element={<SignIn />} />
+              <Route path="/payment/callback" element={<PaymentCallback />} />
               
               {/* Dashboard */}
               <Route path="/dashboard" element={<DashboardLayout />}>

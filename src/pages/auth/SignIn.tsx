@@ -8,6 +8,9 @@ import { Card } from '../../components/ui/Card';
 import toast from 'react-hot-toast';
 import { AuthService } from '../../services/auth';
 import { UserService } from '../../services/user';
+import { BusinessService } from '../../services/business';
+import { flutterwaveService } from '../../services/flutterwaveService';
+import { PRICING_PLANS } from '../../constants/plans';
 import { FirebaseTest } from '../../utils/firebaseTest';
 
 export const SignIn: React.FC = () => {
@@ -33,6 +36,8 @@ export const SignIn: React.FC = () => {
   const [otpCountdown, setOtpCountdown] = useState(60); // 1 minute countdown
   const otpCountdownRef = React.useRef<number | null>(null);
 
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -55,28 +60,70 @@ export const SignIn: React.FC = () => {
       // Update last login
       await UserService.updateLastLogin(authUser.uid);
       
-      // Route based on user role
+      // Check if user has a free plan business that needs payment
       let redirectPath = '/dashboard'; // default for business owners
       let welcomeMessage = 'Welcome back!';
       
-      switch (userData.role) {
-        case 'admin':
-          redirectPath = '/admin';
-          welcomeMessage = 'Welcome back, Admin!';
-          break;
-        case 'business_owner':
+      if (userData.role === 'business_owner') {
+        try {
+          const businesses = await BusinessService.getBusinessesByOwnerId(authUser.uid);
+          if (businesses && businesses.length > 0) {
+            const business = businesses[0];
+            console.log('🏢 Business data retrieved:', { id: business.id, plan: business.plan });
+            
+            // If user has free plan, initiate payment directly
+            if (business.plan === 'free') {
+              console.log('💳 User has free plan, initiating payment directly');
+              console.log('📊 Business details:', {
+                id: business.id,
+                name: business.name,
+                plan: business.plan,
+                createdAt: business.createdAt,
+                ownerId: business.ownerId
+              });
+              await initiatePaymentForExistingUser(authUser.uid, business, formData.email);
+              return; // Don't continue with navigation since payment redirects
+            } else {
+              console.log('✅ User has paid plan, redirecting to dashboard');
+              console.log('📊 Business details:', {
+                id: business.id,
+                name: business.name,
+                plan: business.plan,
+                createdAt: business.createdAt,
+                ownerId: business.ownerId
+              });
+              redirectPath = '/dashboard';
+              welcomeMessage = 'Welcome back to your store!';
+            }
+          } else {
+            // No business found, initiate payment to complete signup
+            console.log('⚠️ No business found, initiating payment to complete signup');
+            await initiatePaymentForNewUser(authUser.uid, formData.email);
+            return; // Don't continue with navigation since payment redirects
+          }
+        } catch (businessError) {
+          console.error('Error checking business data:', businessError);
+          // Fall back to dashboard if business check fails
           redirectPath = '/dashboard';
-          welcomeMessage = 'Welcome back to your store!';
-          break;
-        case 'customer':
-          // Customers should be redirected to their account page or back to store
-          redirectPath = '/';
           welcomeMessage = 'Welcome back!';
-          break;
-        default:
-          // Default to dashboard for unknown roles
-          redirectPath = '/dashboard';
-          welcomeMessage = 'Welcome back!';
+        }
+      } else {
+        // Handle other user roles
+        switch (userData.role) {
+          case 'admin':
+            redirectPath = '/admin';
+            welcomeMessage = 'Welcome back, Admin!';
+            break;
+          case 'customer':
+            // Customers should be redirected to their account page or back to store
+            redirectPath = '/';
+            welcomeMessage = 'Welcome back!';
+            break;
+          default:
+            // Default to dashboard for unknown roles
+            redirectPath = '/dashboard';
+            welcomeMessage = 'Welcome back!';
+        }
       }
       
       console.log('🚀 Redirecting to:', redirectPath, 'for role:', userData.role);
@@ -118,6 +165,129 @@ export const SignIn: React.FC = () => {
       toast.error(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const initiatePaymentForExistingUser = async (userId: string, business: any, email: string) => {
+    setIsProcessingPayment(true);
+    try {
+      // Default to business plan
+      const paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business');
+      if (!paymentPlan) {
+        throw new Error('Business plan not found');
+      }
+
+      // Check if Flutterwave is configured
+      if (!flutterwaveService.isConfigured()) {
+        toast.error('Payment system is not configured. Please contact support.');
+        return;
+      }
+
+      const txRef = flutterwaveService.generateTxRef('PLAN_UPGRADE_EXISTING');
+
+      // Ensure we have required parameters with fallbacks
+      const customerPhone = business.phone || '08012345678';
+      const customerName = business.name || 'Business Owner';
+
+      console.log('Initializing payment for existing user:', {
+        businessId: business.id,
+        customerEmail: email,
+        customerName,
+        customerPhone,
+        amount: paymentPlan.yearlyPrice,
+        planId: paymentPlan.id
+      });
+
+      const paymentResult = await flutterwaveService.initializePayment({
+        amount: paymentPlan.yearlyPrice,
+        currency: 'NGN',
+        customerEmail: email,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        txRef: txRef,
+        redirectUrl: `${window.location.origin}/payment/callback?upgrade=true`,
+        meta: {
+          planId: paymentPlan.id,
+          planName: paymentPlan.name,
+          email: email,
+          existingUser: true,
+          userId: userId,
+          businessId: business.id
+        }
+      });
+
+      if (paymentResult.status === 'success' && paymentResult.data) {
+        // Redirect to Flutterwave payment page
+        window.location.href = paymentResult.data.data.link;
+      } else {
+        toast.error(paymentResult.message || 'Failed to initialize payment');
+      }
+    } catch (error: any) {
+      console.error('Payment error for existing user:', error);
+      toast.error(error.message || 'Failed to process payment. Please try again.');
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const initiatePaymentForNewUser = async (userId: string, email: string) => {
+    setIsProcessingPayment(true);
+    try {
+      // Default to business plan
+      const paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business');
+      if (!paymentPlan) {
+        throw new Error('Business plan not found');
+      }
+
+      // Check if Flutterwave is configured
+      if (!flutterwaveService.isConfigured()) {
+        toast.error('Payment system is not configured. Please contact support.');
+        return;
+      }
+
+      const txRef = flutterwaveService.generateTxRef('PLAN_UPGRADE_NEW');
+
+      // Use default values since we don't have business data yet
+      const customerPhone = '08012345678';
+      const customerName = 'Business Owner';
+
+      console.log('Initializing payment for new user:', {
+        customerEmail: email,
+        customerName,
+        customerPhone,
+        amount: paymentPlan.yearlyPrice,
+        planId: paymentPlan.id
+      });
+
+      const paymentResult = await flutterwaveService.initializePayment({
+        amount: paymentPlan.yearlyPrice,
+        currency: 'NGN',
+        customerEmail: email,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        txRef: txRef,
+        redirectUrl: `${window.location.origin}/payment/callback?upgrade=true`,
+        meta: {
+          planId: paymentPlan.id,
+          planName: paymentPlan.name,
+          email: email,
+          existingUser: false,
+          userId: userId,
+          businessId: null
+        }
+      });
+
+      if (paymentResult.status === 'success' && paymentResult.data) {
+        // Redirect to Flutterwave payment page
+        window.location.href = paymentResult.data.data.link;
+      } else {
+        toast.error(paymentResult.message || 'Failed to initialize payment');
+      }
+    } catch (error: any) {
+      console.error('Payment error for new user:', error);
+      toast.error(error.message || 'Failed to process payment. Please try again.');
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -410,11 +580,11 @@ export const SignIn: React.FC = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-12 rounded-lg font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors" disabled={loading}>
-              {loading ? (
+            <Button type="submit" className="w-full h-12 rounded-lg font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors" disabled={loading || isProcessingPayment}>
+              {(loading || isProcessingPayment) ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline-block"></div>
-                  Signing In...
+                  {isProcessingPayment ? 'Processing Payment...' : 'Signing In...'}
                 </>
               ) : (
                 <>

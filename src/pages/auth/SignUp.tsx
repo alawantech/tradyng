@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -13,6 +13,8 @@ import { CountryService } from '../../data/countries';
 import type { Country, State } from '../../data/countries';
 import { getDefaultCurrencyForCountry } from '../../constants/currencies';
 import { COUNTRY_CALLING_CODES } from '../../data/countryCallingCodes';
+import { PRICING_PLANS } from '../../constants/plans';
+import { flutterwaveService } from '../../services/flutterwaveService';
 
 interface FormData {
   storeName: string;
@@ -41,6 +43,7 @@ const steps = [
 
 export const SignUp: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [countries, setCountries] = useState<Country[]>([]);
@@ -71,6 +74,15 @@ export const SignUp: React.FC = () => {
   const [otpCooldown, setOtpCooldown] = useState(0); // seconds remaining until resend allowed
   const otpCooldownRef = React.useRef<number | null>(null);
   const OTP_LENGTH = 4;
+
+  // Email validation state
+  const [emailExists, setEmailExists] = useState<boolean | null>(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
+  // Plan selection from URL params
+  const selectedPlanId = searchParams.get('plan') || 'free';
+  const selectedPlan = PRICING_PLANS.find(p => p.id === selectedPlanId) || PRICING_PLANS[0];
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Load countries on component mount
   useEffect(() => {
@@ -172,6 +184,17 @@ export const SignUp: React.FC = () => {
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Check email existence when email field changes
+    if (field === 'email') {
+      // Reset email exists state when email changes
+      setEmailExists(null);
+      // Debounce the email check
+      const timeoutId = setTimeout(() => {
+        checkEmailExists(value);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
   };
 
   const isStepValid = (step: number): boolean => {
@@ -179,7 +202,7 @@ export const SignUp: React.FC = () => {
       case 1:
         return formData.storeName.length >= 4 && domainStatus.available === true;
       case 2:
-        return formData.email.includes('@') && formData.email.includes('.');
+        return formData.email.includes('@') && formData.email.includes('.') && emailExists === false;
       case 3:
         return (
           formData.password.length >= 6 &&
@@ -196,10 +219,19 @@ export const SignUp: React.FC = () => {
   };
 
   const nextStep = () => {
-    // If we're on email step (2), trigger OTP flow instead of immediately advancing
-    if (currentStep === 2 && isStepValid(2)) {
-      // If we're currently waiting on an OTP cooldown or loading, do nothing
-      if (otpLoading || otpCooldown > 0) return;
+    // If we're on email step (2), check if email exists first
+    if (currentStep === 2) {
+      if (emailExists === true) {
+        // Don't proceed if email exists
+        return;
+      }
+      if (checkingEmail) {
+        // Don't proceed while checking email
+        return;
+      }
+      if (!isStepValid(2) || otpLoading || otpCooldown > 0) {
+        return;
+      }
       triggerSendOtp();
       return;
     }
@@ -223,76 +255,244 @@ export const SignUp: React.FC = () => {
     console.log('🔐 Creating new account with email:', formData.email);
     
     try {
-      // 1. Create Firebase Auth user
-      const authUser = await AuthService.signUp(formData.email, formData.password);
-      console.log('✅ Firebase Auth user created:', { uid: authUser.uid, email: authUser.email });
+      // Always create account first with free plan
+      await createAccount('free');
       
-      // 2. Create user document in Firestore
-      // Check if email should be admin (for testing purposes)
-      const isAdminEmail = formData.email.includes('admin@') || formData.email.includes('@admin.');
-      const userRole = isAdminEmail ? 'admin' : 'business_owner';
-      
-      await UserService.createUser({
-        uid: authUser.uid,
-        email: formData.email,
-        displayName: formData.storeName,
-        role: userRole
-      });
-      console.log('✅ User document created in Firestore with role:', userRole);
-      
-      // Only create business for business owners, not admins
-      if (userRole === 'business_owner') {
-        // 3. Generate subdomain from store name
-        const subdomain = generateSubdomain(formData.storeName);
-        console.log('🌐 Generated subdomain:', subdomain);
-        
-        // Determine currency based on selected country
-        const defaultCurrency = getDefaultCurrencyForCountry(formData.country);
-        console.log(`💰 Setting currency based on country "${formData.country}": ${defaultCurrency}`);
-        
-        // 4. Create business document
-        await BusinessService.createBusiness({
-          name: formData.storeName,
-          subdomain: subdomain,
-          ownerId: authUser.uid,
-          email: formData.email,
-          phone: `${formData.countryCode}${formData.phone}`,
-          whatsapp: `${formData.countryCode}${formData.phone}`,
-          country: formData.country,
-          state: formData.state,
-          plan: 'free',
-          status: 'active',
-          settings: {
-            currency: defaultCurrency,
-            primaryColor: '#3B82F6',
-            secondaryColor: '#10B981',
-            accentColor: '#F59E0B',
-            enableNotifications: true
-          },
-          revenue: 0,
-          totalOrders: 0,
-          totalProducts: 0
-        });
-        console.log('✅ Business created successfully');
-        
-        toast.success('Account and store created successfully!');
+      // If user selected a paid plan, redirect to payment for upgrading
+      if (selectedPlan.id !== 'free') {
+        console.log('💳 Redirecting to payment for plan upgrade:', selectedPlan.id);
+        toast.success('Account created! Redirecting to payment...');
+        setTimeout(() => {
+          handlePlanUpgrade();
+        }, 1500); // Small delay to let account creation complete
+        return;
+      } else {
+        // For free plan, go directly to dashboard
+        console.log('✅ Free account created, redirecting to dashboard');
+        toast.success('Account created successfully!');
         setTimeout(() => {
           navigate('/dashboard');
-        }, 1000);
-      } else {
-        // Admin users go to admin panel
-        console.log('ℹ️ Skipping business creation for admin user');
-        toast.success('Admin account created successfully!');
-        setTimeout(() => {
-          navigate('/admin');
         }, 1000);
       }
       
     } catch (error: any) {
       console.error('Signup error:', error);
+      
+      // Check if email already exists - might be incomplete signup
+      if (error.message?.includes('email-already-in-use') || error.message?.includes('already exists')) {
+        console.log('📧 Email already exists, checking for incomplete signup...');
+        
+        try {
+          const existingUser = await checkExistingIncompleteSignup(formData.email);
+          if (existingUser) {
+            console.log('✅ Found existing account with free plan, redirecting to payment');
+            
+            // Redirect to payment for the selected plan without creating account again
+            setTimeout(() => {
+              handleExistingUserPayment(existingUser.uid);
+            }, 500);
+            return;
+          }
+        } catch (checkError) {
+          console.error('Error checking existing signup:', checkError);
+        }
+      }
+      
+      // Show original error if not an incomplete signup
       toast.error(error.message || 'Failed to create account');
-    } finally {
       setLoading(false);
+    }
+  };
+
+  const checkExistingIncompleteSignup = async (email: string) => {
+    try {
+      // Get user by email from Firestore
+      const users = await UserService.getUsersByEmail(email);
+      if (!users || users.length === 0) {
+        return null;
+      }
+
+      const user = users[0];
+      
+      // Check if user has a business with free plan
+      const businesses = await BusinessService.getBusinessesByOwnerId(user.uid);
+      if (!businesses || businesses.length === 0) {
+        return null;
+      }
+
+      const business = businesses[0];
+      
+      // If business has free plan, it's an incomplete signup
+      if (business.plan === 'free') {
+        console.log('Found incomplete signup:', { userId: user.uid, businessId: business.id, plan: business.plan });
+        return { uid: user.uid, business };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error checking existing signup:', error);
+      return null;
+    }
+  };
+
+  const checkEmailExists = async (email: string) => {
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      setEmailExists(null);
+      return;
+    }
+
+    setCheckingEmail(true);
+    try {
+      const users = await UserService.getUsersByEmail(email);
+      const exists = users && users.length > 0;
+      setEmailExists(exists);
+      console.log('Email check result:', { email, exists });
+    } catch (error) {
+      console.error('Error checking email existence:', error);
+      setEmailExists(null);
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
+  const handleExistingUserPayment = async (userId: string) => {
+    setIsProcessingPayment(true);
+
+    try {
+      // Validate required data
+      if (!formData.email) {
+        throw new Error('Email is required for payment');
+      }
+
+      // Default to business plan if no valid paid plan is selected
+      let paymentPlan = selectedPlan;
+      if (!paymentPlan || !paymentPlan.yearlyPrice || paymentPlan.yearlyPrice === 0) {
+        paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business');
+        if (!paymentPlan) {
+          throw new Error('Business plan not found');
+        }
+      }
+
+      // Check if Flutterwave is configured
+      if (!flutterwaveService.isConfigured()) {
+        toast.error('Payment system is not configured. Please contact support.');
+        return;
+      }
+
+      // Get user and business info
+      const businesses = await BusinessService.getBusinessesByOwnerId(userId);
+      if (!businesses || businesses.length === 0) {
+        throw new Error('Business account not found');
+      }
+
+      const business = businesses[0];
+      const txRef = flutterwaveService.generateTxRef('PLAN_UPGRADE_EXISTING');
+
+      // Ensure we have required parameters with fallbacks
+      const customerPhone = business.phone || '08012345678'; // Default fallback phone
+      const customerName = business.name || 'Business Owner'; // Default fallback name
+
+      console.log('Initializing payment for existing user:', {
+        businessId: business.id,
+        customerEmail: formData.email,
+        customerName,
+        customerPhone,
+        amount: paymentPlan.yearlyPrice,
+        planId: paymentPlan.id
+      });
+
+      const paymentResult = await flutterwaveService.initializePayment({
+        amount: paymentPlan.yearlyPrice,
+        currency: 'NGN',
+        customerEmail: formData.email,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        txRef: txRef,
+        redirectUrl: `${window.location.origin}/payment/callback?upgrade=true`,
+        meta: {
+          planId: paymentPlan.id,
+          planName: paymentPlan.name,
+          email: formData.email,
+          existingUser: true,
+          userId: userId,
+          businessId: business.id
+        }
+      });
+
+      if (paymentResult.status === 'success' && paymentResult.data) {
+        // Redirect to Flutterwave payment page
+        window.location.href = paymentResult.data.data.link;
+      } else {
+        toast.error(paymentResult.message || 'Failed to initialize payment');
+      }
+
+    } catch (error: any) {
+      console.error('Payment error for existing user:', error);
+      toast.error(error.message || 'Failed to process payment. Please try again.');
+      setLoading(false);
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };  const createAccount = async (planId: string) => {
+    // 1. Create Firebase Auth user
+    const authUser = await AuthService.signUp(formData.email, formData.password);
+    console.log('✅ Firebase Auth user created:', { uid: authUser.uid, email: authUser.email });
+    
+    // 2. Create user document in Firestore
+    // Check if email should be admin (for testing purposes)
+    const isAdminEmail = formData.email.includes('admin@') || formData.email.includes('@admin.');
+    const userRole = isAdminEmail ? 'admin' : 'business_owner';
+    
+    await UserService.createUser({
+      uid: authUser.uid,
+      email: formData.email,
+      displayName: formData.storeName,
+      role: userRole
+    });
+    console.log('✅ User document created in Firestore with role:', userRole);
+    
+    // Only create business for business owners, not admins
+    if (userRole === 'business_owner') {
+      // 3. Generate subdomain from store name
+      const subdomain = generateSubdomain(formData.storeName);
+      console.log('🌐 Generated subdomain:', subdomain);
+      
+      // Determine currency based on selected country
+      const defaultCurrency = getDefaultCurrencyForCountry(formData.country);
+      console.log(`💰 Setting currency based on country "${formData.country}": ${defaultCurrency}`);
+      
+      // 4. Create business document
+      await BusinessService.createBusiness({
+        name: formData.storeName,
+        subdomain: subdomain,
+        ownerId: authUser.uid,
+        email: formData.email,
+        phone: `${formData.countryCode}${formData.phone}`,
+        whatsapp: `${formData.countryCode}${formData.phone}`,
+        country: formData.country,
+        state: formData.state,
+        plan: planId,
+        status: 'active',
+        settings: {
+          currency: defaultCurrency,
+          primaryColor: '#3B82F6',
+          secondaryColor: '#10B981',
+          accentColor: '#F59E0B',
+          enableNotifications: true
+        },
+        revenue: 0,
+        totalOrders: 0,
+        totalProducts: 0
+      });
+      console.log('✅ Business created successfully');
+      
+      // Don't navigate here - let handleSubmit handle navigation based on plan
+      console.log('🎉 Account creation completed successfully');
+    } else {
+      // Admin users go to admin panel
+      console.log('ℹ️ Skipping business creation for admin user');
+      // Don't navigate here - let handleSubmit handle navigation based on plan
+      console.log('🎉 Admin account creation completed successfully');
     }
   };
 
@@ -471,9 +671,44 @@ export const SignUp: React.FC = () => {
               placeholder="kemi@gmail.com"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+              className={`w-full h-12 px-4 bg-gray-800 border rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none ${
+                emailExists === true ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
+              }`}
             />
-            {otpCooldown > 0 && (
+            
+            {/* Email checking indicator */}
+            {checkingEmail && (
+              <div className="mt-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+                  <span className="text-yellow-400 text-sm">Checking email availability...</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Existing account message */}
+            {emailExists === true && !checkingEmail && (
+              <div className="mt-3 p-4 bg-red-900/30 border border-red-600 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                  <span className="text-red-400 text-sm font-medium">Account Already Exists</span>
+                </div>
+                <p className="text-red-300 text-sm mb-3">
+                  An account with this email address already exists. Please sign in with your existing email and password to continue.
+                </p>
+                <Link 
+                  to="/auth/signin" 
+                  className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors"
+                >
+                  Sign In to Continue
+                </Link>
+              </div>
+            )}
+            
+            {/* OTP cooldown message */}
+            {otpCooldown > 0 && emailExists === false && (
               <div className="mt-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded-lg">
                 <p className="text-sm text-yellow-400">OTP recently requested. Please wait {otpCooldown} seconds before requesting again.</p>
               </div>
@@ -543,7 +778,7 @@ export const SignUp: React.FC = () => {
                 className="px-3 py-2 bg-gray-700 text-white rounded-lg font-semibold border border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               >
                 {countryOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={`${opt.label}-${opt.value}`} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
               <Input
@@ -671,9 +906,12 @@ export const SignUp: React.FC = () => {
             {currentStep < steps.length ? (
               <Button
                 onClick={nextStep}
-                disabled={!isStepValid(currentStep) || (currentStep === 2 && (otpLoading || otpCooldown > 0))}
+                disabled={
+                  !isStepValid(currentStep) || 
+                  (currentStep === 2 && (otpLoading || otpCooldown > 0 || checkingEmail || emailExists === true))
+                }
                 className={`flex-1 h-12 rounded-lg font-medium transition-colors ${
-                  isStepValid(currentStep) && !(currentStep === 2 && (otpLoading || otpCooldown > 0))
+                  isStepValid(currentStep) && !(currentStep === 2 && (otpLoading || otpCooldown > 0 || checkingEmail || emailExists === true))
                   ? 'bg-blue-500 text-white hover:bg-blue-600' 
                   : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}

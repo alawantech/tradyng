@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
   User
 } from 'firebase/auth';
 
@@ -54,6 +55,15 @@ export class AuthService {
   // Get current user
   static getCurrentUser(): User | null {
     return auth.currentUser;
+  }
+
+  // Send password reset email
+  static async sendPasswordResetEmail(email: string): Promise<void> {
+    try {
+      await firebaseSendPasswordResetEmail(auth, email);
+    } catch (error) {
+      throw error;
+    }
   }
 
   // Listen for auth state changes

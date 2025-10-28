@@ -41,6 +41,8 @@ const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const crypto_1 = __importDefault(require("crypto"));
 const node_fetch_1 = __importDefault(require("node-fetch"));
+// Initialize Firebase Admin
+admin.initializeApp();
 // Helper function to format currency
 function formatCurrency(amount, currencyCode) {
     const currencySymbols = {

@@ -14,17 +14,17 @@ export interface PlanLimits {
 
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
   free: {
-    maxProducts: 20,
-    maxImagesPerProduct: 1,
-    maxVideoLengthSeconds: 0, // No videos allowed
-    maxStorageMB: 50,
-    maxOrdersPerMonth: 50,
-    allowCustomDomain: false,
-    allowVideos: false,
-    watermarkedReceipts: true,
-    showPoweredByBadge: true,
-    advancedAnalytics: false,
-    emailCustomization: false,
+    maxProducts: 150,
+    maxImagesPerProduct: 4,
+    maxVideoLengthSeconds: 30,
+    maxStorageMB: 5000, // 5GB
+    maxOrdersPerMonth: -1, // Unlimited
+    allowCustomDomain: true,
+    allowVideos: true,
+    watermarkedReceipts: false,
+    showPoweredByBadge: false,
+    advancedAnalytics: true,
+    emailCustomization: true,
   },
   business: {
     maxProducts: 150,
@@ -96,28 +96,32 @@ export interface PricingPlan {
 export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'free',
-    name: 'Free',
+    name: 'Free Trial',
     monthlyPrice: 0,
     yearlyPrice: 0,
     isPopular: false,
-    description: 'Perfect for getting started',
+    description: '3-day trial with all business features',
     features: [
-      '20 products maximum',
-      '1 image per product (no videos)',
-      'Watermarked receipts',
-      'Basic business page theme',
-      '50 MB storage limit',
-      '50 orders per month limit',
-      '"Powered by rady.ng" badge',
-      'rady.ng/yourbusiness subdomain only'
+      'Up to 150 products',
+      'Up to 4 images per product',
+      '30-second videos per product',
+      'Custom domain support',
+      'Unlimited orders',
+      'Clean receipts (no watermark)',
+      'Advanced analytics',
+      'Email customization',
+      'Priority support',
+      'Remove "Powered by" badge',
+      '5GB storage',
+      'Trial expires after 3 days'
     ],
-    buttonText: 'Get Started Free'
+    buttonText: 'Start Free Trial'
   },
   {
     id: 'business',
     name: 'Business',
-    monthlyPrice: 9500,
-    yearlyPrice: 95000,
+    monthlyPrice: 0, // Not used for yearly plans
+    yearlyPrice: 14500,
     isPopular: true,
     description: 'Most popular for growing businesses',
     features: [
@@ -138,8 +142,8 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'pro',
     name: 'Pro',
-    monthlyPrice: 19000,
-    yearlyPrice: 190000,
+    monthlyPrice: 0, // Not used for yearly plans
+    yearlyPrice: 29000,
     isPopular: false,
     description: 'For established businesses',
     features: [

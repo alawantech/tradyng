@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 export const Navbar: React.FC = () => {
@@ -59,17 +58,6 @@ export const Navbar: React.FC = () => {
               </Link>
               <Link to="/auth/signup">
                 <Button variant="primary">Get Started</Button>
-              </Link>
-            </div>
-          )}
-          
-          {!isHomePage && (
-            <div className="flex items-center space-x-4">
-              <Link to="/dashboard">
-                <Button variant="ghost">
-                  <User className="h-4 w-4 mr-2" />
-                  Dashboard
-                </Button>
               </Link>
             </div>
           )}

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Star, Zap, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, Star, Zap, Shield, ChevronDown, ChevronUp, Rocket, Building, Crown } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { PRICING_PLANS } from '../../constants/plans';
+import { flutterwaveService } from '../../services/flutterwaveService';
+import toast from 'react-hot-toast';
 
 interface PricingSectionProps {
   showHeader?: boolean;
@@ -43,20 +45,71 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
 
   // FAQ toggle state
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const toggleFAQ = (id: number) => {
     setOpenFAQ(openFAQ === id ? null : id);
   };
+
+  const handlePlanSelection = async (plan: typeof PRICING_PLANS[0]) => {
+    if (plan.id === 'free') {
+      // Redirect to signup for free trial
+      window.location.href = '/auth/signup';
+      return;
+    }
+
+    // For paid plans, initiate Flutterwave payment
+    setIsProcessingPayment(true);
+
+    try {
+      // Check if Flutterwave is configured
+      if (!flutterwaveService.isConfigured()) {
+        toast.error('Payment system is not configured. Please contact support.');
+        return;
+      }
+
+      // Get user details (for now, we'll redirect to signup with plan selection)
+      // In a real implementation, you might want to collect user details first
+      const txRef = flutterwaveService.generateTxRef('PLAN');
+
+      const paymentData = {
+        amount: plan.yearlyPrice,
+        currency: 'NGN',
+        customerEmail: '', // Will be collected during signup
+        customerName: '', // Will be collected during signup
+        txRef: txRef,
+        redirectUrl: `${window.location.origin}/auth/signup?plan=${plan.id}&tx_ref=${txRef}`,
+        meta: {
+          planId: plan.id,
+          planName: plan.name,
+          billingType: 'yearly'
+        }
+      };
+
+      // For now, redirect to signup with plan pre-selected
+      // In production, you might want to collect payment details first
+      const url = new URL('/auth/signup', window.location.origin);
+      url.searchParams.set('plan', plan.id);
+      url.searchParams.set('amount', plan.yearlyPrice.toString());
+      window.location.href = url.toString();
+
+    } catch (error: any) {
+      console.error('Payment initialization error:', error);
+      toast.error('Failed to initialize payment. Please try again.');
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
   const getPlanIcon = (planId: string) => {
     switch (planId) {
       case 'free':
-        return <Shield className="w-6 h-6 text-blue-500" />;
+        return <Rocket className="w-8 h-8 text-blue-500" />;
       case 'business':
-        return <Zap className="w-6 h-6 text-green-500" />;
+        return <Building className="w-8 h-8 text-green-500" />;
       case 'pro':
-        return <Star className="w-6 h-6 text-purple-500" />;
+        return <Crown className="w-8 h-8 text-purple-500" />;
       default:
-        return <Shield className="w-6 h-6 text-gray-500" />;
+        return <Shield className="w-8 h-8 text-gray-500" />;
     }
   };
 
@@ -94,8 +147,14 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   };
 
   return (
-    <section id={sectionId} className={`py-24 bg-gradient-to-br from-gray-50 to-white ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id={sectionId} className={`py-24 bg-gradient-to-br from-gray-50 via-white to-blue-50 relative overflow-hidden ${className}`}>
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
+      </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {showHeader && (
           <motion.div 
             className="text-center mb-20"
@@ -103,8 +162,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-flex items-center justify-center p-2 bg-blue-100 rounded-full mb-4">
-              <Star className="w-6 h-6 text-blue-600" />
+            <div className="inline-flex items-center justify-center p-3 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full mb-6 shadow-lg">
+              <Star className="w-8 h-8 text-blue-600 animate-pulse" />
             </div>
             <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
               Simple, Transparent Pricing
@@ -145,10 +204,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                   </div>
                 )}
                 
-                <Card className={`relative p-8 h-full ${
+                <Card className={`relative p-8 h-full transition-all duration-300 hover:scale-105 ${
                   plan.isPopular 
-                    ? `${colors.ring} ring-2 scale-105 shadow-2xl bg-white` 
-                    : `${colors.border} border-2 shadow-lg hover:shadow-xl transition-shadow bg-white`
+                    ? `${colors.ring} ring-2 scale-105 shadow-2xl bg-gradient-to-br from-white to-blue-50` 
+                    : `${colors.border} border-2 shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50`
                 }`}>
                   {/* Plan Header */}
                   <div className="text-center mb-8">
@@ -162,15 +221,15 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                     <div className="mb-6">
                       <div className="flex items-baseline justify-center">
                         <span className={`text-5xl font-bold ${colors.accent}`}>
-                          {plan.monthlyPrice === 0 ? 'Free' : `₦${plan.monthlyPrice.toLocaleString()}`}
+                          {plan.id === 'free' ? 'Free' : `₦${plan.yearlyPrice.toLocaleString()}`}
                         </span>
-                        {plan.monthlyPrice > 0 && (
-                          <span className="text-gray-500 ml-2 text-lg">/month</span>
+                        {plan.id !== 'free' && (
+                          <span className="text-gray-500 ml-2 text-lg">/year</span>
                         )}
                       </div>
-                      {plan.monthlyPrice > 0 && (
+                      {plan.id === 'free' && (
                         <div className="mt-2 text-sm text-gray-500">
-                          or ₦{plan.yearlyPrice.toLocaleString()}/year (save 17%)
+                          3-day trial
                         </div>
                       )}
                     </div>
@@ -190,17 +249,17 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                   
                   {/* Call to Action */}
                   <div className="mt-auto">
-                    <Link to="/auth/signup" className="block">
-                      <Button 
-                        className={`w-full py-4 text-lg font-semibold transition-all duration-200 ${
-                          plan.isPopular 
-                            ? colors.button
-                            : `${colors.button.replace('bg-', 'border-').replace('hover:bg-', 'hover:bg-').replace('text-white', `${colors.accent} hover:text-white`)} border-2`
-                        }`}
-                      >
-                        {plan.buttonText}
-                      </Button>
-                    </Link>
+                    <Button 
+                      onClick={() => handlePlanSelection(plan)}
+                      disabled={isProcessingPayment}
+                      className={`w-full py-4 text-lg font-semibold transition-all duration-200 ${
+                        plan.isPopular 
+                          ? colors.button
+                          : `${colors.button.replace('bg-', 'border-').replace('hover:bg-', 'hover:bg-').replace('text-white', `${colors.accent} hover:text-white`)} border-2`
+                      }`}
+                    >
+                      {isProcessingPayment ? 'Processing...' : plan.buttonText}
+                    </Button>
                     
                     {plan.id === 'free' && (
                       <p className="text-center text-sm text-gray-500 mt-3">
