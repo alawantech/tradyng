@@ -82,6 +82,8 @@ export const SignUp: React.FC = () => {
   // Plan selection from URL params
   const selectedPlanId = searchParams.get('plan') || 'free';
   const selectedPlan = PRICING_PLANS.find(p => p.id === selectedPlanId) || PRICING_PLANS[0];
+  const couponCode = searchParams.get('coupon');
+  const discountAmount = parseInt(searchParams.get('discount') || '0');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Load countries on component mount
@@ -373,6 +375,9 @@ export const SignUp: React.FC = () => {
         }
       }
 
+      // Calculate final amount with coupon discount
+      const finalAmount = paymentPlan.yearlyPrice - discountAmount;
+
       // Check if Flutterwave is configured
       if (!flutterwaveService.isConfigured()) {
         toast.error('Payment system is not configured. Please contact support.');
@@ -397,12 +402,14 @@ export const SignUp: React.FC = () => {
         customerEmail: formData.email,
         customerName,
         customerPhone,
-        amount: paymentPlan.yearlyPrice,
-        planId: paymentPlan.id
+        amount: finalAmount,
+        planId: paymentPlan.id,
+        discountAmount,
+        couponCode
       });
 
       const paymentResult = await flutterwaveService.initializePayment({
-        amount: paymentPlan.yearlyPrice,
+        amount: finalAmount,
         currency: 'NGN',
         customerEmail: formData.email,
         customerName: customerName,
@@ -415,7 +422,10 @@ export const SignUp: React.FC = () => {
           email: formData.email,
           existingUser: true,
           userId: userId,
-          businessId: business.id
+          businessId: business.id,
+          originalAmount: paymentPlan.yearlyPrice,
+          discountAmount: discountAmount,
+          couponCode: couponCode || null
         }
       });
 
@@ -433,8 +443,103 @@ export const SignUp: React.FC = () => {
     } finally {
       setIsProcessingPayment(false);
     }
-  };  const createAccount = async (planId: string) => {
-    // 1. Create Firebase Auth user
+  };
+
+  const handlePlanUpgrade = async () => {
+    setIsProcessingPayment(true);
+
+    try {
+      // Validate required data
+      if (!formData.email) {
+        throw new Error('Email is required for payment');
+      }
+
+      // Default to business plan if no valid paid plan is selected
+      let paymentPlan = selectedPlan;
+      if (!paymentPlan || !paymentPlan.yearlyPrice || paymentPlan.yearlyPrice === 0) {
+        paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business');
+        if (!paymentPlan) {
+          throw new Error('Business plan not found');
+        }
+      }
+
+      // Calculate final amount with coupon discount
+      const finalAmount = paymentPlan.yearlyPrice - discountAmount;
+
+      // Check if Flutterwave is configured
+      if (!flutterwaveService.isConfigured()) {
+        toast.error('Payment system is not configured. Please contact support.');
+        return;
+      }
+
+      // Get current user from Auth
+      const currentUser = await AuthService.getCurrentUser();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get business info for the newly created account
+      const businesses = await BusinessService.getBusinessesByOwnerId(currentUser.uid);
+      if (!businesses || businesses.length === 0) {
+        throw new Error('Business account not found');
+      }
+
+      const business = businesses[0];
+      const txRef = flutterwaveService.generateTxRef('PLAN_UPGRADE_NEW');
+
+      // Ensure we have required parameters with fallbacks
+      const customerPhone = business.phone || '08012345678'; // Default fallback phone
+      const customerName = business.name || 'Business Owner'; // Default fallback name
+
+      console.log('Initializing payment for new user plan upgrade:', {
+        businessId: business.id,
+        customerEmail: formData.email,
+        customerName,
+        customerPhone,
+        amount: finalAmount,
+        planId: paymentPlan.id,
+        discountAmount,
+        couponCode
+      });
+
+      const paymentResult = await flutterwaveService.initializePayment({
+        amount: finalAmount,
+        currency: 'NGN',
+        customerEmail: formData.email,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        txRef: txRef,
+        redirectUrl: `${window.location.origin}/payment/callback?upgrade=true`,
+        meta: {
+          planId: paymentPlan.id,
+          planName: paymentPlan.name,
+          email: formData.email,
+          existingUser: false,
+          userId: currentUser.uid,
+          businessId: business.id,
+          originalAmount: paymentPlan.yearlyPrice,
+          discountAmount: discountAmount,
+          couponCode: couponCode || null
+        }
+      });
+
+      if (paymentResult.status === 'success' && paymentResult.data) {
+        // Redirect to Flutterwave payment page
+        window.location.href = paymentResult.data.data.link;
+      } else {
+        toast.error(paymentResult.message || 'Failed to initialize payment');
+      }
+
+    } catch (error: any) {
+      console.error('Payment error for plan upgrade:', error);
+      toast.error(error.message || 'Failed to process payment. Please try again.');
+      setLoading(false);
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const createAccount = async (planId: string) => {
     const authUser = await AuthService.signUp(formData.email, formData.password);
     console.log('✅ Firebase Auth user created:', { uid: authUser.uid, email: authUser.email });
     

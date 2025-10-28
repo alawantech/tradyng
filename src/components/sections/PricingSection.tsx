@@ -59,47 +59,11 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
       return;
     }
 
-    // For paid plans, initiate Flutterwave payment
-    setIsProcessingPayment(true);
-
-    try {
-      // Check if Flutterwave is configured
-      if (!flutterwaveService.isConfigured()) {
-        toast.error('Payment system is not configured. Please contact support.');
-        return;
-      }
-
-      // Get user details (for now, we'll redirect to signup with plan selection)
-      // In a real implementation, you might want to collect user details first
-      const txRef = flutterwaveService.generateTxRef('PLAN');
-
-      const paymentData = {
-        amount: plan.yearlyPrice,
-        currency: 'NGN',
-        customerEmail: '', // Will be collected during signup
-        customerName: '', // Will be collected during signup
-        txRef: txRef,
-        redirectUrl: `${window.location.origin}/auth/signup?plan=${plan.id}&tx_ref=${txRef}`,
-        meta: {
-          planId: plan.id,
-          planName: plan.name,
-          billingType: 'yearly'
-        }
-      };
-
-      // For now, redirect to signup with plan pre-selected
-      // In production, you might want to collect payment details first
-      const url = new URL('/auth/signup', window.location.origin);
-      url.searchParams.set('plan', plan.id);
-      url.searchParams.set('amount', plan.yearlyPrice.toString());
-      window.location.href = url.toString();
-
-    } catch (error: any) {
-      console.error('Payment initialization error:', error);
-      toast.error('Failed to initialize payment. Please try again.');
-    } finally {
-      setIsProcessingPayment(false);
-    }
+    // For paid plans, redirect to coupon page first
+    const url = new URL('/coupon', window.location.origin);
+    url.searchParams.set('plan', plan.id);
+    url.searchParams.set('amount', plan.yearlyPrice.toString());
+    window.location.href = url.toString();
   };
 
   const getPlanIcon = (planId: string) => {

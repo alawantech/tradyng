@@ -12,6 +12,7 @@ import './config/firebase';
 // Pages
 import { LandingPage } from './pages/LandingPage';
 import { PricingPage } from './pages/PricingPage';
+import { CouponPage } from './pages/CouponPage';
 import { FeaturesPage } from './pages/features/FeaturesPage';
 import { StoreExamples } from './pages/StoreExamples';
 import { SignUp } from './pages/auth/SignUp';
@@ -111,6 +112,7 @@ function App() {
               {/* Landing Page */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/coupon" element={<CouponPage />} />
               <Route path="/features" element={<FeaturesPage />} />
               <Route path="/store-examples" element={<StoreExamples />} />
               <Route path="/demo/subdomains" element={<StoreSubdomainDemo />} />
