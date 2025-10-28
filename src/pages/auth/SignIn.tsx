@@ -21,6 +21,12 @@ export const SignIn: React.FC = () => {
     password: ''
   });
 
+  // Check for coupon/plan parameters from URL
+  const [searchParams] = useState(() => new URLSearchParams(window.location.search));
+  const planFromUrl = searchParams.get('plan');
+  const couponFromUrl = searchParams.get('coupon');
+  const discountFromUrl = searchParams.get('discount');
+
   // Forgot password states
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [forgotPasswordStep, setForgotPasswordStep] = useState<'email' | 'otp' | 'newPassword'>('email');
@@ -71,9 +77,20 @@ export const SignIn: React.FC = () => {
             const business = businesses[0];
             console.log('🏢 Business data retrieved:', { id: business.id, plan: business.plan });
             
-            // If user has free plan, initiate payment directly
+            // If user has free plan, check for coupon/plan params first
             if (business.plan === 'free') {
-              console.log('💳 User has free plan, initiating payment directly');
+              console.log('💳 User has free plan, checking for coupon/plan params');
+              
+              // If we have coupon/plan params from URL, redirect to coupon page
+              if (planFromUrl && planFromUrl !== 'free') {
+                console.log('🎫 Found coupon/plan params, redirecting to coupon page:', { plan: planFromUrl, coupon: couponFromUrl, discount: discountFromUrl });
+                const couponUrl = `/coupon?plan=${planFromUrl}${couponFromUrl ? `&coupon=${couponFromUrl}&discount=${discountFromUrl}` : ''}`;
+                navigate(couponUrl);
+                return;
+              }
+              
+              // No coupon params, initiate direct payment
+              console.log('📊 No coupon params found, initiating direct payment');
               console.log('📊 Business details:', {
                 id: business.id,
                 name: business.name,
@@ -96,7 +113,15 @@ export const SignIn: React.FC = () => {
               welcomeMessage = 'Welcome back to your store!';
             }
           } else {
-            // No business found, initiate payment to complete signup
+            // No business found, check for coupon/plan params
+            if (planFromUrl && planFromUrl !== 'free') {
+              console.log('🎫 No business found but coupon/plan params exist, redirecting to coupon page:', { plan: planFromUrl, coupon: couponFromUrl, discount: discountFromUrl });
+              const couponUrl = `/coupon?plan=${planFromUrl}${couponFromUrl ? `&coupon=${couponFromUrl}&discount=${discountFromUrl}` : ''}`;
+              navigate(couponUrl);
+              return;
+            }
+            
+            // No business and no coupon params, initiate payment to complete signup
             console.log('⚠️ No business found, initiating payment to complete signup');
             await initiatePaymentForNewUser(authUser.uid, formData.email);
             return; // Don't continue with navigation since payment redirects

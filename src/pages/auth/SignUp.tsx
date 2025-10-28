@@ -804,7 +804,7 @@ export const SignUp: React.FC = () => {
                   An account with this email address already exists. Please sign in with your existing email and password to continue.
                 </p>
                 <Link 
-                  to="/auth/signin" 
+                  to={`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}` : ''}`}
                   className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors"
                 >
                   Sign In to Continue

@@ -8,6 +8,8 @@ import { PRICING_PLANS } from '../constants/plans';
 import { flutterwaveService } from '../services/flutterwaveService';
 import { db } from '../config/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { AuthService } from '../services/auth';
+import { BusinessService } from '../services/business';
 import toast from 'react-hot-toast';
 
 interface CouponData {
@@ -29,6 +31,8 @@ export const CouponPage: React.FC = () => {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponData | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const planId = searchParams.get('plan');
   const amount = searchParams.get('amount');
@@ -40,9 +44,23 @@ export const CouponPage: React.FC = () => {
       navigate('/pricing');
     }
 
+    // Check authentication status
+    checkAuthStatus();
+
     // Initialize coupons if they don't exist
     initializeCouponsIfNeeded();
   }, [planId, selectedPlan, navigate]);
+
+  const checkAuthStatus = async () => {
+    try {
+      const user = await AuthService.getCurrentUser();
+      setCurrentUser(user);
+      setIsAuthenticated(!!user);
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      setIsAuthenticated(false);
+    }
+  };
 
   const initializeCouponsIfNeeded = async () => {
     try {
@@ -151,40 +169,79 @@ export const CouponPage: React.FC = () => {
 
       const finalAmount = selectedPlan.yearlyPrice - discountAmount;
 
-      // Generate transaction reference
-      const txRef = flutterwaveService.generateTxRef('PLAN');
+      if (isAuthenticated && currentUser) {
+        // Handle authenticated user payment
+        console.log('💳 Processing payment for authenticated user:', currentUser.uid);
 
-      const paymentData = {
-        amount: finalAmount,
-        currency: 'NGN',
-        customerEmail: '', // Will be collected during signup
-        customerName: '', // Will be collected during signup
-        txRef: txRef,
-        redirectUrl: `${window.location.origin}/auth/signup?plan=${planId}&tx_ref=${txRef}&coupon=${appliedCoupon?.code || ''}&discount=${discountAmount}`,
-        meta: {
-          planId: planId,
-          planName: selectedPlan.name,
-          billingType: 'yearly',
-          originalAmount: selectedPlan.yearlyPrice,
-          discountAmount: discountAmount,
-          couponCode: appliedCoupon?.code || null
+        // Get business info for the authenticated user
+        const businesses = await BusinessService.getBusinessesByOwnerId(currentUser.uid);
+        if (!businesses || businesses.length === 0) {
+          throw new Error('Business account not found');
         }
-      };
 
-      // Redirect to signup with plan and coupon information
-      const url = new URL('/auth/signup', window.location.origin);
-      url.searchParams.set('plan', planId!);
-      url.searchParams.set('amount', finalAmount.toString());
-      if (appliedCoupon) {
-        url.searchParams.set('coupon', appliedCoupon.code);
-        url.searchParams.set('discount', discountAmount.toString());
+        const business = businesses[0];
+        const txRef = flutterwaveService.generateTxRef('PLAN_UPGRADE_EXISTING');
+
+        // Ensure we have required parameters with fallbacks
+        const customerPhone = business.phone || '08012345678';
+        const customerName = business.name || 'Business Owner';
+
+        console.log('Initializing payment for authenticated user:', {
+          businessId: business.id,
+          customerEmail: currentUser.email,
+          customerName,
+          customerPhone,
+          amount: finalAmount,
+          planId: selectedPlan.id,
+          discountAmount,
+          couponCode: appliedCoupon?.code
+        });
+
+        const paymentResult = await flutterwaveService.initializePayment({
+          amount: finalAmount,
+          currency: 'NGN',
+          customerEmail: currentUser.email,
+          customerName: customerName,
+          customerPhone: customerPhone,
+          txRef: txRef,
+          redirectUrl: `${window.location.origin}/payment/callback?upgrade=true`,
+          meta: {
+            planId: selectedPlan.id,
+            planName: selectedPlan.name,
+            email: currentUser.email,
+            existingUser: true,
+            userId: currentUser.uid,
+            businessId: business.id,
+            originalAmount: selectedPlan.yearlyPrice,
+            discountAmount: discountAmount,
+            couponCode: appliedCoupon?.code || null
+          }
+        });
+
+        if (paymentResult.status === 'success' && paymentResult.data) {
+          // Redirect to Flutterwave payment page
+          window.location.href = paymentResult.data.data.link;
+        } else {
+          toast.error(paymentResult.message || 'Failed to initialize payment');
+        }
+      } else {
+        // Handle non-authenticated user - redirect to signup
+        console.log('🔐 Redirecting non-authenticated user to signup');
+
+        const url = new URL('/auth/signup', window.location.origin);
+        url.searchParams.set('plan', planId!);
+        url.searchParams.set('amount', finalAmount.toString());
+        if (appliedCoupon) {
+          url.searchParams.set('coupon', appliedCoupon.code);
+          url.searchParams.set('discount', discountAmount.toString());
+        }
+
+        window.location.href = url.toString();
       }
-
-      window.location.href = url.toString();
 
     } catch (error: any) {
       console.error('Payment initialization error:', error);
-      toast.error('Failed to initialize payment. Please try again.');
+      toast.error(error.message || 'Failed to initialize payment. Please try again.');
     } finally {
       setIsProcessingPayment(false);
     }
@@ -245,7 +302,10 @@ export const CouponPage: React.FC = () => {
             Have a Coupon Code?
           </h1>
           <p className="text-lg text-gray-600">
-            Enter your coupon code below to get a discount on your {selectedPlan.name} plan
+            {isAuthenticated 
+              ? `Enter your coupon code to get a discount on your ${selectedPlan.name} plan upgrade`
+              : `Enter your coupon code below to get a discount on your ${selectedPlan.name} plan`
+            }
           </p>
         </motion.div>
 
@@ -401,7 +461,7 @@ export const CouponPage: React.FC = () => {
                     'Processing...'
                   ) : (
                     <span className="flex items-center justify-center space-x-2">
-                      <span>Continue to Payment</span>
+                      <span>{isAuthenticated ? 'Continue to Payment' : 'Continue to Sign Up'}</span>
                       <Sparkles className="w-5 h-5" />
                     </span>
                   )}
@@ -429,7 +489,10 @@ export const CouponPage: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.6 }}
         >
           <p className="text-sm text-gray-500">
-            Don't have a coupon code? No problem! Continue to payment to complete your purchase.
+            {isAuthenticated 
+              ? "Don't have a coupon code? No problem! Continue to payment to complete your plan upgrade."
+              : "Don't have a coupon code? No problem! Continue to sign up to complete your purchase."
+            }
           </p>
         </motion.div>
       </div>
