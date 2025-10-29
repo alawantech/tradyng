@@ -397,36 +397,16 @@ export const SignUp: React.FC = () => {
 
     setCheckingEmail(true);
     try {
-      // Check Firebase Auth first (source of truth for email registration)
+      // Check Firebase Auth - this is the source of truth for email registration
+      // If the email exists in Auth, show "Account Already Exists"
+      // If it doesn't exist in Auth, allow registration even if orphaned data exists in Firestore
       const existsInAuth = await AuthService.checkEmailExists(email);
-      
-      // For the sign-up flow, we also want to check Firestore to catch cases
-      // where there might be orphaned data or inconsistencies
-      let existsInFirestore = false;
-      try {
-        const users = await UserService.getUsersByEmail(email);
-        existsInFirestore = users && users.length > 0;
-      } catch (firestoreError) {
-        console.warn('Firestore check failed, relying on Auth check:', firestoreError);
-      }
-      
-      // Show "Account Already Exists" if email exists in either Auth or Firestore
-      // This ensures users with existing accounts are prompted to sign in
-      const emailExists = existsInAuth || existsInFirestore;
-      setEmailExists(emailExists);
-      console.log('Email check result:', { email, existsInAuth, existsInFirestore, finalResult: emailExists });
+      setEmailExists(existsInAuth);
+      console.log('Email check result:', { email, existsInAuth, finalResult: existsInAuth });
     } catch (error) {
       console.error('Error checking email existence:', error);
-      // If check fails, check Firestore as fallback to prevent duplicate accounts
-      try {
-        const users = await UserService.getUsersByEmail(email);
-        const existsInFirestore = users && users.length > 0;
-        setEmailExists(existsInFirestore);
-        console.log('Fallback Firestore check result:', existsInFirestore);
-      } catch (fallbackError) {
-        console.error('Fallback check also failed:', fallbackError);
-        setEmailExists(false); // Allow registration if all checks fail
-      }
+      // If Auth check fails, allow registration to avoid blocking users
+      setEmailExists(false);
     } finally {
       setCheckingEmail(false);
     }
