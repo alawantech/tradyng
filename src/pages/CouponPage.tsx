@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 
 interface CouponData {
   code: string;
-  discount: number;
+  discount: number | { [planId: string]: number }; // Can be a fixed amount or plan-specific amounts
   planType: string;
   isActive: boolean;
   usageLimit?: number;
@@ -74,13 +74,13 @@ export const CouponPage: React.FC = () => {
         // Initialize default coupons
         await setDoc(doc(couponsRef, 'abubakardev'), {
           code: 'abubakardev',
-          discount: 2000,
-          planType: 'business',
+          discount: { business: 2000, pro: 4000 }, // Different discounts for different plans
+          planType: 'all', // Works for all plans
           isActive: true,
           usageLimit: null,
           usedCount: 0,
           createdAt: new Date(),
-          description: 'Business plan discount coupon'
+          description: 'Universal discount coupon - ₦2,000 off Business, ₦4,000 off Pro'
         });
 
         await setDoc(doc(couponsRef, 'prodiscount'), {
@@ -95,6 +95,37 @@ export const CouponPage: React.FC = () => {
         });
 
         console.log('Default coupons initialized');
+      } else {
+        // Always ensure ABUBAKARDEV has the correct structure
+        const couponDoc = querySnapshot.docs[0];
+        const couponData = couponDoc.data();
+
+        console.log('🎫 Existing coupon data:', couponData);
+
+        // Check if it needs updating (should have planType 'all' and object discount)
+        const needsUpdate = !(
+          couponData.planType === 'all' &&
+          typeof couponData.discount === 'object' &&
+          couponData.discount.business === 2000 &&
+          couponData.discount.pro === 4000
+        );
+
+        if (needsUpdate) {
+          console.log('🎫 Updating ABUBAKARDEV coupon to correct structure...');
+          await setDoc(doc(couponsRef, 'abubakardev'), {
+            code: 'abubakardev',
+            discount: { business: 2000, pro: 4000 }, // Different discounts for different plans
+            planType: 'all', // Works for all plans
+            isActive: true,
+            usageLimit: couponData.usageLimit || null,
+            usedCount: couponData.usedCount || 0,
+            createdAt: couponData.createdAt || new Date(),
+            description: 'Universal discount coupon - ₦2,000 off Business, ₦4,000 off Pro'
+          });
+          console.log('🎫 ABUBAKARDEV coupon updated to correct structure');
+        } else {
+          console.log('🎫 ABUBAKARDEV coupon already has correct structure');
+        }
       }
     } catch (error) {
       console.error('Error initializing coupons:', error);
@@ -107,10 +138,18 @@ export const CouponPage: React.FC = () => {
       return;
     }
 
+    console.log('🎫 Starting coupon validation...');
+    console.log('🎫 Coupon code entered:', couponCode);
+    console.log('🎫 Current planId:', planId);
+    console.log('🎫 Selected plan:', selectedPlan);
+
     setIsValidating(true);
     setIsValidCoupon(null);
 
     try {
+      // Ensure coupons are initialized/updated before validation
+      await initializeCouponsIfNeeded();
+
       // Query Firebase for the coupon code (case-insensitive)
       const couponsRef = collection(db, 'coupons');
       const q = query(
@@ -121,9 +160,14 @@ export const CouponPage: React.FC = () => {
 
       const querySnapshot = await getDocs(q);
 
+      console.log('🎫 Query result - found coupons:', querySnapshot.size);
+      console.log('🎫 Searching for coupon code:', couponCode.toLowerCase());
+
       if (!querySnapshot.empty) {
         const couponDoc = querySnapshot.docs[0];
         const couponData = couponDoc.data() as CouponData;
+
+        console.log('🎫 Found coupon:', couponData);
 
         // Check if coupon is valid for this plan
         if (couponData.planType === 'all' || couponData.planType === planId) {
@@ -134,10 +178,34 @@ export const CouponPage: React.FC = () => {
             return;
           }
 
+          // Calculate discount amount based on plan
+          let discountAmount = 0;
+          console.log('🎫 Validating coupon for plan:', planId);
+          console.log('🎫 Coupon data:', couponData);
+          console.log('🎫 Coupon discount type:', typeof couponData.discount);
+          console.log('🎫 Coupon discount value:', couponData.discount);
+
+          if (typeof couponData.discount === 'number') {
+            discountAmount = couponData.discount;
+            console.log('🎫 Fixed discount amount:', discountAmount);
+          } else if (typeof couponData.discount === 'object' && couponData.discount[planId!]) {
+            discountAmount = couponData.discount[planId!];
+            console.log('🎫 Plan-specific discount amount:', discountAmount, 'for plan:', planId);
+            console.log('🎫 Available discounts:', Object.keys(couponData.discount));
+          } else {
+            console.log('🎫 No valid discount found for plan:', planId, '- checking if plan exists in discount object');
+            if (typeof couponData.discount === 'object') {
+              console.log('🎫 Available plan discounts:', couponData.discount);
+            }
+            setIsValidCoupon(false);
+            toast.error('This coupon is not valid for the selected plan');
+            return;
+          }
+
           setIsValidCoupon(true);
-          setDiscountAmount(couponData.discount);
+          setDiscountAmount(discountAmount);
           setAppliedCoupon(couponData);
-          toast.success(`Coupon applied! You save ₦${couponData.discount.toLocaleString()}`);
+          toast.success(`Coupon applied! You save ₦${discountAmount.toLocaleString()}`);
         } else {
           setIsValidCoupon(false);
           toast.error('This coupon is not valid for the selected plan');

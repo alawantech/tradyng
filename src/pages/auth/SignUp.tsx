@@ -73,6 +73,7 @@ export const SignUp: React.FC = () => {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0); // seconds remaining until resend allowed
   const otpCooldownRef = React.useRef<number | null>(null);
+  const emailCheckTimeoutRef = React.useRef<number | null>(null);
   const OTP_LENGTH = 4;
 
   // Email validation state
@@ -191,11 +192,17 @@ export const SignUp: React.FC = () => {
     if (field === 'email') {
       // Reset email exists state when email changes
       setEmailExists(null);
+      setCheckingEmail(false);
+      
+      // Clear any existing timeout
+      if (emailCheckTimeoutRef.current) {
+        clearTimeout(emailCheckTimeoutRef.current);
+      }
+      
       // Debounce the email check
-      const timeoutId = setTimeout(() => {
+      emailCheckTimeoutRef.current = setTimeout(() => {
         checkEmailExists(value);
       }, 500);
-      return () => clearTimeout(timeoutId);
     }
   };
 
@@ -260,48 +267,59 @@ export const SignUp: React.FC = () => {
       // Always create account first with free plan
       await createAccount('free');
       
-      // If user selected a paid plan, redirect to coupon page first
-      if (selectedPlan.id !== 'free') {
-        console.log('🎫 Redirecting to coupon page for plan:', selectedPlan.id);
-        toast.success('Account created! Redirecting to coupon page...');
-        const couponUrl = `/coupon?plan=${selectedPlan.id}`;
-        setTimeout(() => {
-          navigate(couponUrl);
-        }, 1500); // Small delay to let account creation complete
-        return;
-      } else {
-        // For free plan, go directly to dashboard
-        console.log('✅ Free account created, redirecting to dashboard');
-        toast.success('Account created successfully!');
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 1000);
-      }
+      // Always redirect to coupon page after account creation
+      console.log('🎫 Redirecting to coupon page after account creation');
+      toast.success('Account created! Redirecting to coupon page...');
+      
+      // Use selected plan or default to business for coupon page
+      const couponPlan = selectedPlan.id !== 'free' ? selectedPlan.id : 'business';
+      const couponUrl = `/coupon?plan=${couponPlan}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}`;
+      
+      setTimeout(() => {
+        navigate(couponUrl);
+      }, 1500); // Small delay to let account creation complete
+      return;
       
     } catch (error: any) {
       console.error('Signup error:', error);
       
-      // Check if email already exists - might be incomplete signup
-      if (error.message?.includes('email-already-in-use') || error.message?.includes('already exists')) {
+      // Check if email already exists
+      if (error.code === 'auth/email-already-in-use' || error.message?.includes('email-already-in-use') || error.message?.includes('already exists')) {
         console.log('📧 Email already exists, checking for incomplete signup...');
         
         try {
           const existingUser = await checkExistingIncompleteSignup(formData.email);
           if (existingUser) {
             console.log('✅ Found existing account with free plan, redirecting to payment');
+            toast.error('Account already exists but appears incomplete. Redirecting to complete setup...');
             
             // Redirect to payment for the selected plan without creating account again
             setTimeout(() => {
               handleExistingUserPayment(existingUser.uid);
             }, 500);
             return;
+          } else {
+            // Email exists and account is complete - redirect to sign in
+            console.log('❌ Email already exists with complete account');
+            toast.error('An account with this email already exists. Please sign in instead.');
+            
+            // Redirect to sign in after a short delay
+            setTimeout(() => {
+              navigate(`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}` : ''}`);
+            }, 2000);
+            return;
           }
         } catch (checkError) {
           console.error('Error checking existing signup:', checkError);
+          toast.error('An account with this email already exists. Please sign in instead.');
+          setTimeout(() => {
+            navigate(`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}` : ''}`);
+          }, 2000);
+          return;
         }
       }
       
-      // Show original error if not an incomplete signup
+      // Show original error for other cases
       toast.error(error.message || 'Failed to create account');
       setLoading(false);
     }
@@ -348,11 +366,34 @@ export const SignUp: React.FC = () => {
     try {
       // Check Firebase Auth first (source of truth for email registration)
       const existsInAuth = await AuthService.checkEmailExists(email);
-      setEmailExists(existsInAuth);
-      console.log('Email check result:', { email, existsInAuth });
+      
+      // For the sign-up flow, we also want to check Firestore to catch cases
+      // where there might be orphaned data or inconsistencies
+      let existsInFirestore = false;
+      try {
+        const users = await UserService.getUsersByEmail(email);
+        existsInFirestore = users && users.length > 0;
+      } catch (firestoreError) {
+        console.warn('Firestore check failed, relying on Auth check:', firestoreError);
+      }
+      
+      // Show "Account Already Exists" if email exists in either Auth or Firestore
+      // This ensures users with existing accounts are prompted to sign in
+      const emailExists = existsInAuth || existsInFirestore;
+      setEmailExists(emailExists);
+      console.log('Email check result:', { email, existsInAuth, existsInFirestore, finalResult: emailExists });
     } catch (error) {
       console.error('Error checking email existence:', error);
-      setEmailExists(null);
+      // If check fails, check Firestore as fallback to prevent duplicate accounts
+      try {
+        const users = await UserService.getUsersByEmail(email);
+        const existsInFirestore = users && users.length > 0;
+        setEmailExists(existsInFirestore);
+        console.log('Fallback Firestore check result:', existsInFirestore);
+      } catch (fallbackError) {
+        console.error('Fallback check also failed:', fallbackError);
+        setEmailExists(false); // Allow registration if all checks fail
+      }
     } finally {
       setCheckingEmail(false);
     }
@@ -370,10 +411,7 @@ export const SignUp: React.FC = () => {
       // Default to business plan if no valid paid plan is selected
       let paymentPlan = selectedPlan;
       if (!paymentPlan || !paymentPlan.yearlyPrice || paymentPlan.yearlyPrice === 0) {
-        paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business');
-        if (!paymentPlan) {
-          throw new Error('Business plan not found');
-        }
+        paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business')!;
       }
 
       // Calculate final amount with coupon discount
@@ -458,10 +496,7 @@ export const SignUp: React.FC = () => {
       // Default to business plan if no valid paid plan is selected
       let paymentPlan = selectedPlan;
       if (!paymentPlan || !paymentPlan.yearlyPrice || paymentPlan.yearlyPrice === 0) {
-        paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business');
-        if (!paymentPlan) {
-          throw new Error('Business plan not found');
-        }
+        paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business')!;
       }
 
       // Calculate final amount with coupon discount
@@ -577,7 +612,7 @@ export const SignUp: React.FC = () => {
         whatsapp: `${formData.countryCode}${formData.phone}`,
         country: formData.country,
         state: formData.state,
-        plan: planId,
+        plan: planId as 'free' | 'business' | 'pro',
         status: 'active',
         settings: {
           currency: defaultCurrency,
@@ -669,6 +704,10 @@ export const SignUp: React.FC = () => {
       if (otpCooldownRef.current) {
         window.clearInterval(otpCooldownRef.current);
         otpCooldownRef.current = null;
+      }
+      if (emailCheckTimeoutRef.current) {
+        clearTimeout(emailCheckTimeoutRef.current);
+        emailCheckTimeoutRef.current = null;
       }
     };
   }, []);

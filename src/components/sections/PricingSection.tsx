@@ -53,16 +53,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   };
 
   const handlePlanSelection = async (plan: typeof PRICING_PLANS[0]) => {
-    if (plan.id === 'free') {
-      // Redirect to signup for free trial
-      window.location.href = '/auth/signup';
-      return;
-    }
-
-    // For paid plans, redirect to coupon page first
-    const url = new URL('/coupon', window.location.origin);
+    // For all plans, redirect to signup first
+    const url = new URL('/auth/signup', window.location.origin);
     url.searchParams.set('plan', plan.id);
-    url.searchParams.set('amount', plan.yearlyPrice.toString());
     window.location.href = url.toString();
   };
 
