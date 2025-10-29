@@ -360,15 +360,15 @@ export const AffiliatePage: React.FC = () => {
             <div className="grid grid-cols-1 gap-3">
               <div className="flex items-center gap-3 text-sm text-gray-300">
                 <TrendingUp className="h-4 w-4 text-green-400 flex-shrink-0" />
-                <span>Competitive commission rates on every referral</span>
+                <span>Earn ₦2,000 commission per Business Plan referral</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-gray-300">
                 <Users className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                <span>Real-time tracking of your referrals and earnings</span>
+                <span>Earn ₦4,000 commission per Pro Plan referral</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-gray-300">
                 <Check className="h-4 w-4 text-purple-400 flex-shrink-0" />
-                <span>Easy-to-use dashboard and marketing materials</span>
+                <span>Commissions paid only after successful payment completion</span>
               </div>
             </div>
           </div>

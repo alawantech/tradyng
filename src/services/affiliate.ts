@@ -141,17 +141,33 @@ export class AffiliateService {
     }
   }
 
-  // Record a referral and update earnings
+  // Record a referral and update earnings (only after successful payment)
   static async recordReferral(affiliateUsername: string, planType: 'business' | 'pro', discountAmount: number): Promise<void> {
     try {
+      console.log('🎯 Processing affiliate referral after successful payment');
+      console.log('📊 Referral details:', { affiliateUsername, planType, discountAmount });
+
       const affiliate = await this.getAffiliateByUsername(affiliateUsername);
       if (!affiliate) {
-        console.warn('Affiliate not found for username:', affiliateUsername);
+        console.warn('⚠️ Affiliate not found for username:', affiliateUsername);
         return;
       }
 
-      // Calculate commission (you can adjust this logic)
-      const commission = discountAmount * 0.1; // 10% commission for example
+      // Calculate commission based on plan type
+      // Business Plan: ₦2,000 discount = ₦2,000 commission
+      // Pro Plan: ₦4,000 discount = ₦4,000 commission
+      let commission = 0;
+      if (planType === 'business' && discountAmount === 2000) {
+        commission = 2000; // ₦2,000 commission for business plan
+      } else if (planType === 'pro' && discountAmount === 4000) {
+        commission = 4000; // ₦4,000 commission for pro plan
+      } else {
+        // Fallback: use the discount amount as commission
+        commission = discountAmount;
+        console.warn('⚠️ Unexpected discount amount, using as commission:', discountAmount);
+      }
+
+      console.log('💰 Calculated commission:', commission, 'for plan:', planType);
 
       const docRef = doc(db, 'affiliates', affiliate.id!);
       await updateDoc(docRef, {
@@ -160,9 +176,10 @@ export class AffiliateService {
         updatedAt: Timestamp.now()
       });
 
-      console.log('✅ Referral recorded for affiliate:', affiliateUsername, 'Commission:', commission);
+      console.log('✅ Referral recorded successfully for affiliate:', affiliateUsername);
+      console.log('📈 New totals - Referrals:', affiliate.totalReferrals + 1, 'Earnings:', affiliate.totalEarnings + commission);
     } catch (error) {
-      console.error('Error recording referral:', error);
+      console.error('❌ Error recording referral:', error);
       throw error;
     }
   }

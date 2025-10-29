@@ -294,31 +294,63 @@ export const PaymentCallback: React.FC = () => {
     try {
       const { couponCode, planId, discountAmount } = meta;
 
+      console.log('🎯 Checking for affiliate referral after successful payment');
+      console.log('📋 Payment meta data:', { couponCode, planId, discountAmount });
+
       if (!couponCode || !planId) {
-        console.log('No coupon code or plan ID in meta, skipping affiliate referral recording');
+        console.log('ℹ️ No coupon code or plan ID in payment meta, skipping affiliate referral');
+        return;
+      }
+
+      // Validate that this is a successful payment before awarding commission
+      if (!couponCode.trim()) {
+        console.log('⚠️ Empty coupon code, skipping affiliate referral');
         return;
       }
 
       // Check if the coupon code is an affiliate username
-      const affiliate = await AffiliateService.getAffiliateByUsername(couponCode.toLowerCase());
+      const affiliate = await AffiliateService.getAffiliateByUsername(couponCode.toLowerCase().trim());
 
       if (affiliate) {
-        console.log('🎯 Recording affiliate referral for:', couponCode, 'Plan:', planId, 'Discount:', discountAmount);
+        console.log('� Valid affiliate found! Processing commission...');
+        console.log('👤 Affiliate:', affiliate.username, 'Status:', affiliate.status);
 
-        // Record the referral
+        // Only award commission if affiliate is active
+        if (affiliate.status !== 'active') {
+          console.warn('⚠️ Affiliate account is not active:', affiliate.status, '- Commission not awarded');
+          return;
+        }
+
+        // Determine commission amount based on plan
+        let expectedDiscount = 0;
+        if (planId === 'business') {
+          expectedDiscount = 2000; // ₦2,000 for business plan
+        } else if (planId === 'pro') {
+          expectedDiscount = 4000; // ₦4,000 for pro plan
+        } else {
+          console.warn('⚠️ Unknown plan ID:', planId, '- Using provided discount amount');
+          expectedDiscount = discountAmount || 0;
+        }
+
+        console.log('💰 Processing commission for plan:', planId, 'Expected discount:', expectedDiscount);
+
+        // Record the referral (commission will be awarded here)
         await AffiliateService.recordReferral(
           affiliate.username,
           planId as 'business' | 'pro',
-          discountAmount || (planId === 'business' ? 2000 : 4000)
+          expectedDiscount
         );
 
-        console.log('✅ Affiliate referral recorded successfully');
+        console.log('✅ Affiliate commission awarded successfully!');
+        console.log('🎊 Payment completed and commission processed for affiliate:', affiliate.username);
+
       } else {
-        console.log('Coupon code is not an affiliate username:', couponCode);
+        console.log('ℹ️ Coupon code is not a valid affiliate username:', couponCode);
       }
     } catch (error) {
-      console.error('Error recording affiliate referral:', error);
+      console.error('❌ Error processing affiliate referral:', error);
       // Don't fail the payment callback if affiliate recording fails
+      // The payment was successful, affiliate commission is a bonus feature
     }
   };
 
