@@ -176,6 +176,21 @@ export class BusinessService {
     return this.getBusinessBySubdomain(storeName);
   }
 
+  // Get businesses by name (checks the name field directly)
+  static async getBusinessesByName(name: string): Promise<Business[]> {
+    try {
+      const q = query(collection(db, 'businesses'), where('name', '==', name));
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Business[];
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Get businesses by owner ID
   static async getBusinessesByOwnerId(ownerId: string): Promise<Business[]> {
     try {

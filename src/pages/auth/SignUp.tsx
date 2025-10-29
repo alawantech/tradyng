@@ -80,6 +80,10 @@ export const SignUp: React.FC = () => {
   const [emailExists, setEmailExists] = useState<boolean | null>(null);
   const [checkingEmail, setCheckingEmail] = useState(false);
 
+  // Store name validation state
+  const [storeNameExists, setStoreNameExists] = useState<boolean | null>(null);
+  const [checkingStoreName, setCheckingStoreName] = useState(false);
+
   // Plan selection from URL params
   const selectedPlanId = searchParams.get('plan') || 'free';
   const selectedPlan = PRICING_PLANS.find(p => p.id === selectedPlanId) || PRICING_PLANS[0];
@@ -204,12 +208,29 @@ export const SignUp: React.FC = () => {
         checkEmailExists(value);
       }, 500);
     }
+
+    // Check store name existence when store name field changes
+    if (field === 'storeName') {
+      // Reset store name exists state when store name changes
+      setStoreNameExists(null);
+      setCheckingStoreName(false);
+      
+      // Clear any existing timeout
+      if (emailCheckTimeoutRef.current) {
+        clearTimeout(emailCheckTimeoutRef.current);
+      }
+      
+      // Debounce the store name check
+      emailCheckTimeoutRef.current = setTimeout(() => {
+        checkStoreNameExists(value);
+      }, 500);
+    }
   };
 
   const isStepValid = (step: number): boolean => {
     switch (step) {
       case 1:
-        return formData.storeName.length >= 4 && domainStatus.available === true;
+        return formData.storeName.length >= 4 && domainStatus.available === true && storeNameExists === false;
       case 2:
         return formData.email.includes('@') && formData.email.includes('.') && emailExists === false;
       case 3:
@@ -228,6 +249,18 @@ export const SignUp: React.FC = () => {
   };
 
   const nextStep = () => {
+    // If we're on store name step (1), check if store name exists first
+    if (currentStep === 1) {
+      if (storeNameExists === true) {
+        // Don't proceed if store name exists
+        return;
+      }
+      if (checkingStoreName) {
+        // Don't proceed while checking store name
+        return;
+      }
+    }
+
     // If we're on email step (2), check if email exists first
     if (currentStep === 2) {
       if (emailExists === true) {
@@ -396,6 +429,28 @@ export const SignUp: React.FC = () => {
       }
     } finally {
       setCheckingEmail(false);
+    }
+  };
+
+  const checkStoreNameExists = async (storeName: string) => {
+    if (!storeName || storeName.length < 4) {
+      setStoreNameExists(null);
+      return;
+    }
+
+    setCheckingStoreName(true);
+    try {
+      // Check if a business with this name already exists in Firestore
+      const businesses = await BusinessService.getBusinessesByName(storeName);
+      const storeNameExists = businesses && businesses.length > 0;
+      setStoreNameExists(storeNameExists);
+      console.log('Store name check result:', { storeName, exists: storeNameExists });
+    } catch (error) {
+      console.error('Error checking store name existence:', error);
+      // If check fails, allow registration to avoid blocking users
+      setStoreNameExists(false);
+    } finally {
+      setCheckingStoreName(false);
     }
   };
 
@@ -754,11 +809,44 @@ export const SignUp: React.FC = () => {
               placeholder="Kemi's Fashion Store"
               value={formData.storeName}
               onChange={(e) => handleInputChange('storeName', e.target.value)}
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+              className={`w-full h-12 px-4 bg-gray-800 border rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none ${
+                storeNameExists === true ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
+              }`}
             />
             
+            {/* Store name checking indicator */}
+            {checkingStoreName && (
+              <div className="mt-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+                  <span className="text-yellow-400 text-sm">Checking store name availability...</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Existing store message */}
+            {storeNameExists === true && !checkingStoreName && (
+              <div className="mt-3 p-4 bg-red-900/30 border border-red-600 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                  <span className="text-red-400 text-sm font-medium">Store Already Exists</span>
+                </div>
+                <p className="text-red-300 text-sm mb-3">
+                  A store with this name already exists. Please sign in with your existing account to continue, or choose a different store name.
+                </p>
+                <Link 
+                  to={`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}` : ''}`}
+                  className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors"
+                >
+                  Sign In to Continue
+                </Link>
+              </div>
+            )}
+            
             {/* URL Preview */}
-            {formData.storeName && formData.storeName.length >= 4 && (
+            {formData.storeName && formData.storeName.length >= 4 && storeNameExists === false && (
               <div className="mt-3 p-3 bg-gray-800 rounded-lg border border-gray-600">
                 <p className="text-sm text-gray-300">
                   Your store URL: <span className="text-blue-400">https://{generateSubdomain(formData.storeName)}.rady.ng</span>
@@ -767,7 +855,7 @@ export const SignUp: React.FC = () => {
             )}
 
             {/* Domain Status */}
-            {formData.storeName.length >= 4 && (
+            {formData.storeName.length >= 4 && storeNameExists === false && (
               <div className="mt-3">
                 <div className={`p-3 rounded-lg border ${
                   domainStatus.checking 
@@ -1053,10 +1141,13 @@ export const SignUp: React.FC = () => {
                 onClick={nextStep}
                 disabled={
                   !isStepValid(currentStep) || 
+                  (currentStep === 1 && (checkingStoreName || storeNameExists === true)) ||
                   (currentStep === 2 && (otpLoading || otpCooldown > 0 || checkingEmail || emailExists === true))
                 }
                 className={`flex-1 h-12 rounded-lg font-medium transition-colors ${
-                  isStepValid(currentStep) && !(currentStep === 2 && (otpLoading || otpCooldown > 0 || checkingEmail || emailExists === true))
+                  isStepValid(currentStep) && 
+                  !(currentStep === 1 && (checkingStoreName || storeNameExists === true)) &&
+                  !(currentStep === 2 && (otpLoading || otpCooldown > 0 || checkingEmail || emailExists === true))
                   ? 'bg-blue-500 text-white hover:bg-blue-600' 
                   : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}
