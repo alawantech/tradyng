@@ -184,7 +184,7 @@ export const AffiliateDashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm text-gray-400">Commission Rate</p>
-                <p className="text-2xl font-bold text-white">10%</p>
+                <p className="text-2xl font-bold text-white">100%</p>
               </div>
             </div>
           </motion.div>
@@ -222,8 +222,8 @@ export const AffiliateDashboard: React.FC = () => {
             <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-4">
               <h3 className="text-blue-400 font-semibold mb-2">💰 Commission Structure</h3>
               <ul className="text-sm text-blue-300 space-y-1">
-                <li>• Business Plan: ₦2,000 discount → ₦200 commission</li>
-                <li>• Pro Plan: ₦4,000 discount → ₦400 commission</li>
+                <li>• Business Plan: ₦2,000 discount → ₦2,000 commission</li>
+                <li>• Pro Plan: ₦4,000 discount → ₦4,000 commission</li>
                 <li>• Customers use your username as coupon code</li>
               </ul>
             </div>
