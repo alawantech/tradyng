@@ -46,6 +46,7 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2 text-gray-400">
               <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
+              <li><a href="/affiliate" className="hover:text-white transition-colors">Affiliate Program</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
             </ul>

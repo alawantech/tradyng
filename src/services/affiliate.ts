@@ -1,0 +1,185 @@
+import { db } from '../config/firebase';
+import {
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  Timestamp
+} from 'firebase/firestore';
+import { auth } from '../config/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+
+export interface Affiliate {
+  id?: string;
+  fullName: string;
+  username: string; // Unique, lowercase, alphanumeric
+  email: string;
+  password: string; // Will be hashed by Firebase Auth
+  firebaseUid?: string;
+  bankDetails?: {
+    accountName: string;
+    bankName: string;
+    accountNumber: string;
+  };
+  totalReferrals: number;
+  totalEarnings: number;
+  status: 'active' | 'suspended' | 'pending';
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export class AffiliateService {
+  // Create a new affiliate account
+  static async createAffiliate(affiliateData: Omit<Affiliate, 'id' | 'firebaseUid' | 'totalReferrals' | 'totalEarnings' | 'status' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      console.log('🔗 Creating affiliate account for:', affiliateData.username);
+
+      // First, create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        affiliateData.email,
+        affiliateData.password
+      );
+
+      console.log('✅ Firebase Auth user created:', userCredential.user.uid);
+
+      // Create affiliate document in Firestore
+      const now = Timestamp.now();
+      const docRef = await addDoc(collection(db, 'affiliates'), {
+        ...affiliateData,
+        firebaseUid: userCredential.user.uid,
+        totalReferrals: 0,
+        totalEarnings: 0,
+        status: 'active',
+        createdAt: now,
+        updatedAt: now
+      });
+
+      console.log('✅ Affiliate document created:', docRef.id);
+      return docRef.id;
+
+    } catch (error: any) {
+      console.error('❌ Error creating affiliate:', error);
+
+      // If Firestore creation fails, we should clean up the Auth user
+      // But for now, let the error propagate
+      throw error;
+    }
+  }
+
+  // Check if username is available
+  static async checkUsernameAvailability(username: string): Promise<boolean> {
+    try {
+      if (!username || username.length < 3) return false;
+
+      // Username must be alphanumeric only
+      const usernameRegex = /^[a-zA-Z0-9]+$/;
+      if (!usernameRegex.test(username)) return false;
+
+      const q = query(collection(db, 'affiliates'), where('username', '==', username.toLowerCase()));
+      const querySnapshot = await getDocs(q);
+
+      return querySnapshot.empty; // Available if no documents found
+    } catch (error) {
+      console.error('Error checking username availability:', error);
+      throw error;
+    }
+  }
+
+  // Get affiliate by username
+  static async getAffiliateByUsername(username: string): Promise<Affiliate | null> {
+    try {
+      const q = query(collection(db, 'affiliates'), where('username', '==', username.toLowerCase()));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        return { id: doc.id, ...doc.data() } as Affiliate;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting affiliate by username:', error);
+      throw error;
+    }
+  }
+
+  // Get affiliate by Firebase UID
+  static async getAffiliateByFirebaseUid(firebaseUid: string): Promise<Affiliate | null> {
+    try {
+      const q = query(collection(db, 'affiliates'), where('firebaseUid', '==', firebaseUid));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        return { id: doc.id, ...doc.data() } as Affiliate;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting affiliate by Firebase UID:', error);
+      throw error;
+    }
+  }
+
+  // Update affiliate bank details
+  static async updateBankDetails(affiliateId: string, bankDetails: Affiliate['bankDetails']): Promise<void> {
+    try {
+      const docRef = doc(db, 'affiliates', affiliateId);
+      await updateDoc(docRef, {
+        bankDetails,
+        updatedAt: Timestamp.now()
+      });
+      console.log('✅ Affiliate bank details updated');
+    } catch (error) {
+      console.error('Error updating bank details:', error);
+      throw error;
+    }
+  }
+
+  // Record a referral and update earnings
+  static async recordReferral(affiliateUsername: string, planType: 'business' | 'pro', discountAmount: number): Promise<void> {
+    try {
+      const affiliate = await this.getAffiliateByUsername(affiliateUsername);
+      if (!affiliate) {
+        console.warn('Affiliate not found for username:', affiliateUsername);
+        return;
+      }
+
+      // Calculate commission (you can adjust this logic)
+      const commission = discountAmount * 0.1; // 10% commission for example
+
+      const docRef = doc(db, 'affiliates', affiliate.id!);
+      await updateDoc(docRef, {
+        totalReferrals: affiliate.totalReferrals + 1,
+        totalEarnings: affiliate.totalEarnings + commission,
+        updatedAt: Timestamp.now()
+      });
+
+      console.log('✅ Referral recorded for affiliate:', affiliateUsername, 'Commission:', commission);
+    } catch (error) {
+      console.error('Error recording referral:', error);
+      throw error;
+    }
+  }
+
+  // Get all affiliates (admin only)
+  static async getAllAffiliates(): Promise<Affiliate[]> {
+    try {
+      const q = query(collection(db, 'affiliates'), orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Affiliate[];
+    } catch (error) {
+      console.error('Error getting all affiliates:', error);
+      throw error;
+    }
+  }
+}

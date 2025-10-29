@@ -8,9 +8,7 @@ import { PRICING_PLANS } from '../constants/plans';
 import { flutterwaveService } from '../services/flutterwaveService';
 import { db } from '../config/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
-import { AuthService } from '../services/auth';
-import { BusinessService } from '../services/business';
-import toast from 'react-hot-toast';
+import { AffiliateService } from '../services/affiliate';
 
 interface CouponData {
   code: string;
@@ -147,79 +145,145 @@ export const CouponPage: React.FC = () => {
     setIsValidCoupon(null);
 
     try {
-      // Ensure coupons are initialized/updated before validation
-      await initializeCouponsIfNeeded();
-
-      // Query Firebase for the coupon code (case-insensitive)
-      const couponsRef = collection(db, 'coupons');
-      const q = query(
-        couponsRef,
-        where('code', '==', couponCode.toLowerCase()),
-        where('isActive', '==', true)
-      );
-
-      const querySnapshot = await getDocs(q);
-
-      console.log('🎫 Query result - found coupons:', querySnapshot.size);
-      console.log('🎫 Searching for coupon code:', couponCode.toLowerCase());
-
-      if (!querySnapshot.empty) {
-        const couponDoc = querySnapshot.docs[0];
-        const couponData = couponDoc.data() as CouponData;
-
-        console.log('🎫 Found coupon:', couponData);
-
-        // Check if coupon is valid for this plan
-        if (couponData.planType === 'all' || couponData.planType === planId) {
-          // Check usage limit if exists
-          if (couponData.usageLimit && (couponData.usedCount || 0) >= couponData.usageLimit) {
-            setIsValidCoupon(false);
-            toast.error('This coupon code has reached its usage limit');
-            return;
-          }
-
-          // Calculate discount amount based on plan
-          let discountAmount = 0;
-          console.log('🎫 Validating coupon for plan:', planId);
-          console.log('🎫 Coupon data:', couponData);
-          console.log('🎫 Coupon discount type:', typeof couponData.discount);
-          console.log('🎫 Coupon discount value:', couponData.discount);
-
-          if (typeof couponData.discount === 'number') {
-            discountAmount = couponData.discount;
-            console.log('🎫 Fixed discount amount:', discountAmount);
-          } else if (typeof couponData.discount === 'object' && couponData.discount[planId!]) {
-            discountAmount = couponData.discount[planId!];
-            console.log('🎫 Plan-specific discount amount:', discountAmount, 'for plan:', planId);
-            console.log('🎫 Available discounts:', Object.keys(couponData.discount));
-          } else {
-            console.log('🎫 No valid discount found for plan:', planId, '- checking if plan exists in discount object');
-            if (typeof couponData.discount === 'object') {
-              console.log('🎫 Available plan discounts:', couponData.discount);
-            }
-            setIsValidCoupon(false);
-            toast.error('This coupon is not valid for the selected plan');
-            return;
-          }
-
-          setIsValidCoupon(true);
-          setDiscountAmount(discountAmount);
-          setAppliedCoupon(couponData);
-          toast.success(`Coupon applied! You save ₦${discountAmount.toLocaleString()}`);
-        } else {
-          setIsValidCoupon(false);
-          toast.error('This coupon is not valid for the selected plan');
-        }
-      } else {
-        setIsValidCoupon(false);
-        toast.error('Invalid coupon code');
+      // First, try to validate as a regular coupon
+      const isRegularCoupon = await validateRegularCoupon(couponCode.toLowerCase());
+      if (isRegularCoupon) {
+        return; // Regular coupon was applied successfully
       }
+
+      // If not a regular coupon, try to validate as an affiliate username
+      const isAffiliateCode = await validateAffiliateCode(couponCode.toLowerCase());
+      if (isAffiliateCode) {
+        return; // Affiliate code was applied successfully
+      }
+
+      // If neither coupon nor affiliate code, show error
+      setIsValidCoupon(false);
+      toast.error('Invalid coupon code or affiliate username');
+
     } catch (error) {
       console.error('Coupon validation error:', error);
       setIsValidCoupon(false);
       toast.error('Failed to validate coupon. Please try again.');
     } finally {
       setIsValidating(false);
+    }
+  };
+
+  const validateRegularCoupon = async (code: string): Promise<boolean> => {
+    // Ensure coupons are initialized/updated before validation
+    await initializeCouponsIfNeeded();
+
+    // Query Firebase for the coupon code (case-insensitive)
+    const couponsRef = collection(db, 'coupons');
+    const q = query(
+      couponsRef,
+      where('code', '==', code),
+      where('isActive', '==', true)
+    );
+
+    const querySnapshot = await getDocs(q);
+
+    console.log('🎫 Regular coupon query result - found coupons:', querySnapshot.size);
+    console.log('🎫 Searching for coupon code:', code);
+
+    if (!querySnapshot.empty) {
+      const couponDoc = querySnapshot.docs[0];
+      const couponData = couponDoc.data() as CouponData;
+
+      console.log('🎫 Found regular coupon:', couponData);
+
+      // Check if coupon is valid for this plan
+      if (couponData.planType === 'all' || couponData.planType === planId) {
+        // Check usage limit if exists
+        if (couponData.usageLimit && (couponData.usedCount || 0) >= couponData.usageLimit) {
+          return false;
+        }
+
+        // Calculate discount amount based on plan
+        let discountAmount = 0;
+        console.log('🎫 Validating coupon for plan:', planId);
+        console.log('🎫 Coupon data:', couponData);
+        console.log('🎫 Coupon discount type:', typeof couponData.discount);
+        console.log('🎫 Coupon discount value:', couponData.discount);
+
+        if (typeof couponData.discount === 'number') {
+          discountAmount = couponData.discount;
+          console.log('🎫 Fixed discount amount:', discountAmount);
+        } else if (typeof couponData.discount === 'object' && couponData.discount[planId!]) {
+          discountAmount = couponData.discount[planId!];
+          console.log('🎫 Plan-specific discount amount:', discountAmount, 'for plan:', planId);
+          console.log('🎫 Available discounts:', Object.keys(couponData.discount));
+        } else {
+          console.log('🎫 No valid discount found for plan:', planId, '- checking if plan exists in discount object');
+          if (typeof couponData.discount === 'object') {
+            console.log('🎫 Available plan discounts:', couponData.discount);
+          }
+          return false;
+        }
+
+        setIsValidCoupon(true);
+        setDiscountAmount(discountAmount);
+        setAppliedCoupon(couponData);
+        toast.success(`Coupon applied! You save ₦${discountAmount.toLocaleString()}`);
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const validateAffiliateCode = async (username: string): Promise<boolean> => {
+    try {
+      console.log('🎯 Checking if code is an affiliate username:', username);
+
+      // Check if this username exists as an affiliate
+      const affiliate = await AffiliateService.getAffiliateByUsername(username);
+
+      if (affiliate) {
+        console.log('✅ Found affiliate:', affiliate.username);
+
+        // Calculate discount based on plan (same as ABUBAKARDEV coupon)
+        let discountAmount = 0;
+        if (planId === 'business') {
+          discountAmount = 2000;
+        } else if (planId === 'pro') {
+          discountAmount = 4000;
+        } else {
+          console.log('❌ Invalid plan for affiliate discount:', planId);
+          return false;
+        }
+
+        // Create a virtual coupon object for affiliate referral
+        const affiliateCoupon: CouponData = {
+          code: username.toUpperCase(),
+          discount: discountAmount,
+          planType: planId!,
+          isActive: true,
+          usageLimit: null,
+          usedCount: 0
+        };
+
+        setIsValidCoupon(true);
+        setDiscountAmount(discountAmount);
+        setAppliedCoupon(affiliateCoupon);
+        toast.success(`Affiliate code applied! You save ₦${discountAmount.toLocaleString()}`);
+
+        console.log('🎯 Affiliate referral applied:', {
+          affiliateUsername: username,
+          discountAmount,
+          planId
+        });
+
+        return true;
+      }
+
+      console.log('❌ Username is not a valid affiliate:', username);
+      return false;
+
+    } catch (error) {
+      console.error('Error validating affiliate code:', error);
+      return false;
     }
   };
 

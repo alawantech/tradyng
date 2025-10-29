@@ -1,6 +1,7 @@
 import { AuthService } from '../services/auth';
 import { BusinessService } from '../services/business';
 import { UserService } from '../services/user';
+import { AffiliateService } from '../services/affiliate';
 
 // Test the payment callback upgrade flow
 export const testPaymentCallbackUpgrade = async () => {
@@ -159,6 +160,148 @@ export const testEmailExistenceCheck = async () => {
 
   } catch (error: any) {
     console.error('❌ Email existence check flow test FAILED:', error);
+    return {
+      success: false,
+      message: error.message,
+      error: error
+    };
+  }
+};
+
+// Test the affiliate referral recording flow
+export const testAffiliateReferralRecording = async () => {
+  console.log('🧪 Testing Affiliate Referral Recording Flow...');
+
+  try {
+    // Test data
+    const affiliateEmail = 'affiliate@example.com';
+    const affiliatePassword = 'affiliate123';
+    const affiliateUsername = 'testaffiliate';
+    const affiliateFullName = 'Test Affiliate';
+
+    const customerEmail = 'customer@example.com';
+    const customerPassword = 'customer123';
+    const customerStoreName = 'Customer Store';
+
+    // 1. Create affiliate account
+    console.log('1️⃣ Creating affiliate account...');
+    const affiliateAuthUser = await AuthService.signUp(affiliateEmail, affiliatePassword);
+    console.log('✅ Affiliate user created:', affiliateAuthUser.uid);
+
+    // Create affiliate profile
+    const affiliateData = {
+      email: affiliateEmail,
+      fullName: affiliateFullName,
+      username: affiliateUsername,
+      password: affiliatePassword,
+      bankDetails: {
+        accountName: 'Test Bank Account',
+        accountNumber: '1234567890',
+        bankName: 'Test Bank'
+      }
+    };
+
+    const affiliateId = await AffiliateService.createAffiliate(affiliateData);
+    console.log('✅ Affiliate profile created, ID:', affiliateId);
+
+    // 2. Create customer account (referred user)
+    console.log('2️⃣ Creating customer account...');
+    const customerAuthUser = await AuthService.signUp(customerEmail, customerPassword);
+    console.log('✅ Customer user created:', customerAuthUser.uid);
+
+    // Create user document for customer
+    await UserService.createUser({
+      uid: customerAuthUser.uid,
+      email: customerEmail,
+      displayName: customerStoreName,
+      role: 'business_owner'
+    });
+    console.log('✅ Customer user document created');
+
+    // Create business for customer
+    const customerBusinessData = {
+      name: customerStoreName,
+      subdomain: 'customerstore',
+      ownerId: customerAuthUser.uid,
+      email: customerEmail,
+      phone: '08012345678',
+      whatsapp: '08012345678',
+      country: 'Nigeria',
+      state: 'Lagos',
+      plan: 'free' as const,
+      status: 'active' as const,
+      settings: {
+        currency: 'NGN',
+        primaryColor: '#3B82F6',
+        secondaryColor: '#10B981',
+        accentColor: '#F59E0B',
+        enableNotifications: true
+      },
+      revenue: 0,
+      totalOrders: 0,
+      totalProducts: 0
+    };
+
+    const customerBusinessId = await BusinessService.createBusiness(customerBusinessData);
+    console.log('✅ Customer business created, ID:', customerBusinessId);
+
+    // 3. Simulate affiliate referral recording (what PaymentCallback.recordAffiliateReferral does)
+    console.log('3️⃣ Simulating affiliate referral recording...');
+
+    // Get affiliate by username
+    const affiliate = await AffiliateService.getAffiliateByUsername(affiliateUsername);
+    if (!affiliate) {
+      throw new Error('Affiliate not found by username');
+    }
+    console.log('✅ Affiliate found by username:', affiliate.username);
+
+    // Record referral
+    const discountAmount = 10000; // ₦100.00 discount (which would give ₦10.00 commission at 10%)
+    await AffiliateService.recordReferral(affiliateUsername, 'business', discountAmount);
+    console.log('✅ Referral recorded with discount amount:', discountAmount);
+
+    // 4. Verify referral was recorded
+    console.log('4️⃣ Verifying referral recording...');
+
+    // Get updated affiliate data
+    const updatedAffiliate = await AffiliateService.getAffiliateByFirebaseUid(affiliateAuthUser.uid);
+    if (!updatedAffiliate) {
+      throw new Error('Updated affiliate data not found');
+    }
+
+    console.log('📊 Updated affiliate earnings:', updatedAffiliate.totalEarnings);
+    console.log('📊 Updated affiliate referrals:', updatedAffiliate.totalReferrals);
+
+    const expectedCommission = discountAmount * 0.1; // 10% commission
+    if (updatedAffiliate.totalEarnings !== expectedCommission) {
+      throw new Error(`Earnings mismatch. Expected: ${expectedCommission}, Got: ${updatedAffiliate.totalEarnings}`);
+    }
+
+    if (updatedAffiliate.totalReferrals !== 1) {
+      throw new Error(`Referrals count mismatch. Expected: 1, Got: ${updatedAffiliate.totalReferrals}`);
+    }
+
+    // 5. Clean up test data
+    console.log('5️⃣ Cleaning up test data...');
+
+    // Delete customer business
+    if (customerBusinessId) {
+      await BusinessService.deleteBusiness(customerBusinessId);
+    }
+
+    // Delete affiliate profile (assuming there's a delete method)
+    // Note: AffiliateService might not have delete method, so we'll skip this for now
+
+    console.log('✅ Test data cleaned up (affiliate profile retained)');
+    console.log('🎉 Affiliate referral recording flow test PASSED!');
+
+    return {
+      success: true,
+      message: 'Affiliate referral recording flow works correctly'
+    };
+
+  } catch (error: any) {
+    console.error('❌ Affiliate referral recording flow test FAILED:', error);
     return {
       success: false,
       message: error.message,

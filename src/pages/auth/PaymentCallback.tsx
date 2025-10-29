@@ -18,6 +18,7 @@ import {
   where,
   getDocs
 } from 'firebase/firestore';
+import { AffiliateService } from '../../services/affiliate';
 
 export const PaymentCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -53,12 +54,16 @@ export const PaymentCallback: React.FC = () => {
             const meta = verificationResult.data.data.meta || {};
             // Upgrade the current authenticated user's account
             await upgradeCurrentUserAccount(meta);
+            // Record affiliate referral if applicable
+            await recordAffiliateReferral(meta);
           } else if (isSignup) {
             setMessage('Payment successful! Creating your account...');
             // Extract metadata from the transaction
             const meta = verificationResult.data.data.meta || {};
             // Create the account
             await createAccountFromPayment(meta);
+            // Record affiliate referral if applicable
+            await recordAffiliateReferral(meta);
           } else if (isOrder) {
             setMessage('Payment successful! Processing your order...');
             // Extract metadata from the transaction
@@ -75,15 +80,17 @@ export const PaymentCallback: React.FC = () => {
             console.warn('Flutterwave verification failed but status indicates success - proceeding with account creation');
             setStatus('success');
             
-            if (isUpgrade) {
-              setMessage('Payment successful! Upgrading your plan...');
-              await upgradeCurrentUserAccount({ planId: 'business' }); // Default to business if meta not available
-            } else if (isSignup) {
-              setMessage('Payment successful! Creating your account...');
-              // For signup, we don't have meta data, so we'll need to handle this differently
-              // This is a fallback for when verification fails but payment succeeded
-              await createAccountFromUrlParams();
-            } else if (isOrder) {
+          if (isUpgrade) {
+            setMessage('Payment successful! Upgrading your plan...');
+            await upgradeCurrentUserAccount({ planId: 'business' }); // Default to business if meta not available
+            // Note: Affiliate referral recording not available in fallback case
+          } else if (isSignup) {
+            setMessage('Payment successful! Creating your account...');
+            // For signup, we don't have meta data, so we'll need to handle this differently
+            // This is a fallback for when verification fails but payment succeeded
+            await createAccountFromUrlParams();
+            // Note: Affiliate referral recording not available in fallback case
+          } else if (isOrder) {
               setMessage('Payment successful! Processing your order...');
               // For orders, we also don't have meta data in this fallback
               setMessage('Payment successful! Please check your orders in the dashboard.');
@@ -283,6 +290,44 @@ export const PaymentCallback: React.FC = () => {
     }
   };
 
+  const recordAffiliateReferral = async (meta: any) => {
+    try {
+      const { couponCode, planId, discountAmount } = meta;
+
+      if (!couponCode || !planId) {
+        console.log('No coupon code or plan ID in meta, skipping affiliate referral recording');
+        return;
+      }
+
+      // Check if the coupon code is an affiliate username
+      const affiliate = await AffiliateService.getAffiliateByUsername(couponCode.toLowerCase());
+
+      if (affiliate) {
+        console.log('🎯 Recording affiliate referral for:', couponCode, 'Plan:', planId, 'Discount:', discountAmount);
+
+        // Record the referral
+        await AffiliateService.recordReferral(
+          affiliate.username,
+          planId as 'business' | 'pro',
+          discountAmount || (planId === 'business' ? 2000 : 4000)
+        );
+
+        console.log('✅ Affiliate referral recorded successfully');
+      } else {
+        console.log('Coupon code is not an affiliate username:', couponCode);
+      }
+    } catch (error) {
+      console.error('Error recording affiliate referral:', error);
+      // Don't fail the payment callback if affiliate recording fails
+    }
+  };
+
+  const createOrderFromPayment = async (meta: any) => {
+    // Placeholder for order creation logic
+    console.log('Order creation from payment:', meta);
+    // This would be implemented based on your order system
+  };
+
   const upgradeCurrentUserAccount = async (meta: any) => {
     try {
       const { planId } = meta;
@@ -293,7 +338,7 @@ export const PaymentCallback: React.FC = () => {
         throw new Error('No authenticated user found. Please sign in again.');
       }
 
-      console.log('� Upgrading plan for user:', currentUser.uid, 'to plan:', planId);
+      console.log('Upgrading plan for user:', currentUser.uid, 'to plan:', planId);
 
       // Find the business owned by this user
       const businesses = await BusinessService.getBusinessesByOwnerId(currentUser.uid);

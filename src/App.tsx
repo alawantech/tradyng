@@ -18,6 +18,8 @@ import { StoreExamples } from './pages/StoreExamples';
 import { SignUp } from './pages/auth/SignUp';
 import { SignIn } from './pages/auth/SignIn';
 import { PaymentCallback } from './pages/auth/PaymentCallback';
+import { AffiliatePage } from './pages/AffiliatePage';
+import { AffiliateDashboard } from './pages/AffiliateDashboard';
 
 // Dashboard
 import { DashboardLayout } from './pages/dashboard/DashboardLayout';
@@ -123,6 +125,10 @@ function App() {
               <Route path="/auth/signup" element={<SignUp />} />
               <Route path="/auth/signin" element={<SignIn />} />
               <Route path="/payment/callback" element={<PaymentCallback />} />
+              
+              {/* Affiliate */}
+              <Route path="/affiliate" element={<AffiliatePage />} />
+              <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
               
               {/* Dashboard */}
               <Route path="/dashboard" element={<DashboardLayout />}>
