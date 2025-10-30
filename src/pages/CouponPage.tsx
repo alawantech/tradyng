@@ -9,6 +9,7 @@ import { flutterwaveService } from '../services/flutterwaveService';
 import { db } from '../config/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { AffiliateService } from '../services/affiliate';
+import { BusinessService } from '../services/business';
 import toast from 'react-hot-toast';
 
 interface CouponData {
@@ -91,6 +92,17 @@ export const CouponPage: React.FC = () => {
           usedCount: 0,
           createdAt: new Date(),
           description: 'Pro plan discount coupon'
+        });
+
+        await setDoc(doc(couponsRef, 'testdiscount'), {
+          code: 'testdiscount',
+          discount: 20,
+          planType: 'test',
+          isActive: true,
+          usageLimit: null,
+          usedCount: 0,
+          createdAt: new Date(),
+          description: 'Test plan discount coupon - ₦20 off'
         });
 
         console.log('Default coupons initialized');
@@ -250,6 +262,8 @@ export const CouponPage: React.FC = () => {
           discountAmount = 2000;
         } else if (planId === 'pro') {
           discountAmount = 4000;
+        } else if (planId === 'test') {
+          discountAmount = 20; // 20 naira discount for test plan
         } else if (planId === 'free') {
           // Free plan - no discount needed
           discountAmount = 0;

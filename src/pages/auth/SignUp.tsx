@@ -410,7 +410,7 @@ export const SignUp: React.FC = () => {
     }
   };
 
-  const checkEmailExists = async (email: string) => {
+    const checkEmailExists = async (email: string) => {
     if (!email || !email.includes('@') || !email.includes('.')) {
       setEmailExists(null);
       return;
@@ -673,7 +673,7 @@ export const SignUp: React.FC = () => {
       }
       
       // 4. Create business document
-      await BusinessService.createBusiness({
+      const businessData = {
         name: formData.storeName,
         subdomain: subdomain,
         ownerId: authUser.uid,
@@ -682,7 +682,7 @@ export const SignUp: React.FC = () => {
         whatsapp: `${formData.countryCode}${formData.phone}`,
         country: formData.country,
         state: formData.state,
-        plan: planId as 'free' | 'business' | 'pro',
+        plan: planId as 'free' | 'business' | 'pro' | 'test',
         status: 'active',
         settings: {
           currency: defaultCurrency,
@@ -691,11 +691,17 @@ export const SignUp: React.FC = () => {
           accentColor: '#F59E0B',
           enableNotifications: true
         },
-        inviteSourceUid: inviteSourceUid,
         revenue: 0,
         totalOrders: 0,
         totalProducts: 0
-      });
+      };
+
+      // Only add inviteSourceUid if it exists
+      if (inviteSourceUid) {
+        (businessData as any).inviteSourceUid = inviteSourceUid;
+      }
+
+      await BusinessService.createBusiness(businessData);
       console.log('✅ Business created successfully');
       
       // Don't navigate here - let handleSubmit handle navigation based on plan

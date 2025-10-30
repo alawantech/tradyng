@@ -21,6 +21,8 @@ export const AffiliatePage: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailExists, setEmailExists] = useState<boolean | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -36,6 +38,11 @@ export const AffiliatePage: React.FC = () => {
     // Check username availability when username field changes
     if (field === 'username') {
       checkUsernameAvailability(value);
+    }
+
+    // Check email existence when email field changes
+    if (field === 'email') {
+      checkEmailExists(value);
     }
   };
 
@@ -64,6 +71,26 @@ export const AffiliatePage: React.FC = () => {
     }
   };
 
+  const checkEmailExists = async (email: string) => {
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      setEmailExists(null);
+      return;
+    }
+
+    setCheckingEmail(true);
+    try {
+      // Import AuthService for email checking
+      const { AuthService } = await import('../services/auth');
+      const exists = await AuthService.checkEmailExists(email);
+      setEmailExists(exists);
+    } catch (error) {
+      console.error('Error checking email existence:', error);
+      setEmailExists(false); // Allow registration if check fails
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
   const isFormValid = (): boolean => {
     const { fullName, username, email, password, confirmPassword } = formData;
 
@@ -73,6 +100,7 @@ export const AffiliatePage: React.FC = () => {
       usernameAvailable === true &&
       email.includes('@') &&
       email.includes('.') &&
+      emailExists === false &&
       password.length >= 6 &&
       confirmPassword.length >= 6 &&
       password === confirmPassword
@@ -242,10 +270,37 @@ export const AffiliatePage: React.FC = () => {
                   placeholder="your.email@example.com"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full h-14 pl-16 pr-4 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50"
+                  className={`w-full h-14 pl-16 pr-4 bg-white/5 border rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50 ${
+                    emailExists === true ? 'border-red-400/50 focus:border-red-400' : 'border-white/20 focus:border-purple-400'
+                  }`}
                   required
                 />
               </div>
+
+              {/* Email validation indicator */}
+              {formData.email && formData.email.includes('@') && formData.email.includes('.') && (
+                <div className="mt-3 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                  {checkingEmail && (
+                    <div className="flex items-center space-x-2 text-yellow-400 text-sm">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+                      <span>Checking email availability...</span>
+                    </div>
+                  )}
+
+                  {emailExists === true && !checkingEmail && (
+                    <div className="flex items-center space-x-2 text-red-400 text-sm">
+                      <span>⚠️ This email is already registered. Please use a different email or sign in to your existing account.</span>
+                    </div>
+                  )}
+
+                  {emailExists === false && !checkingEmail && (
+                    <div className="flex items-center space-x-2 text-green-400 text-sm">
+                      <Check className="h-4 w-4" />
+                      <span>Email is available</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Password Field */}
@@ -321,9 +376,9 @@ export const AffiliatePage: React.FC = () => {
             {/* Submit Button */}
             <Button
               type="submit"
-              disabled={!isFormValid() || loading}
+              disabled={!isFormValid() || loading || checkingUsername || checkingEmail}
               className={`w-full h-14 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] ${
-                isFormValid() && !loading
+                isFormValid() && !loading && !checkingUsername && !checkingEmail
                   ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40'
                   : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
               }`}

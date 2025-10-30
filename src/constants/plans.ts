@@ -52,6 +52,19 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     advancedAnalytics: true,
     emailCustomization: true,
   },
+  test: {
+    maxProducts: 50,
+    maxImagesPerProduct: 2,
+    maxVideoLengthSeconds: 15,
+    maxStorageMB: 1000, // 1GB
+    maxOrdersPerMonth: 100,
+    allowCustomDomain: false,
+    allowVideos: true,
+    watermarkedReceipts: true,
+    showPoweredByBadge: true,
+    advancedAnalytics: false,
+    emailCustomization: false,
+  },
 };
 
 export const getPlanLimits = (plan: string): PlanLimits => {
@@ -162,5 +175,23 @@ export const PRICING_PLANS: PricingPlan[] = [
       '10GB storage'
     ],
     buttonText: 'Go Pro'
+  },
+  {
+    id: 'test',
+    name: 'Test Plan',
+    monthlyPrice: 0, // Not used for yearly plans
+    yearlyPrice: 150,
+    isPopular: false,
+    description: 'Test plan for development and testing',
+    features: [
+      'Up to 50 products',
+      'Up to 2 images per product',
+      '15-second videos per product',
+      '100 orders per month',
+      'Watermarked receipts',
+      '1GB storage',
+      'Basic features only'
+    ],
+    buttonText: 'Start Test Plan'
   }
 ];

@@ -44,7 +44,7 @@ export interface Referral {
   referredBusinessName: string;
   referredUserPhone: string;
   referredUserWhatsapp: string;
-  planType: 'business' | 'pro';
+  planType: 'business' | 'pro' | 'test';
   discountAmount: number;
   commissionAmount: number;
   paymentStatus: 'pending' | 'completed' | 'failed';
@@ -190,7 +190,7 @@ export class AffiliateService {
   // Record a referral and update earnings (only after successful payment)
   static async recordReferral(
     affiliateUsername: string, 
-    planType: 'business' | 'pro', 
+    planType: 'business' | 'pro' | 'test', 
     discountAmount: number,
     referredUserId?: string,
     referredBusinessId?: string,
@@ -220,11 +220,14 @@ export class AffiliateService {
       // Calculate commission based on plan type
       // Business Plan: ₦2,000 discount = ₦2,000 commission
       // Pro Plan: ₦4,000 discount = ₦4,000 commission
+      // Test Plan: ₦20 discount = ₦20 commission
       let commission = 0;
       if (planType === 'business' && discountAmount === 2000) {
         commission = 2000; // ₦2,000 commission for business plan
       } else if (planType === 'pro' && discountAmount === 4000) {
         commission = 4000; // ₦4,000 commission for pro plan
+      } else if (planType === 'test' && discountAmount === 20) {
+        commission = 20; // ₦20 commission for test plan
       } else {
         // Fallback: use the discount amount as commission
         commission = discountAmount;
