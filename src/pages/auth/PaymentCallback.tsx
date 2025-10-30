@@ -139,7 +139,7 @@ export const PaymentCallback: React.FC = () => {
 
   const createAccountFromPayment = async (meta: any) => {
     try {
-      const { planId, storeName, email, phone, country, state, password } = meta;
+      const { planId, storeName, email, phone, country, state, password, couponCode } = meta;
 
       // 1. Create Firebase Auth user
       const authUser = await AuthService.signUp(email, password);
@@ -163,6 +163,20 @@ export const PaymentCallback: React.FC = () => {
       // Determine currency based on selected country
       const defaultCurrency = getDefaultCurrencyForCountry(country);
 
+      // Get invite source UID if coupon was applied
+      let inviteSourceUid: string | undefined = undefined;
+      if (couponCode) {
+        try {
+          const affiliate = await AffiliateService.getAffiliateByUsername(couponCode.toLowerCase());
+          if (affiliate) {
+            inviteSourceUid = affiliate.firebaseUid;
+            console.log('🎯 Tracking affiliate referral:', { affiliateUsername: couponCode, affiliateUid: inviteSourceUid });
+          }
+        } catch (error) {
+          console.error('Error getting affiliate for invite tracking:', error);
+        }
+      }
+
       // 4. Create business document
       await BusinessService.createBusiness({
         name: storeName,
@@ -182,6 +196,7 @@ export const PaymentCallback: React.FC = () => {
           accentColor: '#F59E0B',
           enableNotifications: true
         },
+        inviteSourceUid: inviteSourceUid,
         revenue: 0,
         totalOrders: 0,
         totalProducts: 0
@@ -292,10 +307,10 @@ export const PaymentCallback: React.FC = () => {
 
   const recordAffiliateReferral = async (meta: any) => {
     try {
-      const { couponCode, planId, discountAmount } = meta;
+      const { couponCode, planId, discountAmount, userId, businessId, customerName, customerPhone } = meta;
 
       console.log('🎯 Checking for affiliate referral after successful payment');
-      console.log('📋 Payment meta data:', { couponCode, planId, discountAmount });
+      console.log('📋 Payment meta data:', { couponCode, planId, discountAmount, userId, businessId, customerName, customerPhone });
 
       if (!couponCode || !planId) {
         console.log('ℹ️ No coupon code or plan ID in payment meta, skipping affiliate referral');
@@ -334,11 +349,26 @@ export const PaymentCallback: React.FC = () => {
 
         console.log('💰 Processing commission for plan:', planId, 'Expected discount:', expectedDiscount);
 
+        // Get business details for the referral record
+        let businessDetails = null;
+        if (businessId) {
+          try {
+            businessDetails = await BusinessService.getBusinessById(businessId);
+          } catch (error) {
+            console.error('Error getting business details:', error);
+          }
+        }
+
         // Record the referral (commission will be awarded here)
         await AffiliateService.recordReferral(
           affiliate.username,
           planId as 'business' | 'pro',
-          expectedDiscount
+          expectedDiscount,
+          userId, // referredUserId
+          businessId, // referredBusinessId
+          businessDetails?.name || customerName || 'Unknown Store', // referredBusinessName
+          customerPhone, // referredUserPhone
+          customerPhone // referredUserWhatsapp (same as phone for now)
         );
 
         console.log('✅ Affiliate commission awarded successfully!');

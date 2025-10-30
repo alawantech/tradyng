@@ -9,6 +9,7 @@ import { flutterwaveService } from '../services/flutterwaveService';
 import { db } from '../config/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { AffiliateService } from '../services/affiliate';
+import toast from 'react-hot-toast';
 
 interface CouponData {
   code: string;
@@ -243,12 +244,15 @@ export const CouponPage: React.FC = () => {
       if (affiliate) {
         console.log('✅ Found affiliate:', affiliate.username);
 
-        // Calculate discount based on plan (same as ABUBAKARDEV coupon)
+        // Calculate discount based on plan (only for paid plans)
         let discountAmount = 0;
         if (planId === 'business') {
           discountAmount = 2000;
         } else if (planId === 'pro') {
           discountAmount = 4000;
+        } else if (planId === 'free') {
+          // Free plan - no discount needed
+          discountAmount = 0;
         } else {
           console.log('❌ Invalid plan for affiliate discount:', planId);
           return false;
@@ -260,14 +264,19 @@ export const CouponPage: React.FC = () => {
           discount: discountAmount,
           planType: planId!,
           isActive: true,
-          usageLimit: null,
+          usageLimit: undefined,
           usedCount: 0
         };
 
         setIsValidCoupon(true);
         setDiscountAmount(discountAmount);
         setAppliedCoupon(affiliateCoupon);
-        toast.success(`Affiliate code applied! You save ₦${discountAmount.toLocaleString()}`);
+        
+        if (discountAmount > 0) {
+          toast.success(`Affiliate code applied! You save ₦${discountAmount.toLocaleString()}`);
+        } else {
+          toast.success(`Affiliate code applied! Welcome to your free plan.`);
+        }
 
         console.log('🎯 Affiliate referral applied:', {
           affiliateUsername: username,
@@ -449,7 +458,7 @@ export const CouponPage: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">{selectedPlan.name} Plan</h3>
                 <p className="text-gray-600">Yearly subscription</p>
@@ -459,6 +468,42 @@ export const CouponPage: React.FC = () => {
                   ₦{selectedPlan.yearlyPrice.toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-500">per year</div>
+              </div>
+            </div>
+
+            {/* Plan Switcher */}
+            <div className="border-t border-gray-200 pt-4">
+              <p className="text-sm text-gray-600 mb-3">Change Plan:</p>
+              <div className="flex flex-wrap gap-2">
+                {PRICING_PLANS.map((plan) => (
+                  <button
+                    key={plan.id}
+                    onClick={() => {
+                      // Update URL parameters
+                      const newUrl = new URL(window.location.href);
+                      newUrl.searchParams.set('plan', plan.id);
+                      newUrl.searchParams.set('amount', plan.yearlyPrice.toString());
+                      window.history.replaceState({}, '', newUrl.toString());
+                      
+                      // Reset coupon state when changing plans
+                      setAppliedCoupon(null);
+                      setDiscountAmount(0);
+                      setIsValidCoupon(null);
+                      setCouponCode('');
+                      
+                      // Navigate to new plan
+                      navigate(`/coupon?plan=${plan.id}&amount=${plan.yearlyPrice}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}`, { replace: true });
+                      window.location.reload(); // Force reload to update state
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      plan.id === planId
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {plan.name}
+                  </button>
+                ))}
               </div>
             </div>
           </Card>
@@ -479,7 +524,7 @@ export const CouponPage: React.FC = () => {
                 </label>
                 <div className="flex space-x-3">
                   <div className="flex-1 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center justify-center w-12 pointer-events-none">
                       <Tag className="h-5 w-5 text-gray-400" />
                     </div>
                     <input
@@ -488,7 +533,7 @@ export const CouponPage: React.FC = () => {
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       placeholder="Enter coupon code"
-                      className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors uppercase tracking-wider font-mono"
+                      className="block w-full pl-16 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors uppercase tracking-wider font-mono text-gray-900 placeholder-gray-500"
                       disabled={isValidating}
                     />
                   </div>

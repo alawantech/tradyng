@@ -207,7 +207,7 @@ domains/{domain}
   - updatedAt: timestamp
 ```
 
-### 10. **notifications** (System notifications)
+### 12. **notifications** (System notifications)
 ```
 businesses/{businessId}/notifications/{notificationId}
   - type: 'new_order' | 'low_stock' | 'customer_message' | 'system_update'
@@ -216,6 +216,36 @@ businesses/{businessId}/notifications/{notificationId}
   - isRead: boolean
   - createdAt: timestamp
   - data?: any (additional notification data)
+```
+```
+coupons/{couponCode}
+  - code: string (unique coupon code, also used as document ID)
+  - discount: number | object (fixed amount or plan-specific: {business: 2000, pro: 4000})
+  - planType: string ('all' | 'business' | 'pro')
+  - isActive: boolean
+  - usageLimit?: number (optional usage limit)
+  - usedCount?: number (current usage count)
+  - createdAt: timestamp
+  - description?: string
+```
+
+### 11. **affiliates** (Affiliate program members)
+```
+affiliates/{affiliateId}
+  - fullName: string
+  - username: string (unique, lowercase, alphanumeric)
+  - email: string
+  - firebaseUid: string (reference to Firebase Auth user)
+  - bankDetails?: {
+    accountName: string
+    bankName: string
+    accountNumber: string
+  }
+  - totalReferrals: number
+  - totalEarnings: number
+  - status: 'active' | 'suspended' | 'pending'
+  - createdAt: timestamp
+  - updatedAt: timestamp
 ```
 
 ## Security Rules Structure

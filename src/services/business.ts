@@ -55,6 +55,7 @@ export interface Business {
     manualPayment: boolean;
     cardPayment: boolean;
   };
+  inviteSourceUid?: string; // UID of the affiliate who referred this business
   revenue: number;
   totalOrders: number;
   totalProducts: number;

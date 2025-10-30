@@ -10,7 +10,8 @@ import {
   query,
   where,
   orderBy,
-  Timestamp
+  Timestamp,
+  setDoc
 } from 'firebase/firestore';
 import { auth } from '../config/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -32,6 +33,23 @@ export interface Affiliate {
   status: 'active' | 'suspended' | 'pending';
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface Referral {
+  id?: string;
+  affiliateId: string;
+  affiliateUsername: string;
+  referredUserId: string;
+  referredBusinessId: string;
+  referredBusinessName: string;
+  referredUserPhone: string;
+  referredUserWhatsapp: string;
+  planType: 'business' | 'pro';
+  discountAmount: number;
+  commissionAmount: number;
+  paymentStatus: 'pending' | 'completed' | 'failed';
+  createdAt: Timestamp;
+  completedAt?: Timestamp;
 }
 
 export class AffiliateService {
@@ -62,6 +80,10 @@ export class AffiliateService {
       });
 
       console.log('✅ Affiliate document created:', docRef.id);
+
+      // Create coupon for the affiliate's username
+      await this.createAffiliateCoupon(affiliateData.username);
+
       return docRef.id;
 
     } catch (error: any) {
@@ -69,6 +91,30 @@ export class AffiliateService {
 
       // If Firestore creation fails, we should clean up the Auth user
       // But for now, let the error propagate
+      throw error;
+    }
+  }
+
+  // Create a coupon for the affiliate's username
+  static async createAffiliateCoupon(username: string): Promise<void> {
+    try {
+      console.log('🎫 Creating coupon for affiliate username:', username);
+
+      const couponsRef = collection(db, 'coupons');
+      await setDoc(doc(couponsRef, username.toLowerCase()), {
+        code: username.toLowerCase(),
+        discount: { business: 2000, pro: 4000 }, // Different discounts for different plans
+        planType: 'all', // Works for all plans
+        isActive: true,
+        usageLimit: null,
+        usedCount: 0,
+        createdAt: new Date(),
+        description: `Affiliate discount coupon - ₦2,000 off Business, ₦4,000 off Pro (Affiliate: ${username})`
+      });
+
+      console.log('✅ Coupon created for affiliate:', username);
+    } catch (error) {
+      console.error('❌ Error creating affiliate coupon:', error);
       throw error;
     }
   }
@@ -142,10 +188,28 @@ export class AffiliateService {
   }
 
   // Record a referral and update earnings (only after successful payment)
-  static async recordReferral(affiliateUsername: string, planType: 'business' | 'pro', discountAmount: number): Promise<void> {
+  static async recordReferral(
+    affiliateUsername: string, 
+    planType: 'business' | 'pro', 
+    discountAmount: number,
+    referredUserId?: string,
+    referredBusinessId?: string,
+    referredBusinessName?: string,
+    referredUserPhone?: string,
+    referredUserWhatsapp?: string
+  ): Promise<void> {
     try {
       console.log('🎯 Processing affiliate referral after successful payment');
-      console.log('📊 Referral details:', { affiliateUsername, planType, discountAmount });
+      console.log('📊 Referral details:', { 
+        affiliateUsername, 
+        planType, 
+        discountAmount,
+        referredUserId,
+        referredBusinessId,
+        referredBusinessName,
+        referredUserPhone,
+        referredUserWhatsapp
+      });
 
       const affiliate = await this.getAffiliateByUsername(affiliateUsername);
       if (!affiliate) {
@@ -169,12 +233,35 @@ export class AffiliateService {
 
       console.log('💰 Calculated commission:', commission, 'for plan:', planType);
 
+      // Update affiliate totals
       const docRef = doc(db, 'affiliates', affiliate.id!);
       await updateDoc(docRef, {
         totalReferrals: affiliate.totalReferrals + 1,
         totalEarnings: affiliate.totalEarnings + commission,
         updatedAt: Timestamp.now()
       });
+
+      // Create detailed referral record
+      if (referredUserId && referredBusinessId) {
+        const referralData: Omit<Referral, 'id'> = {
+          affiliateId: affiliate.id!,
+          affiliateUsername: affiliate.username,
+          referredUserId,
+          referredBusinessId,
+          referredBusinessName: referredBusinessName || 'Unknown Store',
+          referredUserPhone: referredUserPhone || '',
+          referredUserWhatsapp: referredUserWhatsapp || '',
+          planType,
+          discountAmount,
+          commissionAmount: commission,
+          paymentStatus: 'completed',
+          createdAt: Timestamp.now(),
+          completedAt: Timestamp.now()
+        };
+
+        await addDoc(collection(db, 'referrals'), referralData);
+        console.log('✅ Detailed referral record created');
+      }
 
       console.log('✅ Referral recorded successfully for affiliate:', affiliateUsername);
       console.log('📈 New totals - Referrals:', affiliate.totalReferrals + 1, 'Earnings:', affiliate.totalEarnings + commission);
@@ -196,6 +283,26 @@ export class AffiliateService {
       })) as Affiliate[];
     } catch (error) {
       console.error('Error getting all affiliates:', error);
+      throw error;
+    }
+  }
+
+  // Get referrals for an affiliate
+  static async getAffiliateReferrals(affiliateId: string): Promise<Referral[]> {
+    try {
+      const q = query(
+        collection(db, 'referrals'), 
+        where('affiliateId', '==', affiliateId),
+        orderBy('createdAt', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Referral[];
+    } catch (error) {
+      console.error('Error getting affiliate referrals:', error);
       throw error;
     }
   }

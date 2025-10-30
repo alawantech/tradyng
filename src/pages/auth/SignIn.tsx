@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { AuthService } from '../../services/auth';
 import { UserService } from '../../services/user';
 import { BusinessService } from '../../services/business';
+import { AffiliateService } from '../../services/affiliate';
 import { flutterwaveService } from '../../services/flutterwaveService';
 import { PRICING_PLANS } from '../../constants/plans';
 import { FirebaseTest } from '../../utils/firebaseTest';
@@ -26,6 +27,7 @@ export const SignIn: React.FC = () => {
   const planFromUrl = searchParams.get('plan');
   const couponFromUrl = searchParams.get('coupon');
   const discountFromUrl = searchParams.get('discount');
+  const redirectFromUrl = searchParams.get('redirect');
 
   // Forgot password states
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
@@ -59,18 +61,46 @@ export const SignIn: React.FC = () => {
       const userData = await UserService.getUserById(authUser.uid);
       console.log('👤 User data retrieved:', userData);
       
+      // Check if this is an affiliate (they won't have user data in 'users' collection)
+      let isAffiliate = false;
+      let affiliateData = null;
+      
       if (!userData) {
+        try {
+          affiliateData = await AffiliateService.getAffiliateByFirebaseUid(authUser.uid);
+          if (affiliateData) {
+            isAffiliate = true;
+            console.log('🎯 Affiliate user detected:', affiliateData.username);
+          }
+        } catch (error) {
+          console.error('Error checking affiliate status:', error);
+        }
+      }
+      
+      if (!userData && !isAffiliate) {
         throw new Error('User data not found. Please contact support.');
       }
       
-      // Update last login
-      await UserService.updateLastLogin(authUser.uid);
+      // Update last login for regular users (affiliates don't have user records)
+      if (userData) {
+        await UserService.updateLastLogin(authUser.uid);
+      }
       
       // Check if user has a free plan business that needs payment
       let redirectPath = '/dashboard'; // default for business owners
       let welcomeMessage = 'Welcome back!';
       
-      if (userData.role === 'business_owner') {
+      // Handle affiliate login
+      if (isAffiliate) {
+        if (redirectFromUrl === '/affiliate/dashboard') {
+          redirectPath = '/affiliate/dashboard';
+          welcomeMessage = 'Welcome back to your affiliate dashboard!';
+        } else {
+          // Default redirect for affiliates
+          redirectPath = '/affiliate/dashboard';
+          welcomeMessage = 'Welcome back to your affiliate dashboard!';
+        }
+      } else if (userData && userData.role === 'business_owner') {
         try {
           const businesses = await BusinessService.getBusinessesByOwnerId(authUser.uid);
           if (businesses && businesses.length > 0) {
@@ -131,7 +161,7 @@ export const SignIn: React.FC = () => {
         }
       }
       
-      console.log('🚀 Redirecting to:', redirectPath, 'for role:', userData.role);
+      console.log('🚀 Redirecting to:', redirectPath, 'for user type:', isAffiliate ? 'affiliate' : userData?.role || 'unknown');
       
       toast.success(welcomeMessage);
       setTimeout(() => {
@@ -538,7 +568,8 @@ export const SignIn: React.FC = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="adebayo@example.com"
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-medium"
+              icon={<Mail className="h-5 w-5" />}
+              className="h-12 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-medium"
               labelClassName="text-white font-bold drop-shadow-lg"
             />
 
@@ -550,7 +581,8 @@ export const SignIn: React.FC = () => {
               value={formData.password}
               onChange={handleChange}
               placeholder="••••••••"
-              className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-medium"
+              icon={<Lock className="h-5 w-5" />}
+              className="h-12 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-medium"
               labelClassName="text-white font-bold drop-shadow-lg"
             />
 

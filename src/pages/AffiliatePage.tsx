@@ -106,18 +106,21 @@ export const AffiliatePage: React.FC = () => {
         navigate('/affiliate/dashboard');
       }, 1500);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Affiliate registration error:', error);
 
-      if (error.code === 'permission-denied') {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create affiliate account';
+      const errorCode = (error as { code?: string })?.code;
+
+      if (errorCode === 'permission-denied') {
         toast.error('Unable to create affiliate account. Please try again.');
-      } else if (error.message?.includes('username')) {
+      } else if (errorMessage?.includes('username')) {
         toast.error('Username is already taken. Please choose a different one.');
         setUsernameAvailable(false);
-      } else if (error.message?.includes('email')) {
+      } else if (errorMessage?.includes('email')) {
         toast.error('Email is already registered. Please use a different email.');
       } else {
-        toast.error(error.message || 'Failed to create affiliate account');
+        toast.error(errorMessage);
       }
     } finally {
       setLoading(false);
@@ -160,10 +163,8 @@ export const AffiliatePage: React.FC = () => {
                 Full Name
               </label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <div className="p-1 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                    <User className="h-4 w-4 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
-                  </div>
+                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-16 pointer-events-none">
+                  <User className="h-5 w-5 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
                 </div>
                 <Input
                   type="text"
@@ -183,10 +184,8 @@ export const AffiliatePage: React.FC = () => {
                 Username
               </label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <div className="p-1 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                    <AtSign className="h-4 w-4 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
-                  </div>
+                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-16 pointer-events-none">
+                  <AtSign className="h-5 w-5 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
                 </div>
                 <Input
                   type="text"
@@ -235,10 +234,8 @@ export const AffiliatePage: React.FC = () => {
                 Email Address
               </label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <div className="p-1 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                    <Mail className="h-4 w-4 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
-                  </div>
+                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-16 pointer-events-none">
+                  <Mail className="h-5 w-5 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
                 </div>
                 <Input
                   type="email"
@@ -258,10 +255,8 @@ export const AffiliatePage: React.FC = () => {
                 Password
               </label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <div className="p-1 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                    <Lock className="h-4 w-4 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
-                  </div>
+                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-16 pointer-events-none">
+                  <Lock className="h-5 w-5 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
                 </div>
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -289,10 +284,8 @@ export const AffiliatePage: React.FC = () => {
                 Confirm Password
               </label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <div className="p-1 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                    <Lock className="h-4 w-4 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
-                  </div>
+                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-16 pointer-events-none">
+                  <Lock className="h-5 w-5 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
                 </div>
                 <Input
                   type={showConfirmPassword ? "text" : "password"}
@@ -379,7 +372,7 @@ export const AffiliatePage: React.FC = () => {
           <p className="text-gray-400">
             Already part of our affiliate family?{' '}
             <Link
-              to="/affiliate/dashboard"
+              to="/auth/signin?redirect=/affiliate/dashboard"
               className="text-purple-400 hover:text-purple-300 font-semibold transition-colors duration-300 hover:underline"
             >
               Access Your Dashboard

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -297,21 +297,42 @@ export const SignUp: React.FC = () => {
     console.log('🔐 Creating new account with email:', formData.email);
     
     try {
-      // Always create account first with free plan
-      await createAccount('free');
+      // Check if we have a coupon applied for a paid plan
+      const hasPaidPlanCoupon = couponCode && selectedPlanId !== 'free' && discountAmount > 0;
       
-      // Always redirect to coupon page after account creation
-      console.log('🎫 Redirecting to coupon page after account creation');
-      toast.success('Account created! Redirecting to coupon page...');
-      
-      // Use selected plan or default to business for coupon page
-      const couponPlan = selectedPlan.id !== 'free' ? selectedPlan.id : 'business';
-      const couponUrl = `/coupon?plan=${couponPlan}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}`;
-      
-      setTimeout(() => {
-        navigate(couponUrl);
-      }, 1500); // Small delay to let account creation complete
-      return;
+      if (hasPaidPlanCoupon) {
+        // For paid plans with coupon, create account and redirect to payment
+        console.log('💳 Paid plan with coupon detected, proceeding to payment');
+        
+        // Create account first
+        await createAccount('free'); // Start with free, will upgrade after payment
+        
+        // Then redirect to payment
+        setTimeout(() => {
+          handlePlanUpgrade();
+        }, 1000);
+        return;
+      } else {
+        // For free plan or no coupon, create account normally
+        await createAccount(selectedPlanId);
+        
+        if (selectedPlanId === 'free') {
+          console.log('🎉 Free account created successfully');
+          toast.success('Account created successfully!');
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 1500);
+        } else {
+          // For paid plans without coupon, redirect to coupon page
+          console.log('🎫 Redirecting to coupon page for payment');
+          toast.success('Account created! Redirecting to payment...');
+          
+          setTimeout(() => {
+            navigate(`/coupon?plan=${selectedPlanId}`);
+          }, 1500);
+        }
+        return;
+      }
       
     } catch (error: any) {
       console.error('Signup error:', error);
@@ -637,6 +658,20 @@ export const SignUp: React.FC = () => {
       const defaultCurrency = getDefaultCurrencyForCountry(formData.country);
       console.log(`💰 Setting currency based on country "${formData.country}": ${defaultCurrency}`);
       
+      // Get invite source UID if coupon was applied
+      let inviteSourceUid: string | undefined = undefined;
+      if (couponCode) {
+        try {
+          const affiliate = await AffiliateService.getAffiliateByUsername(couponCode.toLowerCase());
+          if (affiliate) {
+            inviteSourceUid = affiliate.firebaseUid;
+            console.log('🎯 Tracking affiliate referral:', { affiliateUsername: couponCode, affiliateUid: inviteSourceUid });
+          }
+        } catch (error) {
+          console.error('Error getting affiliate for invite tracking:', error);
+        }
+      }
+      
       // 4. Create business document
       await BusinessService.createBusiness({
         name: formData.storeName,
@@ -656,6 +691,7 @@ export const SignUp: React.FC = () => {
           accentColor: '#F59E0B',
           enableNotifications: true
         },
+        inviteSourceUid: inviteSourceUid,
         revenue: 0,
         totalOrders: 0,
         totalProducts: 0
@@ -879,15 +915,20 @@ export const SignUp: React.FC = () => {
       case 2:
         return (
           <div className="space-y-4">
-            <Input
-              type="email"
-              placeholder="kemi@gmail.com"
-              value={formData.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              className={`w-full h-12 px-4 bg-gray-800 border rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none ${
-                emailExists === true ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
-              }`}
-            />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center justify-center w-12 pointer-events-none">
+                <Mail className="h-5 w-5 text-gray-400" />
+              </div>
+              <Input
+                type="email"
+                placeholder="kemi@gmail.com"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className={`w-full h-12 pl-16 pr-4 bg-gray-800 border rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none ${
+                  emailExists === true ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
+                }`}
+              />
+            </div>
             
             {/* Email checking indicator */}
             {checkingEmail && (
@@ -934,16 +975,19 @@ export const SignUp: React.FC = () => {
         return (
           <div className="space-y-4">
             <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center justify-center w-12 pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
               <Input
                 type={showPassword ? "text" : "password"}
                 placeholder="Create a secure password"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className={`w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none pr-10 ${passwordMismatch ? 'border-red-500' : ''}`}
+                className={`w-full h-12 pl-16 pr-10 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none ${passwordMismatch ? 'border-red-500' : ''}`}
               />
               <button
                 type="button"
-                className="absolute right-3 top-3 text-gray-400 hover:text-white"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                 onClick={() => setShowPassword((prev) => !prev)}
                 tabIndex={-1}
               >
@@ -951,17 +995,20 @@ export const SignUp: React.FC = () => {
               </button>
             </div>
             <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center justify-center w-12 pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
               <Input
                 type={showRepeatPassword ? "text" : "password"}
                 placeholder="Repeat password"
                 value={formData.repeatPassword}
                 onChange={(e) => handleInputChange('repeatPassword', e.target.value)}
-                className={`w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none pr-10 ${passwordMismatch ? 'border-red-500' : ''}`}
+                className={`w-full h-12 pl-16 pr-10 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none ${passwordMismatch ? 'border-red-500' : ''}`}
                 error={passwordMismatch ? 'Passwords do not match' : ''}
               />
               <button
                 type="button"
-                className="absolute right-3 top-3 text-gray-400 hover:text-white"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                 onClick={() => setShowRepeatPassword((prev) => !prev)}
                 tabIndex={-1}
               >

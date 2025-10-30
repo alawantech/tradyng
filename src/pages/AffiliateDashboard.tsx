@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, DollarSign, Users, CreditCard, Save, Copy, Check } from 'lucide-react';
+import { ArrowLeft, DollarSign, Users, CreditCard, Save, Copy, Check, Phone, MessageCircle, Building } from 'lucide-react';
 import { Button } from '../components/ui/Button.tsx';
 import { Input } from '../components/ui/Input';
 import toast from 'react-hot-toast';
-import { AffiliateService, Affiliate } from '../services/affiliate';
+import { AffiliateService, Affiliate, Referral } from '../services/affiliate';
 import { auth } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export const AffiliateDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [affiliate, setAffiliate] = useState<Affiliate | null>(null);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -38,6 +39,17 @@ export const AffiliateDashboard: React.FC = () => {
         }
 
         setAffiliate(affiliateData);
+        
+        // Load referrals for this affiliate
+        if (affiliateData.id) {
+          try {
+            const referralsData = await AffiliateService.getAffiliateReferrals(affiliateData.id);
+            setReferrals(referralsData);
+          } catch (error) {
+            console.error('Error loading referrals:', error);
+          }
+        }
+
         if (affiliateData.bankDetails) {
           setBankDetails(affiliateData.bankDetails);
         }
@@ -302,6 +314,96 @@ export const AffiliateDashboard: React.FC = () => {
             </div>
           </motion.div>
         </div>
+
+        {/* Referrals Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+        >
+          <h2 className="text-xl font-semibold text-white mb-4">Your Referrals</h2>
+          
+          {referrals.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-400">No referrals yet. Share your referral link to start earning!</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left text-gray-300">
+                <thead className="text-xs text-gray-400 uppercase bg-gray-700">
+                  <tr>
+                    <th scope="col" className="px-6 py-3">Store Name</th>
+                    <th scope="col" className="px-6 py-3">Plan</th>
+                    <th scope="col" className="px-6 py-3">Contact</th>
+                    <th scope="col" className="px-6 py-3">Commission</th>
+                    <th scope="col" className="px-6 py-3">Date</th>
+                    <th scope="col" className="px-6 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referrals.map((referral) => (
+                    <tr key={referral.id} className="bg-gray-800 border-b border-gray-700 hover:bg-gray-700">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-2">
+                          <Building className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium text-white">{referral.referredBusinessName}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          referral.planType === 'business' 
+                            ? 'bg-blue-900 text-blue-300' 
+                            : 'bg-purple-900 text-purple-300'
+                        }`}>
+                          {referral.planType.charAt(0).toUpperCase() + referral.planType.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          {referral.referredUserWhatsapp && (
+                            <div className="flex items-center space-x-1">
+                              <MessageCircle className="w-3 h-3 text-green-400" />
+                              <span className="text-xs">{referral.referredUserWhatsapp}</span>
+                            </div>
+                          )}
+                          {referral.referredUserPhone && referral.referredUserPhone !== referral.referredUserWhatsapp && (
+                            <div className="flex items-center space-x-1">
+                              <Phone className="w-3 h-3 text-blue-400" />
+                              <span className="text-xs">{referral.referredUserPhone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-semibold text-green-400">
+                          ₦{referral.commissionAmount.toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-gray-300">
+                          {referral.completedAt?.toDate().toLocaleDateString() || referral.createdAt.toDate().toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          referral.paymentStatus === 'completed' 
+                            ? 'bg-green-900 text-green-300' 
+                            : referral.paymentStatus === 'pending'
+                            ? 'bg-yellow-900 text-yellow-300'
+                            : 'bg-red-900 text-red-300'
+                        }`}>
+                          {referral.paymentStatus.charAt(0).toUpperCase() + referral.paymentStatus.slice(1)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </motion.div>
       </div>
     </div>
   );
