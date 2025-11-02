@@ -9,14 +9,15 @@ import { AuthService } from '../../services/auth';
 import { UserService } from '../../services/user';
 import { BusinessService } from '../../services/business';
 import { getDefaultCurrencyForCountry } from '../../constants/currencies';
-import { OrderService } from '../../services/order';
 import toast from 'react-hot-toast';
 import { db } from '../../config/firebase';
 import { 
   collection, 
   query,
   where,
-  getDocs
+  getDocs,
+  doc,
+  updateDoc
 } from 'firebase/firestore';
 import { AffiliateService } from '../../services/affiliate';
 
@@ -25,24 +26,38 @@ export const PaymentCallback: React.FC = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
+  const [hasProcessed, setHasProcessed] = useState(false);
 
   useEffect(() => {
+    // Prevent duplicate processing
+    if (hasProcessed) {
+      console.log('⚠️ Payment already processed, skipping duplicate call');
+      return;
+    }
+
     const handlePaymentCallback = async () => {
+      setHasProcessed(true);
       const txRef = searchParams.get('tx_ref');
+      const transactionId = searchParams.get('transaction_id');
       const status = searchParams.get('status');
       const isSignup = searchParams.get('signup') === 'true';
       const isUpgrade = searchParams.get('upgrade') === 'true';
       const isOrder = searchParams.get('order') === 'true';
 
-      if (!txRef) {
+      console.log('📋 Payment callback params:', { txRef, transactionId, status, isSignup, isUpgrade, isOrder });
+
+      if (!txRef && !transactionId) {
         setStatus('error');
         setMessage('Invalid payment reference');
         return;
       }
 
+      // Use transaction ID if available, otherwise use tx_ref
+      const paymentRef = transactionId || txRef;
+
       try {
-        // Verify payment with Flutterwave
-        const verificationResult = await flutterwaveService.verifyPayment(txRef);
+        // Verify payment with Flutterwave using transaction ID or tx_ref
+        const verificationResult = await flutterwaveService.verifyPayment(paymentRef!);
         console.log('Payment verification result:', verificationResult);
 
         if (verificationResult.status === 'success' && verificationResult.data?.data?.status === 'successful') {
@@ -54,16 +69,14 @@ export const PaymentCallback: React.FC = () => {
             const meta = verificationResult.data.data.meta || {};
             // Upgrade the current authenticated user's account
             await upgradeCurrentUserAccount(meta);
-            // Record affiliate referral if applicable
-            await recordAffiliateReferral(meta);
+            // Commission is automatically awarded by Cloud Function
           } else if (isSignup) {
             setMessage('Payment successful! Creating your account...');
             // Extract metadata from the transaction
             const meta = verificationResult.data.data.meta || {};
             // Create the account
             await createAccountFromPayment(meta);
-            // Record affiliate referral if applicable
-            await recordAffiliateReferral(meta);
+            // Commission is automatically awarded by Cloud Function
           } else if (isOrder) {
             setMessage('Payment successful! Processing your order...');
             // Extract metadata from the transaction
@@ -305,84 +318,8 @@ export const PaymentCallback: React.FC = () => {
     }
   };
 
-  const recordAffiliateReferral = async (meta: any) => {
-    try {
-      const { couponCode, planId, discountAmount, userId, businessId, customerName, customerPhone } = meta;
-
-      console.log('🎯 Checking for affiliate referral after successful payment');
-      console.log('📋 Payment meta data:', { couponCode, planId, discountAmount, userId, businessId, customerName, customerPhone });
-
-      if (!couponCode || !planId) {
-        console.log('ℹ️ No coupon code or plan ID in payment meta, skipping affiliate referral');
-        return;
-      }
-
-      // Validate that this is a successful payment before awarding commission
-      if (!couponCode.trim()) {
-        console.log('⚠️ Empty coupon code, skipping affiliate referral');
-        return;
-      }
-
-      // Check if the coupon code is an affiliate username
-      const affiliate = await AffiliateService.getAffiliateByUsername(couponCode.toLowerCase().trim());
-
-      if (affiliate) {
-        console.log('� Valid affiliate found! Processing commission...');
-        console.log('👤 Affiliate:', affiliate.username, 'Status:', affiliate.status);
-
-        // Only award commission if affiliate is active
-        if (affiliate.status !== 'active') {
-          console.warn('⚠️ Affiliate account is not active:', affiliate.status, '- Commission not awarded');
-          return;
-        }
-
-        // Determine commission amount based on plan
-        let expectedDiscount = 0;
-        if (planId === 'business') {
-          expectedDiscount = 2000; // ₦2,000 for business plan
-        } else if (planId === 'pro') {
-          expectedDiscount = 4000; // ₦4,000 for pro plan
-        } else {
-          console.warn('⚠️ Unknown plan ID:', planId, '- Using provided discount amount');
-          expectedDiscount = discountAmount || 0;
-        }
-
-        console.log('💰 Processing commission for plan:', planId, 'Expected discount:', expectedDiscount);
-
-        // Get business details for the referral record
-        let businessDetails = null;
-        if (businessId) {
-          try {
-            businessDetails = await BusinessService.getBusinessById(businessId);
-          } catch (error) {
-            console.error('Error getting business details:', error);
-          }
-        }
-
-        // Record the referral (commission will be awarded here)
-        await AffiliateService.recordReferral(
-          affiliate.username,
-          planId as 'business' | 'pro',
-          expectedDiscount,
-          userId, // referredUserId
-          businessId, // referredBusinessId
-          businessDetails?.name || customerName || 'Unknown Store', // referredBusinessName
-          customerPhone, // referredUserPhone
-          customerPhone // referredUserWhatsapp (same as phone for now)
-        );
-
-        console.log('✅ Affiliate commission awarded successfully!');
-        console.log('🎊 Payment completed and commission processed for affiliate:', affiliate.username);
-
-      } else {
-        console.log('ℹ️ Coupon code is not a valid affiliate username:', couponCode);
-      }
-    } catch (error) {
-      console.error('❌ Error processing affiliate referral:', error);
-      // Don't fail the payment callback if affiliate recording fails
-      // The payment was successful, affiliate commission is a bonus feature
-    }
-  };
+  // Commission tracking and coupon usage is now handled by Cloud Functions
+  // This ensures security and consistency
 
   const createOrderFromPayment = async (meta: any) => {
     // Placeholder for order creation logic

@@ -72,8 +72,8 @@ export const SignUp: React.FC = () => {
   const [otpCode, setOtpCode] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0); // seconds remaining until resend allowed
-  const otpCooldownRef = React.useRef<number | null>(null);
-  const emailCheckTimeoutRef = React.useRef<number | null>(null);
+  const otpCooldownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const emailCheckTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const OTP_LENGTH = 4;
 
   // Email validation state
@@ -89,7 +89,6 @@ export const SignUp: React.FC = () => {
   const selectedPlan = PRICING_PLANS.find(p => p.id === selectedPlanId) || PRICING_PLANS[0];
   const couponCode = searchParams.get('coupon');
   const discountAmount = parseInt(searchParams.get('discount') || '0');
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Load countries on component mount
   useEffect(() => {
@@ -295,22 +294,40 @@ export const SignUp: React.FC = () => {
     setLoading(true);
     
     console.log('🔐 Creating new account with email:', formData.email);
+    console.log('📋 Selected plan:', selectedPlanId, 'Coupon:', couponCode, 'Discount:', discountAmount);
     
     try {
       // Check if we have a coupon applied for a paid plan
       const hasPaidPlanCoupon = couponCode && selectedPlanId !== 'free' && discountAmount > 0;
       
       if (hasPaidPlanCoupon) {
-        // For paid plans with coupon, create account and redirect to payment
-        console.log('💳 Paid plan with coupon detected, proceeding to payment');
+        // For paid plans with coupon, create account and proceed to payment
+        console.log('💳 Paid plan with coupon detected - creating account with FREE plan, then upgrading via payment');
         
-        // Create account first
-        await createAccount('free'); // Start with free, will upgrade after payment
+        // Create account with FREE plan first (will upgrade after payment)
+        await createAccount('free');
         
-        // Then redirect to payment
+        // Store signup data for payment flow
+        const signupData = {
+          email: formData.email,
+          storeName: formData.storeName,
+          password: formData.password,
+          phone: `${formData.countryCode}${formData.phone}`,
+          country: formData.country,
+          state: formData.state,
+          planId: selectedPlanId,
+          couponCode: couponCode,
+          discountAmount: discountAmount
+        };
+        localStorage.setItem('signupData', JSON.stringify(signupData));
+        console.log('💾 Stored signup data in localStorage for payment flow');
+        
+        // Then redirect to payment after a short delay to ensure auth state is ready
+        toast.success('Account created! Redirecting to payment...');
         setTimeout(() => {
+          console.log('⏰ Delay complete, calling handlePlanUpgrade...');
           handlePlanUpgrade();
-        }, 1000);
+        }, 2000); // Increased delay to ensure auth state is fully set
         return;
       } else {
         // For free plan or no coupon, create account normally
@@ -324,11 +341,11 @@ export const SignUp: React.FC = () => {
           }, 1500);
         } else {
           // For paid plans without coupon, redirect to coupon page
-          console.log('🎫 Redirecting to coupon page for payment');
-          toast.success('Account created! Redirecting to payment...');
+          console.log('🎫 Paid plan without coupon - redirecting to coupon page');
+          toast.success('Account created! Redirecting to coupon page...');
           
           setTimeout(() => {
-            navigate(`/coupon?plan=${selectedPlanId}`);
+            navigate(`/coupon?plan=${selectedPlanId}&amount=${PRICING_PLANS.find(p => p.id === selectedPlanId)?.yearlyPrice || 0}`);
           }, 1500);
         }
         return;
@@ -456,7 +473,7 @@ export const SignUp: React.FC = () => {
   };
 
   const handleExistingUserPayment = async (userId: string) => {
-    setIsProcessingPayment(true);
+    setLoading(true);
 
     try {
       // Validate required data
@@ -518,6 +535,8 @@ export const SignUp: React.FC = () => {
           existingUser: true,
           userId: userId,
           businessId: business.id,
+          customerName: customerName,
+          customerPhone: customerPhone,
           originalAmount: paymentPlan.yearlyPrice,
           discountAmount: discountAmount,
           couponCode: couponCode || null
@@ -534,18 +553,19 @@ export const SignUp: React.FC = () => {
     } catch (error: any) {
       console.error('Payment error for existing user:', error);
       toast.error(error.message || 'Failed to process payment. Please try again.');
-      setLoading(false);
     } finally {
-      setIsProcessingPayment(false);
+      setLoading(false);
     }
   };
 
   const handlePlanUpgrade = async () => {
-    setIsProcessingPayment(true);
+    console.log('🚀 handlePlanUpgrade called');
+    setLoading(true);
 
     try {
       // Validate required data
       if (!formData.email) {
+        console.error('❌ No email in formData');
         throw new Error('Email is required for payment');
       }
 
@@ -555,20 +575,27 @@ export const SignUp: React.FC = () => {
         paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business')!;
       }
 
+      console.log('📋 Payment plan:', paymentPlan.id, 'Price:', paymentPlan.yearlyPrice);
+
       // Calculate final amount with coupon discount
       const finalAmount = paymentPlan.yearlyPrice - discountAmount;
+      console.log('💰 Final amount after discount:', finalAmount);
 
       // Check if Flutterwave is configured
       if (!flutterwaveService.isConfigured()) {
+        console.error('❌ Flutterwave not configured');
         toast.error('Payment system is not configured. Please contact support.');
         return;
       }
 
       // Get current user from Auth
+      console.log('🔍 Getting current user from AuthService...');
       const currentUser = await AuthService.getCurrentUser();
       if (!currentUser) {
-        throw new Error('User not authenticated');
+        console.error('❌ No current user found');
+        throw new Error('User not authenticated. Please wait a moment and try again.');
       }
+      console.log('✅ Current user found:', currentUser.uid);
 
       // Get business info for the newly created account
       const businesses = await BusinessService.getBusinessesByOwnerId(currentUser.uid);
@@ -609,25 +636,36 @@ export const SignUp: React.FC = () => {
           existingUser: false,
           userId: currentUser.uid,
           businessId: business.id,
+          customerName: customerName,
+          customerPhone: customerPhone,
           originalAmount: paymentPlan.yearlyPrice,
           discountAmount: discountAmount,
           couponCode: couponCode || null
         }
       });
 
+      console.log('📊 Payment result:', paymentResult);
+
       if (paymentResult.status === 'success' && paymentResult.data) {
-        // Redirect to Flutterwave payment page
-        window.location.href = paymentResult.data.data.link;
+        const paymentLink = paymentResult.data?.data?.link;
+        if (paymentLink) {
+          console.log('✅ Redirecting to Flutterwave payment page:', paymentLink);
+          // Redirect to Flutterwave payment page
+          window.location.href = paymentLink;
+        } else {
+          console.error('❌ No payment link in response:', paymentResult.data);
+          toast.error('Payment link not found. Please try again.');
+        }
       } else {
+        console.error('❌ Payment initialization failed:', paymentResult);
         toast.error(paymentResult.message || 'Failed to initialize payment');
       }
 
     } catch (error: any) {
-      console.error('Payment error for plan upgrade:', error);
+      console.error('❌ Payment error for plan upgrade:', error);
       toast.error(error.message || 'Failed to process payment. Please try again.');
-      setLoading(false);
     } finally {
-      setIsProcessingPayment(false);
+      setLoading(false);
     }
   };
 
@@ -662,6 +700,8 @@ export const SignUp: React.FC = () => {
       let inviteSourceUid: string | undefined = undefined;
       if (couponCode) {
         try {
+          // Import AffiliateService dynamically if needed
+          const { AffiliateService } = await import('../../services/affiliate');
           const affiliate = await AffiliateService.getAffiliateByUsername(couponCode.toLowerCase());
           if (affiliate) {
             inviteSourceUid = affiliate.firebaseUid;
@@ -683,7 +723,7 @@ export const SignUp: React.FC = () => {
         country: formData.country,
         state: formData.state,
         plan: planId as 'free' | 'business' | 'pro' | 'test',
-        status: 'active',
+        status: 'active' as const,
         settings: {
           currency: defaultCurrency,
           primaryColor: '#3B82F6',
@@ -740,19 +780,19 @@ export const SignUp: React.FC = () => {
           const cooldownSec = 60;
           setOtpCooldown(cooldownSec);
           // start interval to count down
-          if (otpCooldownRef.current) window.clearInterval(otpCooldownRef.current);
-          otpCooldownRef.current = window.setInterval(() => {
+          if (otpCooldownRef.current) clearInterval(otpCooldownRef.current);
+          otpCooldownRef.current = setInterval(() => {
             setOtpCooldown(prev => {
               if (prev <= 1) {
                 if (otpCooldownRef.current) {
-                  window.clearInterval(otpCooldownRef.current);
+                  clearInterval(otpCooldownRef.current);
                   otpCooldownRef.current = null;
                 }
                 return 0;
               }
               return prev - 1;
             });
-          }, 1000) as unknown as number;
+          }, 1000);
 
           // Try to parse server message for toast
           const msg = bodyText || 'OTP recently requested. Please wait a minute before requesting again.';

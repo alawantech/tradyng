@@ -13,9 +13,12 @@ export const AffiliateDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [affiliate, setAffiliate] = useState<Affiliate | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [filteredReferrals, setFilteredReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
+  const [filterPlan, setFilterPlan] = useState<'all' | 'test' | 'business' | 'pro'>('all');
 
   const [bankDetails, setBankDetails] = useState({
     accountName: '',
@@ -45,6 +48,7 @@ export const AffiliateDashboard: React.FC = () => {
           try {
             const referralsData = await AffiliateService.getAffiliateReferrals(affiliateData.id);
             setReferrals(referralsData);
+            setFilteredReferrals(referralsData);
           } catch (error) {
             console.error('Error loading referrals:', error);
           }
@@ -63,6 +67,23 @@ export const AffiliateDashboard: React.FC = () => {
 
     return () => unsubscribe();
   }, [navigate]);
+
+  // Filter referrals based on selected filters
+  useEffect(() => {
+    let filtered = [...referrals];
+
+    // Filter by status
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(r => r.paymentStatus === filterStatus);
+    }
+
+    // Filter by plan
+    if (filterPlan !== 'all') {
+      filtered = filtered.filter(r => r.planType === filterPlan);
+    }
+
+    setFilteredReferrals(filtered);
+  }, [filterStatus, filterPlan, referrals]);
 
   const handleSaveBankDetails = async () => {
     if (!affiliate?.id) return;
@@ -162,7 +183,7 @@ export const AffiliateDashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm text-gray-400">Total Referrals</p>
-                <p className="text-2xl font-bold text-white">{affiliate.totalReferrals}</p>
+                <p className="text-2xl font-bold text-white">{referrals.length}</p>
               </div>
             </div>
           </motion.div>
@@ -179,7 +200,7 @@ export const AffiliateDashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm text-gray-400">Total Earnings</p>
-                <p className="text-2xl font-bold text-white">₦{affiliate.totalEarnings.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-white">₦{referrals.reduce((sum, ref) => sum + (ref.commissionAmount || 0), 0).toLocaleString()}</p>
               </div>
             </div>
           </motion.div>
@@ -234,9 +255,11 @@ export const AffiliateDashboard: React.FC = () => {
             <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-4">
               <h3 className="text-blue-400 font-semibold mb-2">💰 Commission Structure</h3>
               <ul className="text-sm text-blue-300 space-y-1">
+                <li>• Test Plan: ₦20 discount → ₦20 commission</li>
                 <li>• Business Plan: ₦2,000 discount → ₦2,000 commission</li>
                 <li>• Pro Plan: ₦4,000 discount → ₦4,000 commission</li>
                 <li>• Customers use your username as coupon code</li>
+                <li>• Commission paid after successful payment</li>
               </ul>
             </div>
           </motion.div>
@@ -315,19 +338,110 @@ export const AffiliateDashboard: React.FC = () => {
           </motion.div>
         </div>
 
+        {/* Commission Summary */}
+        {referrals.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="bg-gray-800 rounded-lg p-6 border border-gray-700 mt-8"
+          >
+            <h2 className="text-xl font-semibold text-white mb-4">Commission Breakdown</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Test Plan Commissions */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-400">Test Plan</span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-300">
+                    {referrals.filter(r => r.planType === 'test' && r.paymentStatus === 'completed').length} referrals
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  ₦{referrals.filter(r => r.planType === 'test' && r.paymentStatus === 'completed').reduce((sum, r) => sum + r.commissionAmount, 0).toLocaleString()}
+                </p>
+              </div>
+
+              {/* Business Plan Commissions */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-400">Business Plan</span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-900 text-blue-300">
+                    {referrals.filter(r => r.planType === 'business' && r.paymentStatus === 'completed').length} referrals
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  ₦{referrals.filter(r => r.planType === 'business' && r.paymentStatus === 'completed').reduce((sum, r) => sum + r.commissionAmount, 0).toLocaleString()}
+                </p>
+              </div>
+
+              {/* Pro Plan Commissions */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-400">Pro Plan</span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-900 text-purple-300">
+                    {referrals.filter(r => r.planType === 'pro' && r.paymentStatus === 'completed').length} referrals
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  ₦{referrals.filter(r => r.planType === 'pro' && r.paymentStatus === 'completed').reduce((sum, r) => sum + r.commissionAmount, 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Referrals Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+          transition={{ delay: 0.7 }}
+          className="bg-gray-800 rounded-lg p-6 border border-gray-700 mt-8"
         >
-          <h2 className="text-xl font-semibold text-white mb-4">Your Referrals</h2>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
+            <h2 className="text-xl font-semibold text-white">Your Referrals</h2>
+            
+            {referrals.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {/* Status Filter */}
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as any)}
+                  className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                >
+                  <option value="all">All Status</option>
+                  <option value="completed">Completed</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                </select>
+
+                {/* Plan Filter */}
+                <select
+                  value={filterPlan}
+                  onChange={(e) => setFilterPlan(e.target.value as any)}
+                  className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                >
+                  <option value="all">All Plans</option>
+                  <option value="test">Test Plan</option>
+                  <option value="business">Business Plan</option>
+                  <option value="pro">Pro Plan</option>
+                </select>
+
+                <span className="px-3 py-2 bg-gray-700 rounded-lg text-sm text-gray-300">
+                  {filteredReferrals.length} of {referrals.length} referrals
+                </span>
+              </div>
+            )}
+          </div>
           
-          {referrals.length === 0 ? (
+          {filteredReferrals.length === 0 && referrals.length === 0 ? (
             <div className="text-center py-8">
               <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-400">No referrals yet. Share your referral link to start earning!</p>
+            </div>
+          ) : filteredReferrals.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-400">No referrals match your filters. Try adjusting the filters above.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -343,7 +457,7 @@ export const AffiliateDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {referrals.map((referral) => (
+                  {filteredReferrals.map((referral) => (
                     <tr key={referral.id} className="bg-gray-800 border-b border-gray-700 hover:bg-gray-700">
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
@@ -353,7 +467,9 @@ export const AffiliateDashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          referral.planType === 'business' 
+                          referral.planType === 'test'
+                            ? 'bg-yellow-900 text-yellow-300'
+                            : referral.planType === 'business' 
                             ? 'bg-blue-900 text-blue-300' 
                             : 'bg-purple-900 text-purple-300'
                         }`}>

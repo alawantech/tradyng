@@ -24,126 +24,136 @@ export interface PaymentResponse {
 
 class FlutterwaveService {
   private config: FlutterwaveConfig;
-  private baseUrl: string;
 
   constructor() {
     // Get from environment variables
     this.config = {
       publicKey: import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY || '',
-      secretKey: import.meta.env.VITE_FLUTTERWAVE_SECRET_KEY || '',
+      secretKey: '', // No longer needed in frontend
       encryptionKey: import.meta.env.VITE_FLUTTERWAVE_ENCRYPTION_KEY || ''
     };
 
-    // Use proxy in development to avoid CORS issues
-    this.baseUrl = import.meta.env.DEV ? '/api/flutterwave/v3' : 'https://api.flutterwave.com/v3';
-
     console.log('Flutterwave config:', {
       hasPublicKey: !!this.config.publicKey,
-      hasSecretKey: !!this.config.secretKey,
       hasEncryptionKey: !!this.config.encryptionKey,
-      publicKeyPrefix: this.config.publicKey.substring(0, 10) + '...',
-      secretKeyPrefix: this.config.secretKey.substring(0, 10) + '...',
-      baseUrl: this.baseUrl,
-      isDev: import.meta.env.DEV
+      usingProductionFunctions: true
     });
   }
 
   async initializePayment(paymentData: PaymentData): Promise<PaymentResponse> {
     try {
-      const payload = {
-        tx_ref: paymentData.txRef,
+      console.log('🚀 Initializing payment via Cloud Function:', {
         amount: paymentData.amount,
         currency: paymentData.currency,
-        redirect_url: paymentData.redirectUrl || `${window.location.origin}/payment/callback`,
-        payment_options: paymentData.paymentOptions || 'card,mobilemoney,ussd',
-        customer: {
-          email: paymentData.customerEmail,
-          name: paymentData.customerName,
-          phone_number: paymentData.customerPhone
-        },
-        meta: paymentData.meta || {},
-        customizations: {
-          title: 'Programmers College',
-          description: 'Payment for Rady.ng services',
-          logo: `${window.location.origin}/logo.png`
-        }
+        email: paymentData.customerEmail,
+        name: paymentData.customerName,
+        phone: paymentData.customerPhone,
+        txRef: paymentData.txRef
+      });
+
+      const payload = {
+        amount: paymentData.amount,
+        currency: paymentData.currency,
+        customerEmail: paymentData.customerEmail,
+        customerName: paymentData.customerName,
+        customerPhone: paymentData.customerPhone,
+        txRef: paymentData.txRef,
+        redirectUrl: paymentData.redirectUrl || `${window.location.origin}/payment/callback`,
+        meta: paymentData.meta || {}
       };
 
-      const response = await fetch(`${this.baseUrl}/payments`, {
+      const initPaymentUrl = 'https://initializepayment-rv5lqk7lxa-uc.a.run.app';
+
+      console.log('📦 Sending to Cloud Function:', initPaymentUrl);
+
+      const response = await fetch(initPaymentUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.secretKey}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
+      console.log('📡 Response status:', response.status, response.statusText);
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Payment initialization failed');
+      let data;
+      try {
+        const text = await response.text();
+        console.log('📄 Raw response:', text.substring(0, 500));
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('❌ JSON parse error:', parseError);
+        throw new Error('Failed to parse payment response. Please try again or contact support.');
+      }
+
+      console.log('📊 Parsed response data:', data);
+
+      if (!response.ok || data.status === 'error') {
+        throw new Error(data.message || data.error || `Payment initialization failed with status ${response.status}`);
       }
 
       return {
         status: 'success',
         message: 'Payment initialized successfully',
-        data: data
+        data: data.data
       };
     } catch (error: any) {
-      console.error('Flutterwave initialization error:', error);
+      console.error('❌ Payment initialization error:', error);
       return {
         status: 'error',
-        message: error.message || 'Failed to initialize payment'
+        message: error.message || 'Failed to initialize payment. Please try again.'
       };
     }
   }
 
   async verifyPayment(txRef: string): Promise<PaymentResponse> {
     try {
-      console.log('Verifying payment with txRef:', txRef);
-      console.log('Using baseUrl:', this.baseUrl);
+      console.log('🔍 Verifying payment via Cloud Function:', txRef);
 
-      const url = `${this.baseUrl}/transactions/${encodeURIComponent(txRef)}/verify`;
-      console.log('Verification URL:', url);
+      const verifyPaymentUrl = 'https://verifypaymentandawardcommission-rv5lqk7lxa-uc.a.run.app';
 
-      const response = await fetch(url, {
-        method: 'GET',
+      const response = await fetch(verifyPaymentUrl, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.config.secretKey}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ txRef })
       });
 
-      console.log('Verification response status:', response.status);
+      console.log('📡 Verification response status:', response.status);
 
-      const data = await response.json();
-      console.log('Verification response data:', data);
+      let data;
+      try {
+        const text = await response.text();
+        console.log('📄 Raw verification response:', text.substring(0, 500));
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('❌ JSON parse error:', parseError);
+        throw new Error('Failed to parse verification response.');
+      }
 
-      if (!response.ok) {
-      // If transaction not found, it might be a timing issue or environment mismatch
+      console.log('📊 Verification data:', data);
+
+      if (!response.ok || data.status === 'error') {
         if (response.status === 400 && data.message?.includes('No transaction was found')) {
-          console.warn('Transaction not found details:', {
-            txRef,
-            responseStatus: response.status,
-            responseData: data,
-            baseUrl: this.baseUrl,
-            isDev: import.meta.env.DEV
-          });
+          console.warn('⚠️ Transaction not found:', txRef);
           return {
             status: 'error',
-            message: 'Transaction not found. This might be a timing issue or environment mismatch - please wait a moment and try again, or contact support with your transaction reference.'
+            message: 'Transaction not found. Please wait a moment and try again, or contact support.'
           };
         }
-        throw new Error(data.message || 'Payment verification failed');
+        throw new Error(data.message || data.error || 'Payment verification failed');
       }
+
+      console.log('✅ Payment verified and commission awarded (if applicable)');
 
       return {
         status: 'success',
         message: 'Payment verified successfully',
-        data: data
+        data: data.data
       };
     } catch (error: any) {
-      console.error('Flutterwave verification error:', error);
+      console.error('❌ Payment verification error:', error);
       return {
         status: 'error',
         message: error.message || 'Failed to verify payment'
@@ -160,7 +170,7 @@ class FlutterwaveService {
 
   // Check if Flutterwave is properly configured
   isConfigured(): boolean {
-    return !!(this.config.publicKey && this.config.secretKey && this.config.encryptionKey);
+    return !!(this.config.publicKey && this.config.encryptionKey);
   }
 
   // Get public key for frontend use

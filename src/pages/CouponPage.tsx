@@ -10,6 +10,7 @@ import { db } from '../config/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { AffiliateService } from '../services/affiliate';
 import { BusinessService } from '../services/business';
+import { AuthService } from '../services/auth';
 import toast from 'react-hot-toast';
 
 interface CouponData {
@@ -35,7 +36,6 @@ export const CouponPage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const planId = searchParams.get('plan');
-  const amount = searchParams.get('amount');
 
   const selectedPlan = PRICING_PLANS.find(plan => plan.id === planId);
 
@@ -374,29 +374,64 @@ export const CouponPage: React.FC = () => {
         });
 
         if (paymentResult.status === 'success' && paymentResult.data) {
-          // Redirect to Flutterwave payment page
-          window.location.href = paymentResult.data.data.link;
+          // Check if we have the payment link
+          const paymentLink = paymentResult.data?.data?.link;
+          if (paymentLink) {
+            console.log('✅ Redirecting to Flutterwave payment page:', paymentLink);
+            window.location.href = paymentLink;
+          } else {
+            console.error('❌ No payment link in response:', paymentResult.data);
+            toast.error('Payment link not found in response. Please try again or contact support.');
+          }
         } else {
-          toast.error(paymentResult.message || 'Failed to initialize payment');
+          console.error('❌ Payment initialization failed:', paymentResult);
+          toast.error(paymentResult.message || 'Failed to initialize payment. Please try again.');
         }
       } else {
-        // Handle non-authenticated user - redirect to signup
-        console.log('🔐 Redirecting non-authenticated user to signup');
+        // Handle non-authenticated user - redirect to payment page for paid plans
+        console.log('🔐 Non-authenticated user - checking plan type');
 
-        const url = new URL('/auth/signup', window.location.origin);
-        url.searchParams.set('plan', planId!);
-        url.searchParams.set('amount', finalAmount.toString());
-        if (appliedCoupon) {
-          url.searchParams.set('coupon', appliedCoupon.code);
-          url.searchParams.set('discount', discountAmount.toString());
+        if (selectedPlan.yearlyPrice > 0) {
+          // For paid plans, redirect to payment with all necessary info
+          console.log('� Redirecting to payment for paid plan');
+          
+          // Store coupon info in session storage for payment callback
+          if (appliedCoupon) {
+            sessionStorage.setItem('appliedCoupon', JSON.stringify({
+              code: appliedCoupon.code,
+              discount: discountAmount,
+              planId: planId
+            }));
+          }
+
+          // Redirect to signup with payment flow
+          const url = new URL('/auth/signup', window.location.origin);
+          url.searchParams.set('plan', planId!);
+          url.searchParams.set('amount', finalAmount.toString());
+          if (appliedCoupon) {
+            url.searchParams.set('coupon', appliedCoupon.code);
+            url.searchParams.set('discount', discountAmount.toString());
+          }
+
+          navigate(url.pathname + url.search);
+        } else {
+          // For free plan, just redirect to signup
+          console.log('🎁 Redirecting to signup for free plan');
+          navigate(`/auth/signup?plan=free`);
         }
-
-        window.location.href = url.toString();
       }
 
     } catch (error: any) {
-      console.error('Payment initialization error:', error);
-      toast.error(error.message || 'Failed to initialize payment. Please try again.');
+      console.error('❌ Payment initialization error:', error);
+      
+      // Show user-friendly error message
+      if (error.message?.includes('fetch')) {
+        toast.error('Network error. Please check your internet connection and try again.');
+      } else if (error.message?.includes('Business account not found')) {
+        toast.error('Business account not found. Please sign up first.');
+      } else {
+        toast.error(error.message || 'Failed to initialize payment. Please try again or contact support.');
+      }
     } finally {
       setIsProcessingPayment(false);
     }

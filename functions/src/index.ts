@@ -1510,6 +1510,356 @@ async function sendEmailWithAttachment(to: string, subject: string, html: string
     throw new Error(`MailerSend failed and no fallback provider configured. ${mailerMsg}`);
   }
 }
+// initializePayment: POST { amount, currency, customerEmail, customerName, customerPhone, txRef, redirectUrl, meta }
+export const initializePayment = functions.https.onRequest({
+  secrets: []
+}, async (req: Request, res: Response) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  try {
+    if (req.method !== 'POST') {
+      res.status(405).send({ error: 'Method not allowed, use POST' });
+      return;
+    }
+
+    const {
+      amount,
+      currency,
+      customerEmail,
+      customerName,
+      customerPhone,
+      txRef,
+      redirectUrl,
+      meta
+    } = req.body || {};
+
+    if (!amount || !currency || !customerEmail || !customerName || !txRef) {
+      res.status(400).send({ error: 'Missing required fields' });
+      return;
+    }
+
+    // Get Flutterwave secret key from environment
+    const flutterwaveSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    if (!flutterwaveSecretKey) {
+      console.error('FLUTTERWAVE_SECRET_KEY not configured');
+      res.status(500).send({ error: 'Payment system not configured' });
+      return;
+    }
+
+    const payload = {
+      tx_ref: txRef,
+      amount: amount,
+      currency: currency,
+      redirect_url: redirectUrl || `${req.get('origin')}/payment/callback`,
+      payment_options: 'card,mobilemoney,ussd',
+      customer: {
+        email: customerEmail,
+        name: customerName,
+        phone_number: customerPhone
+      },
+      meta: meta || {},
+      customizations: {
+        title: 'Rady.ng',
+        description: 'Payment for Rady.ng services',
+        logo: 'https://rady.ng/logo.png'
+      }
+    };
+
+    console.log('🚀 Initializing Flutterwave payment:', {
+      txRef,
+      amount,
+      currency,
+      customerEmail,
+      customerName
+    });
+
+    const response = await fetch('https://api.flutterwave.com/v3/payments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${flutterwaveSecretKey}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ Flutterwave error:', data);
+      throw new Error(data.message || 'Payment initialization failed');
+    }
+
+    console.log('✅ Payment initialized successfully:', data.data?.link);
+
+    res.json({
+      status: 'success',
+      message: 'Payment initialized successfully',
+      data: data
+    });
+  } catch (error: any) {
+    console.error('❌ initializePayment error:', error);
+    res.status(500).send({
+      status: 'error',
+      message: error.message || 'Failed to initialize payment'
+    });
+  }
+});
+
+// verifyPaymentAndAwardCommission: POST { txRef }
+export const verifyPaymentAndAwardCommission = functions.https.onRequest({
+  secrets: []
+}, async (req: Request, res: Response) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  try {
+    if (req.method !== 'POST') {
+      res.status(405).send({ error: 'Method not allowed, use POST' });
+      return;
+    }
+
+    const { txRef } = req.body || {};
+
+    if (!txRef || typeof txRef !== 'string') {
+      res.status(400).send({ error: 'Missing txRef' });
+      return;
+    }
+
+    // Get Flutterwave secret key from environment
+    const flutterwaveSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    if (!flutterwaveSecretKey) {
+      console.error('FLUTTERWAVE_SECRET_KEY not configured');
+      res.status(500).send({ error: 'Payment system not configured' });
+      return;
+    }
+
+    console.log('🔍 Verifying payment:', txRef);
+    console.log('📡 Calling Flutterwave API:', `https://api.flutterwave.com/v3/transactions/${encodeURIComponent(txRef)}/verify`);
+
+    // Verify payment with Flutterwave
+    const verifyResponse = await fetch(
+      `https://api.flutterwave.com/v3/transactions/${encodeURIComponent(txRef)}/verify`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${flutterwaveSecretKey}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const verifyData = await verifyResponse.json();
+
+    console.log('📊 Flutterwave response status:', verifyResponse.status);
+    console.log('📊 Flutterwave response data:', JSON.stringify(verifyData).substring(0, 500));
+
+    if (!verifyResponse.ok || verifyData.status === 'error') {
+      console.error('❌ Payment verification failed:', verifyData);
+      throw new Error(verifyData.message || 'Payment verification failed');
+    }
+
+    console.log('✅ Payment verified:', verifyData.data?.status);
+
+    // Check if payment was successful
+    if (verifyData.data?.status === 'successful') {
+      const meta = verifyData.data?.meta || {};
+      const { couponCode, planId, discountAmount, userId, businessId, customerName, customerPhone } = meta;
+
+      console.log('💰 Payment successful - checking for affiliate commission');
+
+      // Award commission if coupon code was used
+      if (couponCode && planId && discountAmount) {
+        try {
+          await awardAffiliateCommission({
+            couponCode,
+            planId,
+            discountAmount,
+            userId,
+            businessId,
+            customerName,
+            customerPhone
+          });
+        } catch (commissionError) {
+          console.error('❌ Error awarding commission:', commissionError);
+          // Don't fail the payment verification if commission fails
+        }
+      }
+
+      // Increment coupon usage count
+      if (couponCode) {
+        try {
+          await incrementCouponUsage(couponCode);
+        } catch (couponError) {
+          console.error('❌ Error incrementing coupon usage:', couponError);
+          // Don't fail the payment verification
+        }
+      }
+    }
+
+    res.json({
+      status: 'success',
+      message: 'Payment verified successfully',
+      data: verifyData
+    });
+  } catch (error: any) {
+    console.error('❌ verifyPaymentAndAwardCommission error:', error);
+    res.status(500).send({
+      status: 'error',
+      message: error.message || 'Failed to verify payment'
+    });
+  }
+});
+
+// Helper function to award affiliate commission
+async function awardAffiliateCommission(params: {
+  couponCode: string;
+  planId: string;
+  discountAmount: number;
+  userId?: string;
+  businessId?: string;
+  customerName?: string;
+  customerPhone?: string;
+}) {
+  const { couponCode, planId, discountAmount, userId, businessId, customerName, customerPhone } = params;
+
+  console.log('🎯 Processing affiliate commission:', { couponCode, planId, discountAmount });
+
+  // Get affiliate by username (coupon code)
+  const affiliatesRef = admin.firestore().collection('affiliates');
+  const affiliateQuery = await affiliatesRef
+    .where('username', '==', couponCode.toLowerCase().trim())
+    .limit(1)
+    .get();
+
+  if (affiliateQuery.empty) {
+    console.log('ℹ️ No affiliate found for coupon code:', couponCode);
+    return;
+  }
+
+  const affiliateDoc = affiliateQuery.docs[0];
+  const affiliate = { id: affiliateDoc.id, ...affiliateDoc.data() } as any;
+
+  console.log('✅ Found affiliate:', affiliate.username, 'Status:', affiliate.status);
+
+  // Only award commission if affiliate is active
+  if (affiliate.status !== 'active') {
+    console.warn('⚠️ Affiliate account is not active:', affiliate.status);
+    return;
+  }
+
+  // Calculate commission based on plan type
+  let commission = 0;
+  if (planId === 'test') {
+    commission = 20; // ₦20 for test plan
+  } else if (planId === 'business') {
+    commission = 2000; // ₦2,000 for business plan
+  } else if (planId === 'pro') {
+    commission = 4000; // ₦4,000 for pro plan
+  } else {
+    commission = discountAmount; // Fallback to discount amount
+  }
+
+  console.log('💰 Awarding commission:', commission, 'for plan:', planId);
+
+  // Check if referral already exists BEFORE updating totals (prevent duplicates)
+  if (userId && businessId) {
+    const existingReferralQuery = await admin.firestore().collection('referrals')
+      .where('affiliateId', '==', affiliate.id)
+      .where('referredUserId', '==', userId)
+      .where('referredBusinessId', '==', businessId)
+      .limit(1)
+      .get();
+
+    if (!existingReferralQuery.empty) {
+      console.log('⚠️ Referral already exists for this user and affiliate, skipping duplicate');
+      console.log('📊 Existing referral found, commission already awarded');
+      return;
+    }
+  }
+
+  // Update affiliate totals
+  await affiliateDoc.ref.update({
+    totalReferrals: (affiliate.totalReferrals || 0) + 1,
+    totalEarnings: (affiliate.totalEarnings || 0) + commission,
+    updatedAt: admin.firestore.Timestamp.now()
+  });
+
+  // Get business details if available
+  let businessName = customerName || 'Unknown Store';
+  if (businessId) {
+    try {
+      const businessDoc = await admin.firestore().collection('businesses').doc(businessId).get();
+      if (businessDoc.exists) {
+        businessName = businessDoc.data()?.name || businessName;
+      }
+    } catch (error) {
+      console.error('Error fetching business details:', error);
+    }
+  }
+
+  // Create referral record
+  if (userId && businessId) {
+
+    await admin.firestore().collection('referrals').add({
+      affiliateId: affiliate.id,
+      affiliateUsername: affiliate.username,
+      referredUserId: userId,
+      referredBusinessId: businessId,
+      referredBusinessName: businessName,
+      referredUserPhone: customerPhone || '',
+      referredUserWhatsapp: customerPhone || '',
+      planType: planId,
+      discountAmount: discountAmount,
+      commissionAmount: commission,
+      paymentStatus: 'completed',
+      createdAt: admin.firestore.Timestamp.now(),
+      completedAt: admin.firestore.Timestamp.now()
+    });
+    console.log('✅ Referral record created');
+  }
+
+  console.log('🎊 Commission awarded successfully to affiliate:', affiliate.username);
+  console.log('📈 New totals - Referrals:', (affiliate.totalReferrals || 0) + 1, 'Earnings:', (affiliate.totalEarnings || 0) + commission);
+}
+
+// Helper function to increment coupon usage
+async function incrementCouponUsage(couponCode: string) {
+  try {
+    const couponsRef = admin.firestore().collection('coupons');
+    const couponQuery = await couponsRef
+      .where('code', '==', couponCode.toLowerCase())
+      .limit(1)
+      .get();
+
+    if (!couponQuery.empty) {
+      const couponDoc = couponQuery.docs[0];
+      const currentCount = couponDoc.data().usedCount || 0;
+      
+      await couponDoc.ref.update({
+        usedCount: currentCount + 1
+      });
+      
+      console.log('✅ Coupon usage incremented:', couponCode, 'New count:', currentCount + 1);
+    }
+  } catch (error) {
+    console.error('❌ Error incrementing coupon usage:', error);
+    throw error;
+  }
+}
+
   export const generateUploadUrl = functions.https.onRequest(async (req, res) => {
     // CORS
     res.set('Access-Control-Allow-Origin', '*');
