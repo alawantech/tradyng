@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
-import { Check, Star, Zap, Shield, ChevronDown, ChevronUp, Rocket, Building, Crown, Sparkles, ArrowRight, Users, TrendingUp, Award, Clock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check, Shield, ChevronDown, Rocket, Building, Crown, Sparkles, ArrowRight, Users, TrendingUp, Award, Clock } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { PRICING_PLANS } from '../../constants/plans';
-import { flutterwaveService } from '../../services/flutterwaveService';
-import toast from 'react-hot-toast';
 
 interface PricingSectionProps {
   showHeader?: boolean;
@@ -45,7 +43,6 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
 
   // FAQ toggle state
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
 
   const toggleFAQ = (id: number) => {
@@ -53,10 +50,32 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   };
 
   const handlePlanSelection = async (plan: typeof PRICING_PLANS[0]) => {
-    // For all plans, redirect to signup first
-    const url = new URL('/auth/signup', window.location.origin);
-    url.searchParams.set('plan', plan.id);
-    window.location.href = url.toString();
+    try {
+      // Dynamically import AuthService to avoid circular dependencies
+      const { AuthService } = await import('../../services/auth');
+      const currentUser = AuthService.getCurrentUser();
+
+      if (currentUser) {
+        // User is already authenticated - redirect to coupon page
+        console.log('✅ Authenticated user selecting plan:', plan.id);
+        const url = new URL('/coupon', window.location.origin);
+        url.searchParams.set('plan', plan.id);
+        url.searchParams.set('amount', plan.yearlyPrice.toString());
+        window.location.href = url.toString();
+      } else {
+        // User not authenticated - redirect to signup (existing flow: signup → coupon → payment)
+        console.log('🔐 Non-authenticated user - redirecting to signup');
+        const url = new URL('/auth/signup', window.location.origin);
+        url.searchParams.set('plan', plan.id);
+        window.location.href = url.toString();
+      }
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      // Fallback to signup if there's an error
+      const url = new URL('/auth/signup', window.location.origin);
+      url.searchParams.set('plan', plan.id);
+      window.location.href = url.toString();
+    }
   };
 
   const getPlanIcon = (planId: string) => {
@@ -339,11 +358,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                         >
                           <Button
                             onClick={() => handlePlanSelection(plan)}
-                            disabled={isProcessingPayment}
                             className={`w-full py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 rounded-xl shadow-lg hover:shadow-xl ${colors.button} group/btn`}
                           >
                             <span className="flex items-center justify-center space-x-2">
-                              <span>{isProcessingPayment ? 'Processing...' : plan.buttonText}</span>
+                              <span>{plan.buttonText}</span>
                               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover/btn:translate-x-1 transition-transform" />
                             </span>
                           </Button>

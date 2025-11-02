@@ -110,7 +110,7 @@ export const AffiliatePage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isFormValid()) return;
+    if (!isFormValid() || loading) return; // Prevent double submission
 
     setLoading(true);
 
@@ -147,10 +147,12 @@ export const AffiliatePage: React.FC = () => {
         setUsernameAvailable(false);
       } else if (errorMessage?.includes('email')) {
         toast.error('Email is already registered. Please use a different email.');
+        setEmailExists(true);
       } else {
         toast.error(errorMessage);
       }
-    } finally {
+      
+      // Reset loading state on error to allow retry
       setLoading(false);
     }
   };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
@@ -10,15 +10,6 @@ import { UserService } from '../../services/user';
 import { BusinessService } from '../../services/business';
 import { getDefaultCurrencyForCountry } from '../../constants/currencies';
 import toast from 'react-hot-toast';
-import { db } from '../../config/firebase';
-import { 
-  collection, 
-  query,
-  where,
-  getDocs,
-  doc,
-  updateDoc
-} from 'firebase/firestore';
 import { AffiliateService } from '../../services/affiliate';
 
 export const PaymentCallback: React.FC = () => {
@@ -26,17 +17,17 @@ export const PaymentCallback: React.FC = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
-  const [hasProcessed, setHasProcessed] = useState(false);
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
-    // Prevent duplicate processing
-    if (hasProcessed) {
+    // Prevent duplicate processing using ref (survives re-renders better than state)
+    if (hasProcessedRef.current) {
       console.log('⚠️ Payment already processed, skipping duplicate call');
       return;
     }
 
     const handlePaymentCallback = async () => {
-      setHasProcessed(true);
+      hasProcessedRef.current = true;
       const txRef = searchParams.get('tx_ref');
       const transactionId = searchParams.get('transaction_id');
       const status = searchParams.get('status');

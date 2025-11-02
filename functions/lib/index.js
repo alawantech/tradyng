@@ -1574,7 +1574,8 @@ exports.verifyPaymentAndAwardCommission = functions.https.onRequest({
                         userId,
                         businessId,
                         customerName,
-                        customerPhone
+                        customerPhone,
+                        txRef
                     });
                 }
                 catch (commissionError) {
@@ -1610,7 +1611,7 @@ exports.verifyPaymentAndAwardCommission = functions.https.onRequest({
 // Helper function to award affiliate commission
 async function awardAffiliateCommission(params) {
     var _a;
-    const { couponCode, planId, discountAmount, userId, businessId, customerName, customerPhone } = params;
+    const { couponCode, planId, discountAmount, userId, businessId, customerName, customerPhone, txRef } = params;
     console.log('🎯 Processing affiliate commission:', { couponCode, planId, discountAmount });
     // Get affiliate by username (coupon code)
     const affiliatesRef = admin.firestore().collection('affiliates');
@@ -1646,6 +1647,19 @@ async function awardAffiliateCommission(params) {
     }
     console.log('💰 Awarding commission:', commission, 'for plan:', planId);
     // Check if referral already exists BEFORE updating totals (prevent duplicates)
+    // First check by transaction reference if available (most reliable)
+    if (txRef) {
+        const txRefQuery = await admin.firestore().collection('referrals')
+            .where('transactionRef', '==', txRef)
+            .limit(1)
+            .get();
+        if (!txRefQuery.empty) {
+            console.log('⚠️ Referral already exists for transaction:', txRef);
+            console.log('📊 Existing referral ID:', txRefQuery.docs[0].id);
+            return;
+        }
+    }
+    // Also check by user/business combo as backup
     if (userId && businessId) {
         const existingReferralQuery = await admin.firestore().collection('referrals')
             .where('affiliateId', '==', affiliate.id)
@@ -1655,9 +1669,13 @@ async function awardAffiliateCommission(params) {
             .get();
         if (!existingReferralQuery.empty) {
             console.log('⚠️ Referral already exists for this user and affiliate, skipping duplicate');
-            console.log('📊 Existing referral found, commission already awarded');
+            console.log('📊 Existing referral ID:', existingReferralQuery.docs[0].id);
+            console.log('📊 Existing referral data:', existingReferralQuery.docs[0].data());
             return;
         }
+    }
+    else {
+        console.log('⚠️ Missing userId or businessId, cannot check for duplicate referrals properly');
     }
     // Update affiliate totals
     await affiliateDoc.ref.update({
@@ -1692,10 +1710,11 @@ async function awardAffiliateCommission(params) {
             discountAmount: discountAmount,
             commissionAmount: commission,
             paymentStatus: 'completed',
+            transactionRef: txRef || '', // Store transaction reference to prevent duplicates
             createdAt: admin.firestore.Timestamp.now(),
             completedAt: admin.firestore.Timestamp.now()
         });
-        console.log('✅ Referral record created');
+        console.log('✅ Referral record created with txRef:', txRef);
     }
     console.log('🎊 Commission awarded successfully to affiliate:', affiliate.username);
     console.log('📈 New totals - Referrals:', (affiliate.totalReferrals || 0) + 1, 'Earnings:', (affiliate.totalEarnings || 0) + commission);

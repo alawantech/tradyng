@@ -520,40 +520,15 @@ export const CouponPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Plan Switcher */}
+            {/* Change Plan Button */}
             <div className="border-t border-gray-200 pt-4">
-              <p className="text-sm text-gray-600 mb-3">Change Plan:</p>
-              <div className="flex flex-wrap gap-2">
-                {PRICING_PLANS.map((plan) => (
-                  <button
-                    key={plan.id}
-                    onClick={() => {
-                      // Update URL parameters
-                      const newUrl = new URL(window.location.href);
-                      newUrl.searchParams.set('plan', plan.id);
-                      newUrl.searchParams.set('amount', plan.yearlyPrice.toString());
-                      window.history.replaceState({}, '', newUrl.toString());
-                      
-                      // Reset coupon state when changing plans
-                      setAppliedCoupon(null);
-                      setDiscountAmount(0);
-                      setIsValidCoupon(null);
-                      setCouponCode('');
-                      
-                      // Navigate to new plan
-                      navigate(`/coupon?plan=${plan.id}&amount=${plan.yearlyPrice}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}`, { replace: true });
-                      window.location.reload(); // Force reload to update state
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      plan.id === planId
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {plan.name}
-                  </button>
-                ))}
-              </div>
+              <Button
+                onClick={() => navigate('/pricing')}
+                variant="outline"
+                className="w-full border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-50 text-blue-600 font-semibold transition-all duration-300"
+              >
+                Change Plan
+              </Button>
             </div>
           </Card>
         </motion.div>

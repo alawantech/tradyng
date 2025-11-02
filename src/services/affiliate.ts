@@ -3,10 +3,8 @@ import {
   collection,
   doc,
   addDoc,
-  getDoc,
   getDocs,
   updateDoc,
-  deleteDoc,
   query,
   where,
   orderBy,
@@ -58,6 +56,21 @@ export class AffiliateService {
     try {
       console.log('🔗 Creating affiliate account for:', affiliateData.username);
 
+      // Check if username already exists (duplicate prevention)
+      const existingUsername = await this.checkUsernameAvailability(affiliateData.username);
+      if (!existingUsername) {
+        console.error('❌ Username already taken:', affiliateData.username);
+        throw new Error('Username is already taken. Please choose a different username.');
+      }
+
+      // Check if email already has an affiliate account
+      const emailQuery = query(collection(db, 'affiliates'), where('email', '==', affiliateData.email.toLowerCase()));
+      const emailSnapshot = await getDocs(emailQuery);
+      if (!emailSnapshot.empty) {
+        console.error('❌ Email already has an affiliate account:', affiliateData.email);
+        throw new Error('Email is already registered. Please use a different email.');
+      }
+
       // First, create Firebase Auth user
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -66,6 +79,13 @@ export class AffiliateService {
       );
 
       console.log('✅ Firebase Auth user created:', userCredential.user.uid);
+
+      // Check if this Firebase UID already has an affiliate document (duplicate prevention)
+      const existingAffiliate = await this.getAffiliateByFirebaseUid(userCredential.user.uid);
+      if (existingAffiliate) {
+        console.warn('⚠️ Affiliate document already exists for this user:', userCredential.user.uid);
+        return existingAffiliate.id!;
+      }
 
       // Create affiliate document in Firestore
       const now = Timestamp.now();
