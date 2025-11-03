@@ -70,11 +70,22 @@ export class AuthService {
   // Check if email is already registered
   static async checkEmailExists(email: string): Promise<boolean> {
     try {
-      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
-      return signInMethods.length > 0;
+      // fetchSignInMethodsForEmail is deprecated and unreliable
+      // Instead, we'll check by querying Firestore users collection
+      // which is more reliable for our use case
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const { db } = await import('../config/firebase');
+      
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', email));
+      const querySnapshot = await getDocs(q);
+      
+      const exists = !querySnapshot.empty;
+      console.log('📧 Email existence check result:', { email, exists, docsFound: querySnapshot.size });
+      return exists;
     } catch (error) {
-      // If there's an error (like invalid email), assume it doesn't exist
       console.error('Error checking email existence:', error);
+      // If there's an error, assume it doesn't exist to avoid blocking users
       return false;
     }
   }

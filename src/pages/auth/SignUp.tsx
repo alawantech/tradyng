@@ -429,24 +429,35 @@ export const SignUp: React.FC = () => {
 
     const checkEmailExists = async (email: string) => {
     if (!email || !email.includes('@') || !email.includes('.')) {
+      console.log('❌ Invalid email format, skipping check:', email);
       setEmailExists(null);
       return;
     }
 
+    console.log('🔍 Checking if email exists:', email);
     setCheckingEmail(true);
     try {
       // Check Firebase Auth - this is the source of truth for email registration
       // If the email exists in Auth, show "Account Already Exists"
       // If it doesn't exist in Auth, allow registration even if orphaned data exists in Firestore
       const existsInAuth = await AuthService.checkEmailExists(email);
-      setEmailExists(existsInAuth);
-      console.log('Email check result:', { email, existsInAuth, finalResult: existsInAuth });
+      console.log('✅ Email check completed:', { email, existsInAuth });
+      
+      if (existsInAuth) {
+        console.log('⚠️ EMAIL ALREADY EXISTS - Setting emailExists to TRUE');
+        setEmailExists(true);
+        toast.error('This email is already registered. Please sign in instead.');
+      } else {
+        console.log('✅ Email is available - Setting emailExists to FALSE');
+        setEmailExists(false);
+      }
     } catch (error) {
-      console.error('Error checking email existence:', error);
+      console.error('❌ Error checking email existence:', error);
       // If Auth check fails, allow registration to avoid blocking users
       setEmailExists(false);
     } finally {
       setCheckingEmail(false);
+      console.log('📊 Final state - emailExists:', emailExists, 'checkingEmail:', false);
     }
   };
 
