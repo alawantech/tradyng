@@ -15,6 +15,7 @@ import { PRICING_PLANS } from '../../constants/plans';
 import { FirebaseTest } from '../../utils/firebaseTest';
 
 export const SignIn: React.FC = () => {
+  // UPDATED: Admin login fix - v2.0 - 2025-11-03
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -51,6 +52,7 @@ export const SignIn: React.FC = () => {
     setLoading(true);
     
     console.log('🔐 Attempting to sign in with:', { email: formData.email });
+    console.log('🔐 CODE VERSION: 2025-11-03-FIX-v3');
     
     try {
       // Sign in with Firebase Auth
@@ -60,6 +62,26 @@ export const SignIn: React.FC = () => {
       // Get user role from Firestore
       const userData = await UserService.getUserById(authUser.uid);
       console.log('👤 User data retrieved:', userData);
+      console.log('🔍 User role is:', userData?.role, '(type:', typeof userData?.role, ')');
+      
+      // SUPER AGGRESSIVE ADMIN CHECK - Check IMMEDIATELY
+      if (userData && userData.role) {
+        const roleStr = String(userData.role).trim().toLowerCase();
+        console.log('🔍 Processed role string:', roleStr);
+        console.log('🔍 Is it "admin"?:', roleStr === 'admin');
+        
+        if (roleStr === 'admin') {
+          console.log('🚨🚨🚨 ADMIN ROLE CONFIRMED - REDIRECTING NOW 🚨🚨🚨');
+          console.log('🚨 Using window.location.href to force redirect');
+          setLoading(false);
+          toast.success('Welcome back, Admin!');
+          // Force immediate redirect
+          window.location.href = '/admin';
+          return; // Stop everything
+        }
+      }
+      
+      console.log('⚠️ Admin check passed, continuing with other role checks...');
       
       // Check if this is an affiliate (they won't have user data in 'users' collection)
       let isAffiliate = false;
@@ -86,12 +108,16 @@ export const SignIn: React.FC = () => {
         await UserService.updateLastLogin(authUser.uid);
       }
       
+      // NOTE: Admin check is at the top of this function - if we reached here, user is NOT admin
+      console.log('📍 User is not admin, checking other roles...');
+      
       // Check if user has a free plan business that needs payment
       let redirectPath = '/dashboard'; // default for business owners
       let welcomeMessage = 'Welcome back!';
       
       // Handle affiliate login
       if (isAffiliate) {
+        console.log('✅ BRANCH: Affiliate detected');
         if (redirectFromUrl === '/affiliate/dashboard') {
           redirectPath = '/affiliate/dashboard';
           welcomeMessage = 'Welcome back to your affiliate dashboard!';
@@ -100,7 +126,8 @@ export const SignIn: React.FC = () => {
           redirectPath = '/affiliate/dashboard';
           welcomeMessage = 'Welcome back to your affiliate dashboard!';
         }
-      } else if (userData && userData.role === 'business_owner') {
+      } else if (userData && userData.role && userData.role.trim().toLowerCase() === 'business_owner') {
+        console.log('✅ BRANCH: Business owner detected - checking for businesses');
         try {
           const businesses = await BusinessService.getBusinessesByOwnerId(authUser.uid);
           if (businesses && businesses.length > 0) {
@@ -122,7 +149,7 @@ export const SignIn: React.FC = () => {
             }
           } else {
             // No business found, redirect to coupon page to complete signup
-            console.log('� No business found, redirecting to coupon page to complete signup');
+            console.log('❌ No business found, redirecting to coupon page to complete signup');
             const redirectPlan = planFromUrl && planFromUrl !== 'free' ? planFromUrl : 'business';
             const couponUrl = `/coupon?plan=${redirectPlan}${couponFromUrl ? `&coupon=${couponFromUrl}&discount=${discountFromUrl}` : ''}`;
             navigate(couponUrl);
@@ -134,23 +161,15 @@ export const SignIn: React.FC = () => {
           redirectPath = '/dashboard';
           welcomeMessage = 'Welcome back!';
         }
+      } else if (userData && userData.role && userData.role.trim().toLowerCase() === 'customer') {
+        // Customers should be redirected to their account page or back to store
+        redirectPath = '/';
+        welcomeMessage = 'Welcome back!';
       } else {
-        // Handle other user roles
-        switch (userData.role) {
-          case 'admin':
-            redirectPath = '/admin';
-            welcomeMessage = 'Welcome back, Admin!';
-            break;
-          case 'customer':
-            // Customers should be redirected to their account page or back to store
-            redirectPath = '/';
-            welcomeMessage = 'Welcome back!';
-            break;
-          default:
-            // Default to dashboard for unknown roles
-            redirectPath = '/dashboard';
-            welcomeMessage = 'Welcome back!';
-        }
+        // Default to dashboard for unknown roles
+        console.log('⚠️ BRANCH: Unknown or no role, using default');
+        redirectPath = '/dashboard';
+        welcomeMessage = 'Welcome back!';
       }
       
       console.log('🚀 Redirecting to:', redirectPath, 'for user type:', isAffiliate ? 'affiliate' : userData?.role || 'unknown');

@@ -35,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
 
   const adminMenuItems = [
     { path: '/admin/businesses', icon: Building2, label: 'Businesses' },
+    { path: '/admin/affiliates', icon: Users, label: 'Affiliates' },
     { path: '/admin/subscriptions', icon: CreditCard, label: 'Subscriptions' },
     { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },
@@ -104,26 +105,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
             );
           })}
         </nav>
-        {/* Store Actions Section */}
-        {type === 'business' && (
-          <div className="border-t border-gray-200 mt-auto">
-            <div className="px-6 py-4">
-              <h3 className="text-xs font-semibold theme-secondary-text uppercase tracking-wide mb-3">
-                Store Actions
-              </h3>
-              <button
-                onClick={handleLogout}
-                className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 hover:text-red-700 transition-colors"
-              >
-                <LogOut className="h-4 w-4 mr-3" />
-                Sign Out
-              </button>
-              <p className="text-xs text-gray-500 mt-2">
-                Sign out of your account. You'll need to sign in again to access your dashboard.
-              </p>
-            </div>
+        {/* Logout Section - For Both Admin and Business */}
+        <div className="border-t border-gray-200 mt-auto">
+          <div className="px-6 py-4">
+            <h3 className="text-xs font-semibold theme-secondary-text uppercase tracking-wide mb-3">
+              {type === 'admin' ? 'Admin Actions' : 'Store Actions'}
+            </h3>
+            <button
+              onClick={handleLogout}
+              className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 hover:text-red-700 transition-colors"
+            >
+              <LogOut className="h-4 w-4 mr-3" />
+              Sign Out
+            </button>
+            <p className="text-xs text-gray-500 mt-2">
+              Sign out of your account. You'll need to sign in again to access your dashboard.
+            </p>
           </div>
-        )}
+        </div>
       </div>
     </>
   );

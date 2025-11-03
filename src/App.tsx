@@ -48,6 +48,7 @@ import { EmailTest } from './pages/demo/EmailTest';
 // Admin
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { Businesses } from './pages/admin/Businesses';
+import { Affiliates } from './pages/admin/Affiliates';
 import { Subscriptions } from './pages/admin/Subscriptions';
 import { AdminAnalytics } from './pages/admin/AdminAnalytics';
 import { AdminSettings } from './pages/admin/AdminSettings';
@@ -145,6 +146,7 @@ function App() {
                 <Route index element={<Businesses />} />
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="businesses" element={<Businesses />} />
+                <Route path="affiliates" element={<Affiliates />} />
                 <Route path="subscriptions" element={<Subscriptions />} />
                 <Route path="analytics" element={<AdminAnalytics />} />
                 <Route path="settings" element={<AdminSettings />} />
