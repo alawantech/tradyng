@@ -92,13 +92,20 @@ const OrderHistory: React.FC = () => {
       console.log('Filtered customer orders:', customerOrders.length);
       console.log('Customer orders:', customerOrders.map(o => ({ id: o.orderId, email: o.customerEmail })));
 
+      // Fix orders without status field - set default to 'pending'
+      const ordersWithStatus = customerOrders.map(order => ({
+        ...order,
+        status: order.status || 'pending',
+        paymentStatus: order.paymentStatus || 'pending'
+      })) as Order[];
+
       // Sort by most recent first
-      customerOrders.sort((a, b) => {
+      ordersWithStatus.sort((a, b) => {
         const aTime = a.createdAt?.seconds || 0;
         const bTime = b.createdAt?.seconds || 0;
         return bTime - aTime;
       });
-      setOrders(customerOrders);
+      setOrders(ordersWithStatus);
 
       // Fetch product images for all items in all orders
       const imageMap: Record<string, string> = {};
@@ -123,7 +130,8 @@ const OrderHistory: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return 'from-gray-400 to-gray-500';
     switch (status.toLowerCase()) {
       case 'pending': return 'from-yellow-400 to-orange-500';
       case 'approved': return 'from-green-400 to-emerald-500';
@@ -135,7 +143,8 @@ const OrderHistory: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string | undefined) => {
+    if (!status) return <Package className="w-4 h-4" />;
     switch (status.toLowerCase()) {
       case 'pending': return <Clock className="w-4 h-4" />;
       case 'approved': return <CheckCircle className="w-4 h-4" />;
@@ -436,7 +445,7 @@ const OrderHistory: React.FC = () => {
                                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-white text-xs sm:text-sm font-semibold shadow-lg bg-gradient-to-r ${getStatusColor(order.status)} flex items-center justify-center space-x-1.5 sm:space-x-2 w-fit`}
                               >
                                 {getStatusIcon(order.status)}
-                                <span className="whitespace-nowrap">{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
+                                <span className="whitespace-nowrap">{order.status ? (order.status.charAt(0).toUpperCase() + order.status.slice(1)) : 'Unknown'}</span>
                               </motion.div>
 
                               {/* Expand/Collapse Button */}
@@ -476,7 +485,7 @@ const OrderHistory: React.FC = () => {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs sm:text-sm text-gray-600 font-medium">Payment Status</p>
-                                <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 truncate">{order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}</p>
+                                <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 truncate">{order.paymentStatus ? (order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)) : 'Unknown'}</p>
                               </div>
                             </div>
                           </motion.div>

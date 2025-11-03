@@ -119,10 +119,13 @@ export const EnhancedCheckout: React.FC = () => {
       let profile = await CustomerService.getProfile(user.uid);
 
       if (!profile) {
+        // Extract real email from Firebase Auth email
+        const realEmail = user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : '';
+        
         // Create profile if it doesn't exist
         await CustomerService.createOrUpdateProfile({
           uid: user.uid,
-          email: user.email!,
+          email: realEmail,
           displayName: user.displayName || ''
         });
         profile = await CustomerService.getProfile(user.uid);
@@ -136,11 +139,14 @@ export const EnhancedCheckout: React.FC = () => {
 
       // Pre-fill form with profile data
       if (profile) {
+        // Always use the real email extracted from Firebase Auth, in case profile has wrong email
+        const realEmail = user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : profile.email;
+        
         setFormData(prev => ({
           ...prev,
           firstName: profile.firstName || '',
           lastName: profile.lastName || '',
-          email: profile.email,
+          email: realEmail, // Always use extracted real email
           phone: profile.phone || ''
         }));
 

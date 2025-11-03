@@ -55,6 +55,11 @@ import { AdminAnalytics } from './pages/admin/AdminAnalytics';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminOrders } from './pages/admin/Orders';
 
+// Route Guards
+import { AdminRoute } from './components/guards/AdminRoute';
+import { PrivateRoute } from './components/guards/PrivateRoute';
+import { AffiliateRoute } from './components/guards/AffiliateRoute';
+
 function App() {
   const [subdomainInfo, setSubdomainInfo] = useState<SubdomainInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,10 +135,10 @@ function App() {
               
               {/* Affiliate */}
               <Route path="/affiliate" element={<AffiliatePage />} />
-              <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
+              <Route path="/affiliate/dashboard" element={<AffiliateRoute><AffiliateDashboard /></AffiliateRoute>} />
               
-              {/* Dashboard */}
-              <Route path="/dashboard" element={<DashboardLayout />}>
+              {/* Dashboard - Protected Route */}
+              <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
                 <Route index element={<Dashboard />} />
                 <Route path="products" element={<Products />} />
                 <Route path="orders" element={<Orders />} />
@@ -142,8 +147,8 @@ function App() {
                 <Route path="settings" element={<Settings />} />
               </Route>
               
-              {/* Admin */}
-              <Route path="/admin" element={<AdminLayout />}>
+              {/* Admin - Protected Admin Route */}
+              <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
                 <Route index element={<Businesses />} />
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="businesses" element={<Businesses />} />

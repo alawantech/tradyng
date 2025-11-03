@@ -43,6 +43,7 @@ export interface Order {
   paymentMethod: 'manual' | 'automatic';
   paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
   paymentId?: string;
+  paymentReceipt?: string; // URL to uploaded payment receipt image
   delivered?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;

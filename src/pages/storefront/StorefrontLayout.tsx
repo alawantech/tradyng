@@ -281,7 +281,7 @@ export const StorefrontLayout: React.FC = () => {
                     >
                       <User className="h-4 w-4 mr-2" />
                       <span className="hidden sm:inline">
-                        {user.displayName || user.email?.split('@')[0] || 'Account'}
+                        {user.displayName || (user.email ? customerAuthService.extractRealEmailFromFirebase(user.email).split('@')[0] : 'Account')}
                       </span>
                       <ChevronDown className="h-4 w-4 ml-2" />
                     </Button>

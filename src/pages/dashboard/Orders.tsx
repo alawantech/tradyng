@@ -19,6 +19,7 @@ export const Orders: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showReceipt, setShowReceipt] = useState<string | null>(null);
+  const [showPaymentReceipt, setShowPaymentReceipt] = useState<string | null>(null);
   const [customerOption, setCustomerOption] = useState<'existing' | 'manual'>('existing');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [approvingOrders, setApprovingOrders] = useState<Set<string>>(new Set());
@@ -104,7 +105,15 @@ export const Orders: React.FC = () => {
         ProductService.getProductsByBusinessId(business.id),
         CustomerService.getCustomersByBusinessId(business.id)
       ]);
-      setOrders(ordersData);
+      
+      // Fix orders without status field - set default to 'pending'
+      const ordersWithStatus = ordersData.map(order => ({
+        ...order,
+        status: order.status || 'pending',
+        paymentStatus: order.paymentStatus || 'pending'
+      })) as Order[];
+      
+      setOrders(ordersWithStatus);
       setProducts(productsData);
       setCustomers(customersData);
     } catch (error) {
@@ -404,7 +413,8 @@ export const Orders: React.FC = () => {
       toast.error(errorMessage);
     }
   };
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
     switch (status.toLowerCase()) {
       case 'approved': return 'bg-green-100 text-green-800';
       case 'delivered':
@@ -420,7 +430,8 @@ export const Orders: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string | undefined) => {
+    if (!status) return <Clock className="h-4 w-4" />;
     switch (status.toLowerCase()) {
       case 'approved': return <CheckCircle className="h-4 w-4" />;
       case 'delivered':
@@ -1126,6 +1137,7 @@ export const Orders: React.FC = () => {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Items</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Total</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Payment</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Receipt</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Delivered</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Actions</th>
@@ -1155,9 +1167,23 @@ export const Orders: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-700">{order.paymentMethod}</td>
                       <td className="px-4 py-3 text-sm">
+                        {order.paymentReceipt ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowPaymentReceipt(order.paymentReceipt || null)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        ) : (
+                          <span className="text-gray-400 text-xs">No receipt</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
                         <span className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                           {getStatusIcon(order.status)}
-                          <span>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
+                          <span>{order.status ? (order.status.charAt(0).toUpperCase() + order.status.slice(1)) : 'Pending'}</span>
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -1318,6 +1344,50 @@ export const Orders: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Payment Receipt Modal */}
+      {showPaymentReceipt && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowPaymentReceipt(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900">Payment Receipt</h3>
+              <button
+                onClick={() => setShowPaymentReceipt(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <img
+                src={showPaymentReceipt}
+                alt="Payment Receipt"
+                className="w-full h-auto rounded-lg shadow-md"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://via.placeholder.com/800x600?text=Image+Not+Found';
+                }}
+              />
+              <div className="mt-4 flex justify-end">
+                <a
+                  href={showPaymentReceipt}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Open in New Tab
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

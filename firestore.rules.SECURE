@@ -52,40 +52,24 @@ service cloud.firestore {
       
       // Orders subcollection
       match /orders/{orderId} {
-        // Business owner, admin, or anyone can read (customers need to filter by email)
-        // Note: Customers filter by email in the app, so we allow read access
-        // In production, you should use a Cloud Function to query customer orders
-        allow read: if isBusinessOwner(businessId) || isAdmin() || true;
-        // Anyone can create orders (customers placing orders from storefront)
-        // Business owner and admin can also create orders
-        allow create: if true;
+        // Business owner, admin, or customer who placed order can read
+        allow read: if isBusinessOwner(businessId) || 
+                      isAdmin() || 
+                      (isSignedIn() && resource.data.customerId == request.auth.uid);
+        // Only business owner or admin can create orders (admin panel orders)
+        allow create: if isBusinessOwner(businessId) || isAdmin();
         // Only business owner or admin can update orders
         allow update: if isBusinessOwner(businessId) || isAdmin();
         // Only admin can delete orders
         allow delete: if isAdmin();
       }
       
-      // Counters subcollection (for order ID generation)
-      match /counters/{counterId} {
-        // Anyone can read counters (needed for order ID generation)
-        allow read: if true;
-        // Anyone can update counters (auto-increment for order IDs)
-        allow update: if true;
-        // Only business owner can create counters
-        allow create: if isBusinessOwner(businessId) || isAdmin();
-        // Only admin can delete
-        allow delete: if isAdmin();
-      }
-      
       // Customers subcollection
       match /customers/{customerId} {
-        // Business owner, admin, or anyone checking if email exists (during login) can read
-        // Note: For better security, customer data should be queried by Cloud Function
-        // but for MVP we allow read access for customer login flow
-        allow read: if isBusinessOwner(businessId) || isAdmin() || true;
-        // Anyone can create customer record (during storefront signup/checkout)
-        // Business owner and admin can also create/update
-        allow create, update: if true;
+        // Business owner and admin can read
+        allow read: if isBusinessOwner(businessId) || isAdmin();
+        // Business owner and admin can create/update
+        allow create, update: if isBusinessOwner(businessId) || isAdmin();
         // Only admin can delete
         allow delete: if isAdmin();
         
@@ -104,43 +88,16 @@ service cloud.firestore {
       }
     }
     
-    // Customer profiles (global collection) - OLD COLLECTION NAME
+    // Customer profiles (global collection)
     match /customerProfiles/{profileId} {
-      // Anyone can read to check if profile exists during login
-      // This is safe because sensitive data should be minimal
-      allow read: if true;
-      // Anyone can create a profile (during signup)
-      allow create: if true;
-      // Customer can update their own profile, or admin
-      allow update: if isOwner(profileId) || isAdmin();
-      // Only admin can delete
-      allow delete: if isAdmin();
-    }
-    
-    // Customers (global collection) - NEW COLLECTION FOR CUSTOMER PROFILES
-    match /customers/{customerId} {
-      // Customers can read their own profile
-      // Anyone can read to check if profile exists during login
-      allow read: if true;
-      // Authenticated customers can create their own profile
-      // The customer is authenticated when signup happens
-      allow create: if isSignedIn() && request.auth.uid == customerId;
+      // Only the customer themselves or admin can read
+      allow read: if isOwner(profileId) || isAdmin();
+      // Customer can create their own profile
+      allow create: if isSignedIn() && request.auth.uid == profileId;
       // Customer can update their own profile
-      allow update: if isOwner(customerId) || isAdmin();
+      allow update: if isOwner(profileId);
       // Only admin can delete
       allow delete: if isAdmin();
-    }
-    
-    // Customer Addresses (global collection for customer shipping addresses)
-    match /customer_addresses/{addressId} {
-      // Customers can read their own addresses
-      allow read: if isSignedIn() && resource.data.customerId == request.auth.uid;
-      // Customers can create their own addresses
-      allow create: if isSignedIn() && request.resource.data.customerId == request.auth.uid;
-      // Customers can update their own addresses
-      allow update: if isSignedIn() && resource.data.customerId == request.auth.uid;
-      // Customers can delete their own addresses
-      allow delete: if isSignedIn() && resource.data.customerId == request.auth.uid;
     }
     
     // Affiliates collection
@@ -180,16 +137,6 @@ service cloud.firestore {
       allow update: if isAdmin();
       // Only admin can delete
       allow delete: if isAdmin();
-    }
-    
-    // Categories (global collection)
-    match /categories/{categoryId} {
-      // Anyone can read categories (for storefront)
-      allow read: if true;
-      // Business owner or admin can create categories
-      allow create: if isSignedIn();
-      // Business owner or admin can update/delete their own categories
-      allow update, delete: if isSignedIn() || isAdmin();
     }
     
     // Coupons collection

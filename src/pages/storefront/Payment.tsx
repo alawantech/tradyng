@@ -1,24 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, CreditCard, Clock, CheckCircle, Sparkles, Shield, Star, Zap, User, Package } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Building2, Copy, CheckCircle, Sparkles, Shield, Upload, FileText, User, Package, AlertCircle, CreditCard } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
+import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
-import { OrderService, Order } from '../../services/order';
-import { flutterwaveService } from '../../services/flutterwaveService';
+import { OrderService } from '../../services/order';
+import { ImageUploadService } from '../../services/imageUpload';
 import toast from 'react-hot-toast';
 
 export const Payment: React.FC = () => {
   const { business } = useStore();
+  const { user } = useCustomerAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
   // Get checkout data from location state
   const { checkoutData } = location.state || {};
   
-  const [isUploading, setIsUploading] = useState(false);
+  const [paymentReceipt, setPaymentReceipt] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!checkoutData) {
@@ -27,63 +33,20 @@ export const Payment: React.FC = () => {
     }
   }, [checkoutData]);
 
-  if (!business) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Sparkles className="w-8 h-8 text-white animate-pulse" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Loading...</h1>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (!checkoutData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <div className="w-24 h-24 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
-              <FileText className="w-12 h-12 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
-              Checkout Information Not Found
-            </h1>
-            <p className="text-gray-600 mb-8 text-lg">Please start your checkout process again.</p>
-            <Link to="/products">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button size="lg" className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-xl shadow-xl">
-                  <ArrowLeft className="h-5 w-5 mr-2" />
-                  Continue Shopping
-                </Button>
-              </motion.div>
-            </Link>
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
+  const copyToClipboard = (text: string, fieldName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    toast.success(`${fieldName} copied!`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        setUploadError('Please upload a valid image (JPG, PNG) or PDF file');
+        setUploadError('Please upload a valid image (JPG, PNG, WEBP)');
         return;
       }
       
@@ -96,464 +59,412 @@ export const Payment: React.FC = () => {
       
       setPaymentReceipt(file);
       setUploadError(null);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleSubmitPayment = async () => {
+    if (!paymentReceipt) {
+      toast.error('Please upload payment receipt');
+      return;
+    }
+
     if (!checkoutData || !business?.id) {
       toast.error('Checkout information not found');
       return;
     }
 
-    setIsUploading(true);
+    setIsSubmitting(true);
     
     try {
-      // Check if Flutterwave is configured
-      if (!flutterwaveService.isConfigured()) {
-        toast.error('Payment system is not configured. Please contact support.');
+      // Upload payment receipt
+      toast.loading('Uploading payment receipt...');
+      const receiptUrl = await ImageUploadService.uploadImage(paymentReceipt, `receipts/${business.id}`);
+      toast.dismiss();
+      
+      if (!receiptUrl) {
+        toast.error('Failed to upload receipt. Please try again.');
         return;
       }
 
-      const txRef = flutterwaveService.generateTxRef('ORDER');
-      
-      const paymentResult = await flutterwaveService.initializePayment({
-        amount: checkoutData.total,
-        currency: business?.settings?.currency || DEFAULT_CURRENCY,
-        customerEmail: checkoutData.customerEmail,
+      // Create order with payment receipt
+      toast.loading('Creating your order...');
+      const orderId = await OrderService.createOrder(business.id, {
+        items: checkoutData.items,
+        customerId: user?.uid, // Add customer Firebase Auth UID
         customerName: checkoutData.customerName,
+        customerEmail: checkoutData.customerEmail,
         customerPhone: checkoutData.customerPhone,
-        txRef: txRef,
-        redirectUrl: `${window.location.origin}/payment/callback?order=true`,
-        meta: {
-          orderData: checkoutData,
-          businessId: business.id,
-          businessName: business.name
-        }
+        shippingAddress: checkoutData.shippingAddress,
+        subtotal: checkoutData.subtotal,
+        tax: 0,
+        shipping: checkoutData.shippingCost || 0,
+        total: checkoutData.total,
+        status: 'pending', // Set order status
+        paymentMethod: 'manual',
+        paymentStatus: 'pending',
+        paymentReceipt: receiptUrl, // Save receipt URL
+        notes: checkoutData.notes
       });
 
-      if (paymentResult.status === 'success' && paymentResult.data) {
-        // Redirect to Flutterwave payment page
-        window.location.href = paymentResult.data.data.link;
-      } else {
-        toast.error(paymentResult.message || 'Failed to initialize payment');
+      toast.dismiss();
+      toast.success('Order placed successfully! We will verify your payment shortly.');
+
+      // Send order confirmation email to customer
+      try {
+        console.log('Sending order confirmation email...');
+        const response = await fetch('https://sendpaymentreceiptnotification-rv5lqk7lxa-uc.a.run.app', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customerEmail: checkoutData.customerEmail,
+            customerName: checkoutData.customerName,
+            orderId: orderId,
+            businessName: business.name || 'Rady.ng',
+            businessEmail: business.email,
+            businessPhone: business.phone
+          })
+        });
+
+        if (response.ok) {
+          console.log('Order confirmation email sent successfully');
+        } else {
+          console.warn('Failed to send order confirmation email:', response.status);
+        }
+      } catch (emailError) {
+        console.warn('Error sending order confirmation email:', emailError);
+        // Don't fail the order if email fails
       }
       
+      // Clear cart and navigate to success page
+      setTimeout(() => {
+        navigate('/orders', { replace: true });
+      }, 1500);
+      
     } catch (error) {
-      console.error('Error processing payment:', error);
-      toast.error('Failed to process payment. Please try again.');
+      console.error('Error submitting order:', error);
+      toast.dismiss();
+      toast.error('Failed to place order. Please try again.');
     } finally {
-      setIsUploading(false);
+      setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-      {/* Animated Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{
-            rotate: 360,
-            scale: [1, 1.1, 1],
-          }}
-          transition={{
-            rotate: { duration: 20, repeat: Infinity, ease: "linear" },
-            scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
-          }}
-          className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-purple-400/20 to-blue-400/20 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            rotate: -360,
-            scale: [1.1, 1, 1.1],
-          }}
-          transition={{
-            rotate: { duration: 25, repeat: Infinity, ease: "linear" },
-            scale: { duration: 5, repeat: Infinity, ease: "easeInOut" }
-          }}
-          className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"
-        />
+  if (!business) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
       </div>
+    );
+  }
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  if (!checkoutData) {
+    return null;
+  }
+
+  // Bank details (you can make this dynamic from business settings later)
+  const bankDetails = {
+    bankName: business?.settings?.bankName || 'First Bank of Nigeria',
+    accountName: business?.settings?.accountName || business?.name,
+    accountNumber: business?.settings?.accountNumber || '1234567890',
+    swiftCode: business?.settings?.swiftCode || 'FBNINGLA',
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 py-12 px-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="space-y-8"
+          className="mb-8"
         >
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="relative"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-white/80 to-white/60 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20" />
-            <div className="relative p-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <motion.h1
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                    className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2"
-                  >
-                    Complete Your Payment
-                  </motion.h1>
-                  <motion.p
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                    className="text-gray-700 text-lg font-medium"
-                  >
-                    Secure bank transfer for {formatCurrency(checkoutData?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}
-                  </motion.p>
-                </div>
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.6, delay: 0.4 }}
-                >
-                  <Link to="/checkout">
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Button variant="outline" className="bg-white/80 backdrop-blur-sm border-white/20 hover:bg-white/90 text-gray-700 px-6 py-3 rounded-xl shadow-lg">
-                        <ArrowLeft className="h-5 w-5 mr-2" />
-                        Back to Checkout
-                      </Button>
-                    </motion.div>
-                  </Link>
-                </motion.div>
-              </div>
+          <div className="flex items-center justify-between bg-white rounded-2xl shadow-xl p-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Complete Payment
+              </h1>
+              <p className="text-gray-600">
+                Total Amount: <span className="font-bold text-purple-600">{formatCurrency(checkoutData.total, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
+              </p>
             </div>
-          </motion.div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Payment Instructions */}
-            <div className="space-y-6">
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.5 }}
-                  >
-                    <Card className="relative overflow-hidden shadow-2xl">
-                      <div className="absolute inset-0 bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-xl" />
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-green-400/30 to-transparent rounded-full -translate-y-12 translate-x-12" />
-                      <div className="relative p-8">
-                        <div className="flex items-center space-x-4 mb-8">
-                          <motion.div
-                            animate={{ rotate: [0, 10, -10, 0] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                            className="flex-shrink-0"
-                          >
-                            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-                              <CreditCard className="h-6 w-6 text-white" />
-                            </div>
-                          </motion.div>
-                          <div>
-                            <h2 className="text-2xl font-bold text-gray-900">Secure Payment</h2>
-                            <p className="text-gray-600 text-lg">Pay securely with Flutterwave</p>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-6 bg-gradient-to-r from-green-50/50 to-emerald-50/50 backdrop-blur-sm p-6 rounded-2xl border border-green-200/50">
-                          <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.4, delay: 0.1 }}
-                            className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-xl"
-                          >
-                            <span className="text-gray-700 font-semibold">Payment Method</span>
-                            <span className="text-gray-900 font-bold">Flutterwave</span>
-                          </motion.div>
-                          
-                          <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.4, delay: 0.2 }}
-                            className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-xl"
-                          >
-                            <span className="text-gray-700 font-semibold">Currency</span>
-                            <span className="text-gray-900 font-bold">{business?.settings?.currency || DEFAULT_CURRENCY}</span>
-                          </motion.div>
-                          
-                          <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.4, delay: 0.3 }}
-                            className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-100 to-blue-100 backdrop-blur-sm rounded-xl border-2 border-purple-200"
-                          >
-                            <span className="text-gray-700 font-semibold">Amount to Pay</span>
-                            <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                              {formatCurrency(checkoutData?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}
-                            </span>
-                          </motion.div>
-                        </div>
-                        
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.6, delay: 0.6 }}
-                          className="mt-8 p-6 bg-gradient-to-r from-amber-50/50 to-yellow-50/50 backdrop-blur-sm rounded-2xl border border-amber-200/50"
-                        >
-                          <div className="flex items-start space-x-4">
-                            <motion.div
-                              animate={{ scale: [1, 1.1, 1] }}
-                              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                            >
-                              <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
-                                <Shield className="h-5 w-5 text-white" />
-                              </div>
-                            </motion.div>
-                            <div className="flex-1">
-                              <h3 className="text-lg font-bold text-amber-800 mb-3">Secure Payment</h3>
-                              <ul className="text-amber-700 space-y-2 text-sm">
-                                <li className="flex items-center space-x-2">
-                                  <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                                  <span>Multiple payment options available</span>
-                                </li>
-                                <li className="flex items-center space-x-2">
-                                  <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                                  <span>Card, Mobile Money, Bank Transfer</span>
-                                </li>
-                                <li className="flex items-center space-x-2">
-                                  <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                                  <span>256-bit SSL encryption</span>
-                                </li>
-                                <li className="flex items-center space-x-2">
-                                  <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                                  <span>Instant payment confirmation</span>
-                                </li>
-                              </ul>
-                            </div>
-                          </div>
-                        </motion.div>
-                      </div>
-                    </Card>
-                  </motion.div>
-
-              {/* Upload Receipt */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.7 }}
-              >
-                <Card className="relative overflow-hidden shadow-2xl">
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-xl" />
-                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-blue-400/30 to-transparent rounded-full translate-y-12 -translate-x-12" />
-                  <div className="relative p-8">
-                    <div className="flex items-center space-x-4 mb-8">
-                      <motion.div
-                        animate={{ rotate: [0, -10, 10, 0] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                        className="flex-shrink-0"
-                      >
-                        <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-                          <Zap className="h-6 w-6 text-white" />
-                        </div>
-                      </motion.div>
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Complete Payment</h2>
-                        <p className="text-gray-600 text-lg">Click below to proceed to secure payment</p>
-                      </div>
-                    </div>
-                    
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Button
-                        onClick={handleSubmitPayment}
-                        disabled={isUploading}
-                        size="lg"
-                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-xl shadow-xl font-semibold text-lg"
-                      >
-                        {isUploading ? (
-                          <div className="flex items-center">
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                              className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-3"
-                            />
-                            Processing Payment...
-                          </div>
-                        ) : (
-                          <div className="flex items-center">
-                            <CreditCard className="h-5 w-5 mr-2" />
-                            Pay with Flutterwave
-                          </div>
-                        )}
-                      </Button>
-                    </motion.div>
-                  </div>
-                </Card>
-              </motion.div>
-            </div>
-
-            {/* Order Summary */}
-            <div className="lg:col-span-1">
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.8 }}
-                className="sticky top-8"
-              >
-                <Card className="relative overflow-hidden shadow-2xl">
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-xl" />
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-purple-400/30 to-transparent rounded-full -translate-y-12 translate-x-12" />
-                  <div className="relative p-8">
-                    <div className="flex items-center space-x-4 mb-8">
-                      <motion.div
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                        className="flex-shrink-0"
-                      >
-                        <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                          <Star className="h-6 w-6 text-white" />
-                        </div>
-                      </motion.div>
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Order Summary</h2>
-                        <p className="text-gray-600 text-lg">Review your purchase</p>
-                      </div>
-                    </div>
-
-                    {/* Customer Info */}
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.6, delay: 0.9 }}
-                      className="mb-8 p-6 bg-gradient-to-r from-gray-50/50 to-slate-50/50 backdrop-blur-sm rounded-2xl border border-gray-200/50"
-                    >
-                      <h3 className="font-bold text-gray-900 mb-4 flex items-center">
-                        <User className="h-5 w-5 mr-2 text-purple-600" />
-                        Customer Details
-                      </h3>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 font-medium">Name:</span>
-                          <span className="text-gray-900 font-semibold">{checkoutData?.customerName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 font-medium">Email:</span>
-                          <span className="text-gray-900 font-semibold">{checkoutData?.customerEmail}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 font-medium">Phone:</span>
-                          <span className="text-gray-900 font-semibold">{checkoutData?.customerPhone}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 font-medium">Address:</span>
-                          <span className="text-gray-900 font-semibold text-right">
-                            {checkoutData?.shippingAddress?.street}, {checkoutData?.shippingAddress?.city}
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
-                    
-                    {/* Order Items */}
-                    <div className="space-y-6 mb-8">
-                      <h3 className="font-bold text-gray-900 flex items-center">
-                        <Package className="h-5 w-5 mr-2 text-blue-600" />
-                        Order Items
-                      </h3>
-                      <AnimatePresence>
-                        {checkoutData?.items.map((item, index) => (
-                          <motion.div
-                            key={item.productId}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.4, delay: index * 0.1 }}
-                            className="flex items-center space-x-4 p-4 bg-white/50 backdrop-blur-sm rounded-xl shadow-sm"
-                          >
-                            <motion.img
-                              whileHover={{ scale: 1.1 }}
-                              src={item.image || '/api/placeholder/60/60'}
-                              alt={item.productName}
-                              className="w-16 h-16 object-cover rounded-xl shadow-lg"
-                            />
-                            <div className="flex-1">
-                              <p className="font-semibold text-gray-900 text-sm leading-tight">{item.productName}</p>
-                              <p className="text-gray-600 text-sm mt-1">Qty: {item.quantity}</p>
-                            </div>
-                            <p className="font-bold text-gray-900">{formatCurrency(item.total, business?.settings?.currency || DEFAULT_CURRENCY)}</p>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                    </div>
-
-                    <div className="space-y-4 mb-8 border-t border-gray-200/50 pt-6">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 font-medium">Subtotal</span>
-                        <span className="font-semibold text-gray-900">{formatCurrency(checkoutData?.subtotal || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 font-medium">Tax</span>
-                        <span className="font-semibold text-gray-900">{formatCurrency(checkoutData?.tax || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xl font-bold border-t border-gray-300/50 pt-4">
-                        <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Total</span>
-                        <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">{formatCurrency(checkoutData?.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}</span>
-                      </div>
-                    </div>
-
-                    {/* Security Features */}
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.6, delay: 1.2 }}
-                      className="space-y-4 text-sm text-gray-600"
-                    >
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.6, delay: 1.3 }}
-                        className="flex items-center space-x-3 p-3 bg-green-50/50 backdrop-blur-sm rounded-lg"
-                      >
-                        <Shield className="h-5 w-5 text-green-600 flex-shrink-0" />
-                        <span className="font-medium">Secure payment processing</span>
-                      </motion.div>
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.6, delay: 1.4 }}
-                        className="flex items-center space-x-3 p-3 bg-blue-50/50 backdrop-blur-sm rounded-lg"
-                      >
-                        <Clock className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                        <span className="font-medium">Fast order processing</span>
-                      </motion.div>
-                    </motion.div>
-
-                    {/* Store Info */}
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.6, delay: 1.5 }}
-                      className="mt-8 pt-6 border-t border-gray-200/50"
-                    >
-                      <h3 className="font-bold text-gray-900 mb-3">Order from</h3>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">{business.name.charAt(0)}</span>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{business.name}</p>
-                          {business.phone && (
-                            <p className="text-sm text-gray-600">📞 {business.phone}</p>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  </div>
-                </Card>
-              </motion.div>
-            </div>
+            <Link to="/checkout">
+              <Button variant="outline">
+                <ArrowLeft className="h-5 w-5 mr-2" />
+                Back
+              </Button>
+            </Link>
           </div>
         </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column - Bank Details */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-6"
+          >
+            {/* Bank Transfer Instructions */}
+            <Card className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <Building2 className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Bank Transfer Details</h2>
+                  <p className="text-sm text-gray-600">Transfer to the account below</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Bank Name */}
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <label className="text-sm text-gray-600 mb-1 block">Bank Name</label>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-900">{bankDetails.bankName}</span>
+                    <button
+                      onClick={() => copyToClipboard(bankDetails.bankName, 'Bank name')}
+                      className="p-2 hover:bg-white rounded-lg transition-colors"
+                    >
+                      {copiedField === 'Bank name' ? (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <Copy className="h-5 w-5 text-gray-400" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Account Name */}
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <label className="text-sm text-gray-600 mb-1 block">Account Name</label>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-900">{bankDetails.accountName}</span>
+                    <button
+                      onClick={() => copyToClipboard(bankDetails.accountName, 'Account name')}
+                      className="p-2 hover:bg-white rounded-lg transition-colors"
+                    >
+                      {copiedField === 'Account name' ? (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <Copy className="h-5 w-5 text-gray-400" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Account Number */}
+                <div className="p-4 bg-purple-50 border-2 border-purple-200 rounded-lg">
+                  <label className="text-sm text-purple-600 mb-1 block font-medium">Account Number</label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-bold text-purple-900">{bankDetails.accountNumber}</span>
+                    <button
+                      onClick={() => copyToClipboard(bankDetails.accountNumber, 'Account number')}
+                      className="p-2 hover:bg-purple-100 rounded-lg transition-colors"
+                    >
+                      {copiedField === 'Account number' ? (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <Copy className="h-5 w-5 text-purple-600" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Amount */}
+                <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                  <label className="text-sm text-green-600 mb-1 block font-medium">Amount to Transfer</label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-bold text-green-900">
+                      {formatCurrency(checkoutData.total, business?.settings?.currency || DEFAULT_CURRENCY)}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(checkoutData.total.toString(), 'Amount')}
+                      className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                    >
+                      {copiedField === 'Amount' ? (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <Copy className="h-5 w-5 text-green-600" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-semibold mb-1">Important:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Transfer the exact amount shown above</li>
+                      <li>Upload your payment receipt after transfer</li>
+                      <li>Your order will be processed after payment verification</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Coming Soon Badge */}
+              <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <CreditCard className="h-5 w-5 text-purple-600" />
+                  <span className="font-semibold text-purple-900">Automatic Payment</span>
+                  <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs font-bold rounded-full">
+                    COMING SOON
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Card & mobile money payments will be available soon!
+                </p>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Right Column - Upload Receipt */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-6"
+          >
+            {/* Upload Receipt */}
+            <Card className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-purple-100 rounded-lg">
+                  <Upload className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Upload Payment Receipt</h2>
+                  <p className="text-sm text-gray-600">After making transfer, upload proof</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* File Upload Area */}
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
+                  <input
+                    type="file"
+                    id="receipt-upload"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <label htmlFor="receipt-upload" className="cursor-pointer">
+                    {previewUrl ? (
+                      <div className="space-y-4">
+                        <img
+                          src={previewUrl}
+                          alt="Receipt preview"
+                          className="max-h-64 mx-auto rounded-lg shadow-lg"
+                        />
+                        <p className="text-sm text-green-600 font-medium">
+                          ✓ Receipt uploaded - Click to change
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
+                          <FileText className="h-8 w-8 text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-semibold text-gray-900 mb-1">
+                            Click to upload receipt
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            JPG, PNG or WEBP (Max 5MB)
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </label>
+                </div>
+
+                {uploadError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                    {uploadError}
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <Button
+                  onClick={handleSubmitPayment}
+                  disabled={!paymentReceipt || isSubmitting}
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 text-white py-6 text-lg font-semibold rounded-xl"
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                      Submitting Order...
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      <CheckCircle className="h-6 w-6 mr-2" />
+                      Submit Order
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </Card>
+
+            {/* Order Summary */}
+            <Card className="p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Package className="h-5 w-5 text-purple-600" />
+                Order Summary
+              </h3>
+              <div className="space-y-3">
+                {checkoutData.items.map((item: any) => (
+                  <div key={item.productId} className="flex items-center justify-between py-2 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={item.image || '/placeholder.png'}
+                        alt={item.productName}
+                        className="w-12 h-12 object-cover rounded-lg"
+                      />
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{item.productName}</p>
+                        <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                      </div>
+                    </div>
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(item.total, business?.settings?.currency || DEFAULT_CURRENCY)}
+                    </span>
+                  </div>
+                ))}
+
+                <div className="pt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium text-gray-900">
+                      {formatCurrency(checkoutData.subtotal, business?.settings?.currency || DEFAULT_CURRENCY)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Shipping</span>
+                    <span className="font-medium text-gray-900">
+                      {formatCurrency(checkoutData.shippingCost || 0, business?.settings?.currency || DEFAULT_CURRENCY)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t-2 border-gray-200">
+                    <span>Total</span>
+                    <span className="text-purple-600">
+                      {formatCurrency(checkoutData.total, business?.settings?.currency || DEFAULT_CURRENCY)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        </div>
       </div>
     </div>
   );

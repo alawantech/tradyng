@@ -115,12 +115,13 @@ export const CustomerProfilePage: React.FC = () => {
         profile = await CustomerService.getProfile(user.uid);
         
         if (!profile) {
-          // Create profile if it doesn't exist
-          const displayName = user.displayName || user.email?.split('@')[0] || 'Customer';
+          // Extract real email from Firebase Auth email
+          const realEmail = user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : '';
+          const displayName = user.displayName || realEmail.split('@')[0] || 'Customer';
           console.log('Creating profile with displayName:', displayName, 'from user.displayName:', user.displayName);
           await CustomerService.createOrUpdateProfile({
             uid: user.uid,
-            email: user.email!,
+            email: realEmail,
             displayName
           });
           profile = await CustomerService.getProfile(user.uid);
@@ -132,7 +133,8 @@ export const CustomerProfilePage: React.FC = () => {
           
           // Check if displayName looks like an email prefix and provide better fallback
           let displayName = profile.displayName;
-          const emailPrefix = user.email?.split('@')[0];
+          const realEmail = user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : '';
+          const emailPrefix = realEmail.split('@')[0];
           
           // If displayName is just the email prefix and user has a Firebase displayName, use that instead
           if (displayName === emailPrefix && user.displayName && user.displayName !== emailPrefix) {
@@ -152,7 +154,8 @@ export const CustomerProfilePage: React.FC = () => {
           });
         } else {
           // If no profile exists and creation failed, use user data as fallback
-          const fallbackDisplayName = user.displayName || user.email?.split('@')[0] || '';
+          const realEmail = user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : '';
+          const fallbackDisplayName = user.displayName || realEmail.split('@')[0] || '';
           setProfileForm({
             displayName: fallbackDisplayName,
             firstName: '',
@@ -573,13 +576,17 @@ export const CustomerProfilePage: React.FC = () => {
                         {/* Profile Avatar */}
                         <div className="relative mx-auto sm:mx-0">
                           <div className="w-20 h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xl lg:text-2xl font-bold shadow-lg">
-                            {(profileForm.displayName && profileForm.displayName !== user.email?.split('@')[0]) 
-                              ? profileForm.displayName.charAt(0).toUpperCase() 
-                              : user.displayName 
-                                ? user.displayName.charAt(0).toUpperCase()
-                                : user.email 
-                                  ? user.email.charAt(0).toUpperCase() 
-                                  : 'U'}
+                            {(() => {
+                              const realEmail = user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : '';
+                              const emailPrefix = realEmail.split('@')[0];
+                              return (profileForm.displayName && profileForm.displayName !== emailPrefix) 
+                                ? profileForm.displayName.charAt(0).toUpperCase() 
+                                : user.displayName 
+                                  ? user.displayName.charAt(0).toUpperCase()
+                                  : realEmail 
+                                    ? realEmail.charAt(0).toUpperCase() 
+                                    : 'U';
+                            })()}
                           </div>
                           <div className="absolute -bottom-1 -right-1 lg:-bottom-2 lg:-right-2 w-6 h-6 lg:w-8 lg:h-8 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
                             <div className="w-2 h-2 lg:w-3 lg:h-3 bg-white rounded-full"></div>
@@ -589,9 +596,13 @@ export const CustomerProfilePage: React.FC = () => {
                         {/* Profile Info */}
                         <div className="flex-1 text-center sm:text-left">
                           <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-2">
-                            {(profileForm.displayName && profileForm.displayName !== user.email?.split('@')[0])
-                              ? profileForm.displayName
-                              : user.displayName || 'Welcome'}
+                            {(() => {
+                              const realEmail = user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : '';
+                              const emailPrefix = realEmail.split('@')[0];
+                              return (profileForm.displayName && profileForm.displayName !== emailPrefix)
+                                ? profileForm.displayName
+                                : user.displayName || 'Welcome';
+                            })()}
                           </h2>
                           <p className="text-gray-600 mb-3 break-all">{user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : ''}</p>
                           <div className="flex flex-col sm:flex-row items-center sm:space-x-4 space-y-2 sm:space-y-0 text-sm">
