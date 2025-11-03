@@ -122,10 +122,9 @@ export const AffiliateDashboard: React.FC = () => {
   const copyReferralLink = () => {
     if (!affiliate?.username) return;
 
-    const referralLink = `${window.location.origin}/auth/signup?ref=${affiliate.username}`;
-    navigator.clipboard.writeText(referralLink);
+    navigator.clipboard.writeText(affiliate.username);
     setCopied(true);
-    toast.success('Referral link copied to clipboard!');
+    toast.success('Referral code copied to clipboard!');
 
     setTimeout(() => setCopied(false), 2000);
   };
@@ -215,7 +214,7 @@ export const AffiliateDashboard: React.FC = () => {
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-400">Username</p>
-              <p className="text-white font-medium">@{affiliate.username}</p>
+              <p className="text-white font-medium">{affiliate.username}</p>
             </div>
           </div>
         </div>
@@ -296,22 +295,22 @@ export const AffiliateDashboard: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Referral Link */}
+          {/* Referral Code */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
             className="bg-gray-800 rounded-lg p-6 border border-gray-700"
           >
-            <h2 className="text-xl font-semibold text-white mb-4">Your Referral Link</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">Your Referral Code</h2>
             <p className="text-gray-400 mb-4">
-              Share this link with potential customers. When they sign up and use your username as a coupon code, you'll earn commissions.
+              Share this code with potential customers. When they sign up and use your username as a coupon code, you'll earn commissions.
             </p>
 
             <div className="flex items-center space-x-2 mb-4">
               <input
                 type="text"
-                value={`${window.location.origin}/auth/signup?ref=${affiliate.username}`}
+                value={affiliate.username}
                 readOnly
                 className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
               />

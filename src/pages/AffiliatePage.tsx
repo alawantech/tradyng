@@ -193,15 +193,15 @@ export const AffiliatePage: React.FC = () => {
                 Full Name
               </label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-16 pointer-events-none">
+                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
                   <User className="h-5 w-5 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
                 </div>
-                <Input
+                <input
                   type="text"
                   placeholder="Enter your full name"
                   value={formData.fullName}
                   onChange={(e) => handleInputChange('fullName', e.target.value)}
-                  className="w-full h-14 pl-16 pr-4 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50"
+                  className="w-full h-14 pl-12 pr-4 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50"
                   required
                 />
               </div>
@@ -214,15 +214,15 @@ export const AffiliatePage: React.FC = () => {
                 Username
               </label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-16 pointer-events-none">
+                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
                   <AtSign className="h-5 w-5 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
                 </div>
-                <Input
+                <input
                   type="text"
                   placeholder="Choose a unique username"
                   value={formData.username}
                   onChange={(e) => handleInputChange('username', e.target.value.toLowerCase())}
-                  className={`w-full h-14 pl-16 pr-4 bg-white/5 border rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50 ${
+                  className={`w-full h-14 pl-12 pr-4 bg-white/5 border rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50 ${
                     usernameAvailable === false ? 'border-red-400/50 focus:border-red-400' :
                     usernameAvailable === true ? 'border-green-400/50 focus:border-green-400' :
                     'border-white/20 focus:border-purple-400'
@@ -264,15 +264,15 @@ export const AffiliatePage: React.FC = () => {
                 Email Address
               </label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-16 pointer-events-none">
+                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
                   <Mail className="h-5 w-5 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
                 </div>
-                <Input
+                <input
                   type="email"
                   placeholder="your.email@example.com"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`w-full h-14 pl-16 pr-4 bg-white/5 border rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50 ${
+                  className={`w-full h-14 pl-12 pr-4 bg-white/5 border rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50 ${
                     emailExists === true ? 'border-red-400/50 focus:border-red-400' : 'border-white/20 focus:border-purple-400'
                   }`}
                   required
@@ -312,20 +312,20 @@ export const AffiliatePage: React.FC = () => {
                 Password
               </label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-16 pointer-events-none">
+                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
                   <Lock className="h-5 w-5 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
                 </div>
-                <Input
+                <input
                   type={showPassword ? "text" : "password"}
                   placeholder="Create a strong password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  className="w-full h-14 pl-16 pr-12 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50"
+                  className="w-full h-14 pl-12 pr-12 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50"
                   required
                 />
                 <button
                   type="button"
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-purple-400 transition-colors duration-300 rounded-lg hover:bg-purple-500/10"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-purple-400 transition-colors duration-300 rounded-lg hover:bg-purple-500/10 z-10"
                   onClick={() => setShowPassword((prev) => !prev)}
                   tabIndex={-1}
                 >
@@ -341,15 +341,15 @@ export const AffiliatePage: React.FC = () => {
                 Confirm Password
               </label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-16 pointer-events-none">
+                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
                   <Lock className="h-5 w-5 text-purple-400 group-focus-within:text-purple-300 transition-colors duration-300" />
                 </div>
-                <Input
+                <input
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                  className={`w-full h-14 pl-16 pr-12 bg-white/5 border rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50 ${
+                  className={`w-full h-14 pl-12 pr-12 bg-white/5 border rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-400/20 focus:outline-none transition-all duration-300 group-hover:border-purple-300/50 ${
                     formData.confirmPassword && formData.password !== formData.confirmPassword
                       ? 'border-red-400/50 focus:border-red-400'
                       : 'border-white/20 focus:border-purple-400'
@@ -358,7 +358,7 @@ export const AffiliatePage: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-purple-400 transition-colors duration-300 rounded-lg hover:bg-purple-500/10"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-purple-400 transition-colors duration-300 rounded-lg hover:bg-purple-500/10 z-10"
                   onClick={() => setShowConfirmPassword((prev) => !prev)}
                   tabIndex={-1}
                 >
