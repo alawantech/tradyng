@@ -30,6 +30,8 @@ export interface Business {
   logo?: string;
   plan: 'free' | 'business' | 'pro' | 'test';
   status: 'active' | 'suspended' | 'pending';
+  trialStartDate?: Timestamp; // For free plan users - trial start date
+  trialEndDate?: Timestamp; // For free plan users - trial end date (3 days from start)
   createdAt: Timestamp;
   updatedAt: Timestamp;
   settings: {

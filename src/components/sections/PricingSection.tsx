@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Shield, ChevronDown, Rocket, Building, Crown, Sparkles, ArrowRight, Users, TrendingUp, Award, Clock } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { PRICING_PLANS } from '../../constants/plans';
+import { AuthService } from '../../services/auth';
 
 interface PricingSectionProps {
   showHeader?: boolean;
@@ -17,6 +18,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   className = '',
   sectionId = 'pricing'
 }) => {
+  const navigate = useNavigate();
+
   // FAQ data
   const faqData = [
     {
@@ -49,32 +52,23 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
     setOpenFAQ(openFAQ === id ? null : id);
   };
 
-  const handlePlanSelection = async (plan: typeof PRICING_PLANS[0]) => {
+  const handlePlanSelection = (plan: typeof PRICING_PLANS[0]) => {
     try {
-      // Dynamically import AuthService to avoid circular dependencies
-      const { AuthService } = await import('../../services/auth');
       const currentUser = AuthService.getCurrentUser();
 
       if (currentUser) {
-        // User is already authenticated - redirect to coupon page
+        // User is authenticated - redirect to coupon page
         console.log('✅ Authenticated user selecting plan:', plan.id);
-        const url = new URL('/coupon', window.location.origin);
-        url.searchParams.set('plan', plan.id);
-        url.searchParams.set('amount', plan.yearlyPrice.toString());
-        window.location.href = url.toString();
+        navigate(`/coupon?plan=${plan.id}&amount=${plan.yearlyPrice}`);
       } else {
-        // User not authenticated - redirect to signup (existing flow: signup → coupon → payment)
+        // User not authenticated - redirect to signup
         console.log('🔐 Non-authenticated user - redirecting to signup');
-        const url = new URL('/auth/signup', window.location.origin);
-        url.searchParams.set('plan', plan.id);
-        window.location.href = url.toString();
+        navigate(`/auth/signup?plan=${plan.id}`);
       }
     } catch (error) {
-      console.error('Error checking authentication:', error);
+      console.error('❌ Error in handlePlanSelection:', error);
       // Fallback to signup if there's an error
-      const url = new URL('/auth/signup', window.location.origin);
-      url.searchParams.set('plan', plan.id);
-      window.location.href = url.toString();
+      navigate(`/auth/signup?plan=${plan.id}`);
     }
   };
 
@@ -352,20 +346,15 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
 
                       {/* Call to Action */}
                       <div className="mt-auto">
-                        <motion.div
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
+                        <Button
+                          onClick={() => handlePlanSelection(plan)}
+                          className={`w-full py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 rounded-xl shadow-lg hover:shadow-xl ${colors.button} group/btn`}
                         >
-                          <Button
-                            onClick={() => handlePlanSelection(plan)}
-                            className={`w-full py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 rounded-xl shadow-lg hover:shadow-xl ${colors.button} group/btn`}
-                          >
-                            <span className="flex items-center justify-center space-x-2">
-                              <span>{plan.buttonText}</span>
-                              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover/btn:translate-x-1 transition-transform" />
-                            </span>
-                          </Button>
-                        </motion.div>
+                          <span className="flex items-center justify-center space-x-2">
+                            <span>{plan.buttonText}</span>
+                            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover/btn:translate-x-1 transition-transform" />
+                          </span>
+                        </Button>
 
                         {plan.id === 'free' && (
                           <p className="text-center text-xs sm:text-sm text-gray-500 mt-2 sm:mt-3">

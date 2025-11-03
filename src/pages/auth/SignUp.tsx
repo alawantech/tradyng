@@ -713,7 +713,7 @@ export const SignUp: React.FC = () => {
       }
       
       // 4. Create business document
-      const businessData = {
+      const businessData: any = {
         name: formData.storeName,
         subdomain: subdomain,
         ownerId: authUser.uid,
@@ -736,9 +736,23 @@ export const SignUp: React.FC = () => {
         totalProducts: 0
       };
 
+      // For free plan, set trial dates (3 days from now)
+      if (planId === 'free') {
+        const { Timestamp } = await import('firebase/firestore');
+        const now = Timestamp.now();
+        const trialEndTime = new Date();
+        trialEndTime.setDate(trialEndTime.getDate() + 3); // 3 days from now
+        businessData.trialStartDate = now;
+        businessData.trialEndDate = Timestamp.fromDate(trialEndTime);
+        console.log('🎁 Free plan - Trial period set:', {
+          start: now.toDate().toISOString(),
+          end: trialEndTime.toISOString()
+        });
+      }
+
       // Only add inviteSourceUid if it exists
       if (inviteSourceUid) {
-        (businessData as any).inviteSourceUid = inviteSourceUid;
+        businessData.inviteSourceUid = inviteSourceUid;
       }
 
       await BusinessService.createBusiness(businessData);

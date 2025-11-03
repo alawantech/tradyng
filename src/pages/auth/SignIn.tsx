@@ -107,16 +107,8 @@ export const SignIn: React.FC = () => {
             const business = businesses[0];
             console.log('🏢 Business data retrieved:', { id: business.id, plan: business.plan });
             
-            // If user has free plan, redirect to coupon page
-            if (business.plan === 'free') {
-              console.log('🎫 User has free plan, redirecting to coupon page');
-              
-              // Use plan from URL params or default to business
-              const redirectPlan = planFromUrl && planFromUrl !== 'free' ? planFromUrl : 'business';
-              const couponUrl = `/coupon?plan=${redirectPlan}${couponFromUrl ? `&coupon=${couponFromUrl}&discount=${discountFromUrl}` : ''}`;
-              navigate(couponUrl);
-              return;
-            } else {
+            // All users with a business (free or paid) go to dashboard
+            if (business.plan) {
               console.log('✅ User has paid plan, redirecting to dashboard');
               console.log('📊 Business details:', {
                 id: business.id,

@@ -140,9 +140,58 @@ export const Dashboard: React.FC = () => {
     </Card>
   );
 
+  // Calculate days remaining for free trial
+  const getDaysRemaining = () => {
+    if (business?.plan !== 'free' || !business?.trialEndDate) return null;
+    const now = new Date();
+    const endDate = business.trialEndDate.toDate ? business.trialEndDate.toDate() : new Date(business.trialEndDate as any);
+    const diffTime = endDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const daysRemaining = getDaysRemaining();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="p-6 pt-20 space-y-8">
+        {/* Free Trial Upgrade Banner */}
+        {business?.plan === 'free' && daysRemaining !== null && (
+          <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 text-white rounded-xl shadow-2xl p-6 border-0">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2 mb-2">
+                  <AlertTriangle className="h-6 w-6" />
+                  <h3 className="text-xl font-bold">Free Trial Active</h3>
+                </div>
+                <p className="text-white/90 text-lg mb-1">
+                  {daysRemaining > 0 
+                    ? `Your free trial expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}.`
+                    : 'Your free trial has expired. Upgrade now to keep your store active!'}
+                </p>
+                <p className="text-white/80 text-sm">
+                  Upgrade now to unlock unlimited features and keep your store running after the trial period.
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <Link
+                  to="/coupon?plan=business&amount=10000"
+                  className="inline-flex items-center px-6 py-3 bg-white text-purple-600 font-bold rounded-lg shadow-lg hover:shadow-xl hover:bg-gray-50 transition-all duration-200"
+                >
+                  <ArrowUpRight className="h-5 w-5 mr-2" />
+                  Upgrade Now
+                </Link>
+                <Link
+                  to="/pricing"
+                  className="inline-flex items-center px-6 py-3 bg-purple-700/50 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all duration-200"
+                >
+                  View Plans
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
           <div>

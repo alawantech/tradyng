@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateUploadUrl = exports.verifyPaymentAndAwardCommission = exports.initializePayment = exports.sendOrderApprovalEmail = exports.sendOrderDeliveryEmail = exports.sendAdminPaymentReceiptNotification = exports.sendPaymentReceiptNotification = exports.sendMessageNotification = exports.healthCheck = exports.debugResetOtp = exports.testFullOtpFlow = exports.testOtpHash = exports.resetPassword = exports.verifyResetOtp = exports.sendResetOtp = exports.verifyOtp = exports.sendOtp = void 0;
+exports.checkTrialExpirations = exports.generateUploadUrl = exports.verifyPaymentAndAwardCommission = exports.initializePayment = exports.sendOrderApprovalEmail = exports.sendOrderDeliveryEmail = exports.sendAdminPaymentReceiptNotification = exports.sendPaymentReceiptNotification = exports.sendMessageNotification = exports.healthCheck = exports.debugResetOtp = exports.testFullOtpFlow = exports.testOtpHash = exports.resetPassword = exports.verifyResetOtp = exports.sendResetOtp = exports.verifyOtp = exports.sendOtp = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const crypto_1 = __importDefault(require("crypto"));
@@ -1819,4 +1819,295 @@ exports.generateUploadUrl = functions.https.onRequest(async (req, res) => {
         res.status(500).send({ error: 'Failed to generate upload url', details: String(errAny) });
     }
 });
+// =======================
+// Free Trial Management
+// =======================
+// Scheduled function to check trial expirations and send reminder emails
+// Runs every 3 hours to check for reminders and deletions
+exports.checkTrialExpirations = functions.scheduler.onSchedule({
+    schedule: '0 */3 * * *', // Every 3 hours
+    timeZone: 'UTC'
+}, async (event) => {
+    var _a, _b;
+    try {
+        console.log('🕐 Running trial expiration check at:', new Date().toISOString());
+        const now = admin.firestore.Timestamp.now();
+        const nowDate = now.toDate();
+        const currentHour = nowDate.getUTCHours();
+        // Get all businesses on free plan with trial dates
+        const businessesSnapshot = await admin.firestore()
+            .collection('businesses')
+            .where('plan', '==', 'free')
+            .where('trialEndDate', '!=', null)
+            .get();
+        console.log(`📊 Found ${businessesSnapshot.size} free trial businesses`);
+        for (const businessDoc of businessesSnapshot.docs) {
+            const business = businessDoc.data();
+            const trialEndDate = (_a = business.trialEndDate) === null || _a === void 0 ? void 0 : _a.toDate();
+            const trialStartDate = (_b = business.trialStartDate) === null || _b === void 0 ? void 0 : _b.toDate();
+            if (!trialEndDate || !trialStartDate)
+                continue;
+            const hoursUntilExpiry = (trialEndDate.getTime() - nowDate.getTime()) / (1000 * 60 * 60);
+            const daysUntilExpiry = hoursUntilExpiry / 24;
+            const hoursSinceStart = (nowDate.getTime() - trialStartDate.getTime()) / (1000 * 60 * 60);
+            console.log(`🏪 Business: ${business.name}`);
+            console.log(`   Hours until expiry: ${hoursUntilExpiry.toFixed(2)}`);
+            console.log(`   Days until expiry: ${daysUntilExpiry.toFixed(2)}`);
+            console.log(`   Hours since start: ${hoursSinceStart.toFixed(2)}`);
+            // DAY 2 (24-48 hours after registration): Send 3 emails
+            // Morning (8 AM), Afternoon (2 PM), Evening (8 PM)
+            if (hoursSinceStart >= 24 && hoursSinceStart < 48) {
+                const emailsSent = business.day2EmailsSent || [];
+                // Morning email (8 AM UTC)
+                if (currentHour === 8 && !emailsSent.includes('morning')) {
+                    await sendTrialReminderEmail(business.email, business.name, 2, 'morning');
+                    await businessDoc.ref.update({
+                        day2EmailsSent: [...emailsSent, 'morning']
+                    });
+                    console.log(`📧 Day 2 - Morning reminder sent to: ${business.email}`);
+                }
+                // Afternoon email (2 PM UTC / 14:00)
+                if (currentHour === 14 && !emailsSent.includes('afternoon')) {
+                    await sendTrialReminderEmail(business.email, business.name, 2, 'afternoon');
+                    await businessDoc.ref.update({
+                        day2EmailsSent: [...emailsSent, 'afternoon']
+                    });
+                    console.log(`📧 Day 2 - Afternoon reminder sent to: ${business.email}`);
+                }
+                // Evening email (8 PM UTC / 20:00)
+                if (currentHour === 20 && !emailsSent.includes('evening')) {
+                    await sendTrialReminderEmail(business.email, business.name, 2, 'evening');
+                    await businessDoc.ref.update({
+                        day2EmailsSent: [...emailsSent, 'evening']
+                    });
+                    console.log(`📧 Day 2 - Evening reminder sent to: ${business.email}`);
+                }
+            }
+            // DAY 3 (Last day, 48-72 hours): Send 2 emails
+            // Morning (8 AM), Afternoon (2 PM)
+            if (hoursSinceStart >= 48 && hoursUntilExpiry > 3) {
+                const emailsSent = business.day3EmailsSent || [];
+                // Morning email (8 AM UTC)
+                if (currentHour === 8 && !emailsSent.includes('morning')) {
+                    await sendFinalWarningEmail(business.email, business.name, 'morning');
+                    await businessDoc.ref.update({
+                        day3EmailsSent: [...emailsSent, 'morning']
+                    });
+                    console.log(`⚠️ Day 3 - Morning final warning sent to: ${business.email}`);
+                }
+                // Afternoon email (2 PM UTC / 14:00)
+                if (currentHour === 14 && !emailsSent.includes('afternoon')) {
+                    await sendFinalWarningEmail(business.email, business.name, 'afternoon');
+                    await businessDoc.ref.update({
+                        day3EmailsSent: [...emailsSent, 'afternoon'],
+                        lastEmailSentAt: admin.firestore.Timestamp.now()
+                    });
+                    console.log(`⚠️ Day 3 - Afternoon final warning sent to: ${business.email}`);
+                }
+            }
+            // DELETE: 3 hours after last email on day 3
+            if (business.lastEmailSentAt) {
+                const lastEmailDate = business.lastEmailSentAt.toDate();
+                const hoursSinceLastEmail = (nowDate.getTime() - lastEmailDate.getTime()) / (1000 * 60 * 60);
+                if (hoursSinceLastEmail >= 3 && hoursUntilExpiry <= 0) {
+                    console.log(`🗑️ Deleting expired trial business: ${business.name}`);
+                    console.log(`   Last email sent: ${hoursSinceLastEmail.toFixed(2)} hours ago`);
+                    await deleteExpiredBusiness(businessDoc.id, business.ownerId);
+                }
+            }
+            // Fallback: Delete if expired for more than 6 hours (safety net)
+            if (hoursUntilExpiry < -6) {
+                console.log(`🗑️ Deleting overdue expired business: ${business.name}`);
+                await deleteExpiredBusiness(businessDoc.id, business.ownerId);
+            }
+        }
+        console.log('✅ Trial expiration check completed');
+    }
+    catch (error) {
+        console.error('❌ Error in trial expiration check:', error);
+        throw error;
+    }
+});
+// Helper function to send trial reminder email
+async function sendTrialReminderEmail(email, businessName, dayNumber, timeOfDay) {
+    try {
+        const daysRemaining = 3 - dayNumber + 1;
+        const subject = `Reminder: Your ${businessName} free trial - ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`;
+        const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⏰ Trial Reminder - ${timeOfDay}</h1>
+          </div>
+          <div class="content">
+            <h2>Hi there!</h2>
+            <p>Your <strong>${businessName}</strong> free trial is still active!</p>
+            <p><strong>You have ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining</strong> to enjoy all features.</p>
+            <p>Don't lose your progress! Upgrade now to keep your store running after the trial ends.</p>
+            <p style="text-align: center;">
+              <a href="https://tradyng.com/pricing" class="button">Upgrade Now</a>
+            </p>
+            <p>Need help? Contact us at support@rady.ng</p>
+          </div>
+          <div class="footer">
+            <p>© 2025 Rady.ng - Your Online Store Platform</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+        console.log(`📧 Sending Day ${dayNumber} ${timeOfDay} reminder email to ${email}`);
+        await sendEmailViaMailerSend(email, subject, html);
+        console.log(`✅ Email sent successfully`);
+        return true;
+    }
+    catch (error) {
+        console.error('Error sending reminder email:', error);
+        throw error;
+    }
+}
+// Helper function to send final warning email
+async function sendFinalWarningEmail(email, businessName, timeOfDay) {
+    try {
+        const subject = `🚨 URGENT: Your ${businessName} trial expires TODAY!`;
+        const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #fff5f5; padding: 30px; border-radius: 0 0 10px 10px; border: 2px solid #f5576c; }
+          .button { display: inline-block; background: #f5576c; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; font-size: 16px; }
+          .warning-box { background: #ffe5e5; border-left: 4px solid #f5576c; padding: 15px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🚨 FINAL WARNING - ${timeOfDay}</h1>
+          </div>
+          <div class="content">
+            <h2>⏰ This is your LAST DAY!</h2>
+            <div class="warning-box">
+              <p style="margin: 0;"><strong>⚠️ Your ${businessName} trial expires TODAY!</strong></p>
+            </div>
+            <p>Your free trial ends today, and your store will be <strong>permanently deleted</strong> in a few hours unless you upgrade.</p>
+            <p><strong>What you'll lose:</strong></p>
+            <ul>
+              <li>All your products and inventory</li>
+              <li>Customer data and orders</li>
+              <li>Your store settings and branding</li>
+              <li>Access to your dashboard</li>
+            </ul>
+            <p style="text-align: center;">
+              <a href="https://tradyng.com/pricing" class="button">UPGRADE NOW - Save Your Store!</a>
+            </p>
+            <p style="color: #f5576c;"><strong>Don't wait! Act now to keep everything you've built.</strong></p>
+            <p>Need help? Contact us immediately at support@rady.ng</p>
+          </div>
+          <div class="footer">
+            <p>© 2025 Rady.ng - Your Online Store Platform</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+        console.log(`⚠️ Sending FINAL ${timeOfDay} warning email to ${email}`);
+        await sendEmailViaMailerSend(email, subject, html);
+        console.log(`✅ Final warning email sent successfully`);
+        return true;
+    }
+    catch (error) {
+        console.error('Error sending final warning email:', error);
+        throw error;
+    }
+}
+// Helper function to delete expired business
+async function deleteExpiredBusiness(businessId, ownerId) {
+    try {
+        console.log(`🗑️ Deleting expired trial business: ${businessId}`);
+        console.log(`   Owner ID: ${ownerId}`);
+        // Delete all related data from Firestore
+        const batch = admin.firestore().batch();
+        // Delete business document
+        batch.delete(admin.firestore().collection('businesses').doc(businessId));
+        // Delete user document
+        const userDoc = admin.firestore().collection('users').doc(ownerId);
+        batch.delete(userDoc);
+        // Delete all products for this business
+        const productsSnapshot = await admin.firestore()
+            .collection('products')
+            .where('businessId', '==', businessId)
+            .get();
+        console.log(`   Deleting ${productsSnapshot.size} products`);
+        productsSnapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        // Delete all orders for this business
+        const ordersSnapshot = await admin.firestore()
+            .collection('orders')
+            .where('businessId', '==', businessId)
+            .get();
+        console.log(`   Deleting ${ordersSnapshot.size} orders`);
+        ordersSnapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        // Delete all customers for this business
+        const customersSnapshot = await admin.firestore()
+            .collection('customers')
+            .where('businessId', '==', businessId)
+            .get();
+        console.log(`   Deleting ${customersSnapshot.size} customers`);
+        customersSnapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        // Delete all categories for this business
+        const categoriesSnapshot = await admin.firestore()
+            .collection('categories')
+            .where('businessId', '==', businessId)
+            .get();
+        console.log(`   Deleting ${categoriesSnapshot.size} categories`);
+        categoriesSnapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        // Commit all Firestore deletions
+        await batch.commit();
+        console.log(`✅ Deleted all Firestore data for business ${businessId}`);
+        // Delete Firebase Auth user
+        try {
+            await admin.auth().deleteUser(ownerId);
+            console.log(`✅ Deleted Firebase Auth user: ${ownerId}`);
+        }
+        catch (authError) {
+            if (authError.code === 'auth/user-not-found') {
+                console.log(`⚠️ Auth user ${ownerId} not found (may have been deleted already)`);
+            }
+            else {
+                console.error(`❌ Error deleting Auth user ${ownerId}:`, authError);
+                // Don't throw error - we still want to complete other deletions
+            }
+        }
+        console.log(`🎉 Successfully deleted expired trial business ${businessId} completely`);
+        return true;
+    }
+    catch (error) {
+        console.error('Error deleting expired business:', error);
+        throw error;
+    }
+}
 //# sourceMappingURL=index.js.map
