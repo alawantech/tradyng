@@ -8,6 +8,8 @@ import {
   Settings,
   Building2,
   CreditCard,
+  Wallet,
+  Crown,
   LogOut,
   X,
   LayoutDashboard
@@ -36,7 +38,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
   const adminMenuItems = [
     { path: '/admin/businesses', icon: Building2, label: 'Businesses' },
     { path: '/admin/affiliates', icon: Users, label: 'Affiliates' },
-    { path: '/admin/subscriptions', icon: CreditCard, label: 'Subscriptions' },
+    { path: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
+    { path: '/admin/subscriptions', icon: Crown, label: 'Subscriptions' },
     { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },
   ];

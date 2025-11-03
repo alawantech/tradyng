@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, DollarSign, Users, CreditCard, Save, Copy, Check, Phone, MessageCircle, Building } from 'lucide-react';
+import { ArrowLeft, DollarSign, Users, CreditCard, Save, Copy, Check, Phone, MessageCircle, Building, Wallet, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button.tsx';
 import { Input } from '../components/ui/Input';
 import toast from 'react-hot-toast';
-import { AffiliateService, Affiliate, Referral } from '../services/affiliate';
+import { AffiliateService, Affiliate, Referral, WithdrawalRequest } from '../services/affiliate';
 import { auth } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -14,11 +14,14 @@ export const AffiliateDashboard: React.FC = () => {
   const [affiliate, setAffiliate] = useState<Affiliate | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [filteredReferrals, setFilteredReferrals] = useState<Referral[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
   const [filterPlan, setFilterPlan] = useState<'all' | 'test' | 'business' | 'pro'>('all');
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [requestingWithdrawal, setRequestingWithdrawal] = useState(false);
 
   const [bankDetails, setBankDetails] = useState({
     accountName: '',
@@ -49,6 +52,10 @@ export const AffiliateDashboard: React.FC = () => {
             const referralsData = await AffiliateService.getAffiliateReferrals(affiliateData.id);
             setReferrals(referralsData);
             setFilteredReferrals(referralsData);
+            
+            // Load withdrawals
+            const withdrawalsData = await AffiliateService.getAffiliateWithdrawals(affiliateData.id);
+            setWithdrawals(withdrawalsData);
           } catch (error) {
             console.error('Error loading referrals:', error);
           }
@@ -123,6 +130,52 @@ export const AffiliateDashboard: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Calculate available balance (excluding pending, approved, and paid withdrawals)
+  const calculateAvailableBalance = () => {
+    const totalEarnings = referrals
+      .filter(r => r.paymentStatus === 'completed')
+      .reduce((sum, r) => sum + r.commissionAmount, 0);
+    
+    const totalWithdrawn = withdrawals
+      .filter(w => w.status === 'pending' || w.status === 'approved' || w.status === 'paid')
+      .reduce((sum, w) => sum + w.amount, 0);
+    
+    const balance = totalEarnings - totalWithdrawn;
+    return Math.max(0, balance); // Never show negative balance
+  };
+
+  // Check if there's a pending withdrawal
+  const hasPendingWithdrawal = () => {
+    return withdrawals.some(w => w.status === 'pending');
+  };
+
+  const handleWithdrawalRequest = async () => {
+    if (!affiliate?.id) return;
+
+    const amount = parseInt(withdrawalAmount);
+    
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    setRequestingWithdrawal(true);
+    try {
+      await AffiliateService.requestWithdrawal(affiliate.id, amount);
+      toast.success('Withdrawal request submitted successfully!');
+      setWithdrawalAmount('');
+      
+      // Reload withdrawals
+      const withdrawalsData = await AffiliateService.getAffiliateWithdrawals(affiliate.id);
+      setWithdrawals(withdrawalsData);
+    } catch (error: any) {
+      console.error('Error requesting withdrawal:', error);
+      toast.error(error.message || 'Failed to submit withdrawal request');
+    } finally {
+      setRequestingWithdrawal(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -170,7 +223,7 @@ export const AffiliateDashboard: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -200,7 +253,7 @@ export const AffiliateDashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm text-gray-400">Total Earnings</p>
-                <p className="text-2xl font-bold text-white">₦{referrals.reduce((sum, ref) => sum + (ref.commissionAmount || 0), 0).toLocaleString()}</p>
+                <p className="text-2xl font-bold text-white">₦{referrals.filter(r => r.paymentStatus === 'completed').reduce((sum, ref) => sum + (ref.commissionAmount || 0), 0).toLocaleString()}</p>
               </div>
             </div>
           </motion.div>
@@ -209,6 +262,25 @@ export const AffiliateDashboard: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="bg-gray-800 rounded-lg p-6 border border-gray-700"
+          >
+            <div className="flex items-center">
+              <div className="p-3 bg-yellow-500/20 rounded-lg">
+                <Wallet className="h-6 w-6 text-yellow-400" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-400">Available Balance</p>
+                <p className="text-2xl font-bold text-white">
+                  ₦{calculateAvailableBalance().toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
             className="bg-gray-800 rounded-lg p-6 border border-gray-700"
           >
             <div className="flex items-center">
@@ -338,12 +410,206 @@ export const AffiliateDashboard: React.FC = () => {
           </motion.div>
         </div>
 
+        {/* Withdrawal Request */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="bg-gray-800 rounded-lg p-6 border border-gray-700 mt-8"
+        >
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center space-x-2">
+            <Wallet className="h-6 w-6" />
+            <span>Request Withdrawal</span>
+          </h2>
+          <p className="text-gray-400 mb-6">
+            Withdraw your available earnings to your bank account. You can withdraw any amount available in your balance.
+          </p>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Withdrawal Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Withdrawal Amount (₦)
+                </label>
+                <div className="flex space-x-2">
+                  <Input
+                    type="number"
+                    placeholder="Enter amount"
+                    value={withdrawalAmount}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWithdrawalAmount(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                    min="1"
+                  />
+                  <Button
+                    onClick={() => {
+                      const availableBalance = calculateAvailableBalance();
+                      setWithdrawalAmount(availableBalance.toString());
+                    }}
+                    disabled={!affiliate.bankDetails || hasPendingWithdrawal()}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Withdraw All
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Withdraw any amount from your available balance</p>
+              </div>
+
+              <Button
+                onClick={handleWithdrawalRequest}
+                disabled={requestingWithdrawal || !affiliate.bankDetails || hasPendingWithdrawal()}
+                className="w-full py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {requestingWithdrawal ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <DollarSign className="h-4 w-4" />
+                    <span>Request Withdrawal</span>
+                  </>
+                )}
+              </Button>
+
+              {!affiliate.bankDetails && (
+                <div className="bg-yellow-900/30 border border-yellow-600 rounded-lg p-3 text-yellow-300 text-sm">
+                  <AlertCircle className="h-4 w-4 inline mr-2" />
+                  Please add your bank details first
+                </div>
+              )}
+
+              {hasPendingWithdrawal() && (
+                <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-3 text-blue-300 text-sm">
+                  <Clock className="h-4 w-4 inline mr-2" />
+                  You have a pending withdrawal request. Please wait for it to be processed before making a new request.
+                </div>
+              )}
+            </div>
+
+            {/* Balance Info */}
+            <div className="bg-gray-700 rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Total Earnings</span>
+                <span className="text-white font-semibold">
+                  ₦{referrals.filter(r => r.paymentStatus === 'completed').reduce((sum, ref) => sum + (ref.commissionAmount || 0), 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Pending Withdrawals</span>
+                <span className="text-yellow-400">
+                  -₦{withdrawals.filter(w => w.status === 'pending').reduce((sum, w) => sum + w.amount, 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Completed Withdrawals</span>
+                <span className="text-red-400">
+                  -₦{withdrawals.filter(w => w.status === 'approved' || w.status === 'paid').reduce((sum, w) => sum + w.amount, 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-gray-600">
+                <span className="text-white font-semibold">Available Balance</span>
+                <span className="text-green-400 font-bold text-lg">
+                  ₦{calculateAvailableBalance().toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Withdrawal History */}
+          {withdrawals.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Withdrawal History</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-gray-300">
+                  <thead className="text-xs text-gray-400 uppercase bg-gray-700">
+                    <tr>
+                      <th scope="col" className="px-6 py-3">Amount</th>
+                      <th scope="col" className="px-6 py-3">Status</th>
+                      <th scope="col" className="px-6 py-3">Requested</th>
+                      <th scope="col" className="px-6 py-3">Processed</th>
+                      <th scope="col" className="px-6 py-3">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {withdrawals.map((withdrawal) => (
+                      <tr key={withdrawal.id} className="bg-gray-800 border-b border-gray-700 hover:bg-gray-700">
+                        <td className="px-6 py-4">
+                          <span className="font-semibold text-white">
+                            ₦{withdrawal.amount.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            {withdrawal.status === 'pending' && (
+                              <>
+                                <Clock className="h-4 w-4 text-yellow-400" />
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-300">
+                                  Pending
+                                </span>
+                              </>
+                            )}
+                            {withdrawal.status === 'approved' && (
+                              <>
+                                <CheckCircle className="h-4 w-4 text-blue-400" />
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-900 text-blue-300">
+                                  Approved
+                                </span>
+                              </>
+                            )}
+                            {withdrawal.status === 'paid' && (
+                              <>
+                                <CheckCircle className="h-4 w-4 text-green-400" />
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-900 text-green-300">
+                                  Paid
+                                </span>
+                              </>
+                            )}
+                            {withdrawal.status === 'rejected' && (
+                              <>
+                                <XCircle className="h-4 w-4 text-red-400" />
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-900 text-red-300">
+                                  Rejected
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {withdrawal.requestedAt.toDate().toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          {withdrawal.processedAt ? withdrawal.processedAt.toDate().toLocaleDateString() : '-'}
+                        </td>
+                        <td className="px-6 py-4">
+                          {withdrawal.status === 'rejected' && withdrawal.rejectionReason && (
+                            <div className="text-xs text-red-400">
+                              {withdrawal.rejectionReason}
+                            </div>
+                          )}
+                          {withdrawal.status === 'paid' && withdrawal.transactionReference && (
+                            <div className="text-xs text-green-400">
+                              Ref: {withdrawal.transactionReference}
+                            </div>
+                          )}
+                          {(withdrawal.status === 'pending' || withdrawal.status === 'approved') && '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </motion.div>
+
         {/* Commission Summary */}
         {referrals.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.7 }}
             className="bg-gray-800 rounded-lg p-6 border border-gray-700 mt-8"
           >
             <h2 className="text-xl font-semibold text-white mb-4">Commission Breakdown</h2>
@@ -394,7 +660,7 @@ export const AffiliateDashboard: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
+          transition={{ delay: 0.8 }}
           className="bg-gray-800 rounded-lg p-6 border border-gray-700 mt-8"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">

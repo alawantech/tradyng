@@ -471,9 +471,38 @@ export const SignUp: React.FC = () => {
     try {
       // Check if a business with this name already exists in Firestore
       const businesses = await BusinessService.getBusinessesByName(storeName);
-      const storeNameExists = businesses && businesses.length > 0;
-      setStoreNameExists(storeNameExists);
-      console.log('Store name check result:', { storeName, exists: storeNameExists });
+      
+      if (businesses && businesses.length > 0) {
+        // Found businesses with this name - need to verify owners exist in Firebase Auth
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('../../config/firebase');
+        
+        let hasValidOwner = false;
+        
+        for (const business of businesses) {
+          // Check if the business owner still exists in Auth
+          try {
+            const userDoc = await getDoc(doc(db, 'users', business.ownerId));
+            if (userDoc.exists()) {
+              // Owner exists, this is a valid business
+              hasValidOwner = true;
+              break;
+            }
+          } catch (error) {
+            console.log('Business owner not found, likely orphaned:', business.id);
+          }
+        }
+        
+        setStoreNameExists(hasValidOwner);
+        console.log('Store name check result:', { 
+          storeName, 
+          exists: hasValidOwner,
+          businessesFound: businesses.length 
+        });
+      } else {
+        setStoreNameExists(false);
+        console.log('Store name check result:', { storeName, exists: false });
+      }
     } catch (error) {
       console.error('Error checking store name existence:', error);
       // If check fails, allow registration to avoid blocking users
@@ -566,6 +595,50 @@ export const SignUp: React.FC = () => {
       toast.error(error.message || 'Failed to process payment. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cleanupOrphanedData = async (email: string) => {
+    try {
+      console.log('🧹 Checking for orphaned Firestore data for email:', email);
+      
+      // Import Firestore functions
+      const { collection, query, where, getDocs, deleteDoc, doc } = await import('firebase/firestore');
+      const { db } = await import('../../config/firebase');
+      
+      // Check for orphaned user documents
+      const usersRef = collection(db, 'users');
+      const userQuery = query(usersRef, where('email', '==', email));
+      const userSnapshot = await getDocs(userQuery);
+      
+      if (!userSnapshot.empty) {
+        console.log(`⚠️ Found ${userSnapshot.size} orphaned user document(s) for ${email}`);
+        
+        // Delete orphaned user documents and their associated businesses
+        for (const userDoc of userSnapshot.docs) {
+          const userId = userDoc.id;
+          console.log('🗑️ Deleting orphaned user document:', userId);
+          
+          // First, delete associated businesses
+          const businessesRef = collection(db, 'businesses');
+          const businessQuery = query(businessesRef, where('ownerId', '==', userId));
+          const businessSnapshot = await getDocs(businessQuery);
+          
+          for (const businessDoc of businessSnapshot.docs) {
+            console.log('🗑️ Deleting orphaned business document:', businessDoc.id);
+            await deleteDoc(doc(db, 'businesses', businessDoc.id));
+          }
+          
+          // Then delete the user document
+          await deleteDoc(doc(db, 'users', userId));
+          console.log('✅ Orphaned data cleaned up successfully');
+        }
+      } else {
+        console.log('✅ No orphaned data found for email:', email);
+      }
+    } catch (error) {
+      console.error('❌ Error cleaning up orphaned data:', error);
+      // Don't throw - we want to proceed with account creation even if cleanup fails
     }
   };
 
@@ -681,10 +754,14 @@ export const SignUp: React.FC = () => {
   };
 
   const createAccount = async (planId: string) => {
+    // Step 1: Clean up any orphaned Firestore data from previous account deletions
+    await cleanupOrphanedData(formData.email);
+    
+    // Step 2: Create new Firebase Auth user
     const authUser = await AuthService.signUp(formData.email, formData.password);
     console.log('✅ Firebase Auth user created:', { uid: authUser.uid, email: authUser.email });
     
-    // 2. Create user document in Firestore
+    // 3. Create user document in Firestore
     // Check if email should be admin (for testing purposes)
     const isAdminEmail = formData.email.includes('admin@') || formData.email.includes('@admin.');
     const userRole = isAdminEmail ? 'admin' : 'business_owner';

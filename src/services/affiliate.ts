@@ -2,6 +2,7 @@ import { db } from '../config/firebase';
 import {
   collection,
   doc,
+  getDoc,
   addDoc,
   getDocs,
   updateDoc,
@@ -48,6 +49,25 @@ export interface Referral {
   paymentStatus: 'pending' | 'completed' | 'failed';
   createdAt: Timestamp;
   completedAt?: Timestamp;
+}
+
+export interface WithdrawalRequest {
+  id?: string;
+  affiliateId: string;
+  affiliateUsername: string;
+  affiliateEmail: string;
+  amount: number;
+  bankDetails: {
+    accountName: string;
+    bankName: string;
+    accountNumber: string;
+  };
+  status: 'pending' | 'approved' | 'rejected' | 'paid';
+  requestedAt: Timestamp;
+  processedAt?: Timestamp;
+  processedBy?: string; // Admin user ID
+  rejectionReason?: string;
+  transactionReference?: string;
 }
 
 export class AffiliateService {
@@ -326,6 +346,182 @@ export class AffiliateService {
       })) as Referral[];
     } catch (error) {
       console.error('Error getting affiliate referrals:', error);
+      throw error;
+    }
+  }
+
+  // Request withdrawal
+  static async requestWithdrawal(
+    affiliateId: string,
+    amount: number
+  ): Promise<string> {
+    try {
+      // Get affiliate data directly from Firestore
+      const affiliateDoc = await getDoc(doc(db, 'affiliates', affiliateId));
+      if (!affiliateDoc.exists()) {
+        throw new Error('Affiliate not found');
+      }
+
+      const affiliate = { id: affiliateDoc.id, ...affiliateDoc.data() } as Affiliate;
+
+      // Check if bank details are set
+      if (!affiliate.bankDetails || !affiliate.bankDetails.accountNumber) {
+        throw new Error('Please add your bank details before requesting withdrawal');
+      }
+
+      // Validate amount is positive
+      if (amount <= 0) {
+        throw new Error('Withdrawal amount must be greater than zero');
+      }
+
+      // Check if there's already a pending withdrawal
+      const pendingWithdrawalsQuery = query(
+        collection(db, 'withdrawalRequests'),
+        where('affiliateId', '==', affiliateId),
+        where('status', '==', 'pending')
+      );
+      const pendingWithdrawalsSnapshot = await getDocs(pendingWithdrawalsQuery);
+      
+      if (!pendingWithdrawalsSnapshot.empty) {
+        throw new Error('You already have a pending withdrawal request. Please wait for it to be processed.');
+      }
+
+      // Calculate available balance (total earnings minus all pending/approved/paid withdrawals)
+      const allWithdrawalsQuery = query(
+        collection(db, 'withdrawalRequests'),
+        where('affiliateId', '==', affiliateId),
+        where('status', 'in', ['pending', 'approved', 'paid'])
+      );
+      const allWithdrawalsSnapshot = await getDocs(allWithdrawalsQuery);
+      const totalWithdrawn = allWithdrawalsSnapshot.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
+      
+      const availableBalance = affiliate.totalEarnings - totalWithdrawn;
+
+      // Check if affiliate has enough available balance
+      if (availableBalance < amount) {
+        throw new Error(`Insufficient balance. Available: ₦${availableBalance.toLocaleString()}`);
+      }
+
+      if (availableBalance <= 0) {
+        throw new Error('You have no available balance to withdraw');
+      }
+
+      // Create withdrawal request
+      const withdrawalData: Omit<WithdrawalRequest, 'id'> = {
+        affiliateId: affiliate.id!,
+        affiliateUsername: affiliate.username,
+        affiliateEmail: affiliate.email,
+        amount,
+        bankDetails: affiliate.bankDetails,
+        status: 'pending',
+        requestedAt: Timestamp.now()
+      };
+
+      const docRef = await addDoc(collection(db, 'withdrawalRequests'), withdrawalData);
+      console.log('✅ Withdrawal request created:', docRef.id);
+
+      return docRef.id;
+    } catch (error) {
+      console.error('Error requesting withdrawal:', error);
+      throw error;
+    }
+  }
+
+  // Get withdrawal requests for an affiliate
+  static async getAffiliateWithdrawals(affiliateId: string): Promise<WithdrawalRequest[]> {
+    try {
+      const q = query(
+        collection(db, 'withdrawalRequests'),
+        where('affiliateId', '==', affiliateId),
+        orderBy('requestedAt', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as WithdrawalRequest[];
+    } catch (error) {
+      console.error('Error getting affiliate withdrawals:', error);
+      throw error;
+    }
+  }
+
+  // Get all withdrawal requests (admin only)
+  static async getAllWithdrawalRequests(): Promise<WithdrawalRequest[]> {
+    try {
+      const q = query(
+        collection(db, 'withdrawalRequests'),
+        orderBy('requestedAt', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as WithdrawalRequest[];
+    } catch (error) {
+      console.error('Error getting all withdrawal requests:', error);
+      throw error;
+    }
+  }
+
+  // Update withdrawal status (admin only)
+  static async updateWithdrawalStatus(
+    withdrawalId: string,
+    status: 'approved' | 'rejected' | 'paid',
+    adminUserId: string,
+    rejectionReason?: string,
+    transactionReference?: string
+  ): Promise<void> {
+    try {
+      const withdrawalRef = doc(db, 'withdrawalRequests', withdrawalId);
+      const withdrawalSnap = await getDoc(withdrawalRef);
+
+      if (!withdrawalSnap.exists()) {
+        throw new Error('Withdrawal request not found');
+      }
+
+      const withdrawal = withdrawalSnap.data() as WithdrawalRequest;
+
+      // Update withdrawal request
+      const updateData: any = {
+        status,
+        processedAt: Timestamp.now(),
+        processedBy: adminUserId
+      };
+
+      if (rejectionReason) {
+        updateData.rejectionReason = rejectionReason;
+      }
+
+      if (transactionReference) {
+        updateData.transactionReference = transactionReference;
+      }
+
+      await updateDoc(withdrawalRef, updateData);
+
+      // If approved or paid, deduct from affiliate earnings
+      if (status === 'approved' || status === 'paid') {
+        const affiliateRef = doc(db, 'affiliates', withdrawal.affiliateId);
+        const affiliateSnap = await getDoc(affiliateRef);
+
+        if (affiliateSnap.exists()) {
+          const affiliate = affiliateSnap.data() as Affiliate;
+          const newEarnings = Math.max(0, affiliate.totalEarnings - withdrawal.amount);
+
+          await updateDoc(affiliateRef, {
+            totalEarnings: newEarnings,
+            updatedAt: Timestamp.now()
+          });
+
+          console.log('✅ Affiliate earnings updated. New balance:', newEarnings);
+        }
+      }
+
+      console.log('✅ Withdrawal status updated to:', status);
+    } catch (error) {
+      console.error('Error updating withdrawal status:', error);
       throw error;
     }
   }

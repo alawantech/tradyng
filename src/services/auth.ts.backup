@@ -1,0 +1,159 @@
+import { auth } from '../config/firebase';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
+  User
+} from 'firebase/auth';
+
+export interface AuthUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+}
+
+export class AuthService {
+  // Sign up with email and password
+  static async signUp(email: string, password: string): Promise<AuthUser> {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      return {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        displayName: userCredential.user.displayName
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Sign in with email and password
+  static async signIn(email: string, password: string): Promise<AuthUser> {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        displayName: userCredential.user.displayName
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Sign out
+  static async signOut(): Promise<void> {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Get current user
+  static getCurrentUser(): User | null {
+    return auth.currentUser;
+  }
+
+  // Send password reset email
+  static async sendPasswordResetEmail(email: string): Promise<void> {
+    try {
+      await firebaseSendPasswordResetEmail(auth, email);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Check if email is already registered
+  static async checkEmailExists(email: string): Promise<boolean> {
+    try {
+      console.log('🔍 Starting email existence check for:', email);
+      
+      // Method 1: Try fetchSignInMethodsForEmail (most reliable for Firebase Auth)
+      try {
+        const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+        const existsInAuth = signInMethods.length > 0;
+        
+        console.log('📧 Firebase Auth check result:', { 
+          email, 
+          existsInAuth, 
+          signInMethodsCount: signInMethods.length,
+          methods: signInMethods 
+        });
+        
+        // If email exists in Auth with sign-in methods, it's definitely registered
+        if (existsInAuth) {
+          console.log('✅ Email exists in Firebase Auth - account is registered');
+          return true;
+        }
+      } catch (authError: any) {
+        console.log('⚠️ fetchSignInMethodsForEmail error:', authError.code, authError.message);
+        
+        // If we get an error, it might mean the email doesn't exist
+        // Continue to Firestore check as backup
+      }
+      
+      // Method 2: Check Firestore as backup (in case Auth check failed)
+      // This helps catch accounts that exist but Auth check failed for some reason
+      try {
+        const { collection, query, where, getDocs } = await import('firebase/firestore');
+        const { db } = await import('../config/firebase');
+        
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('email', '==', email));
+        const querySnapshot = await getDocs(q);
+        
+        const existsInFirestore = !querySnapshot.empty;
+        console.log('� Firestore check result:', { 
+          email, 
+          existsInFirestore, 
+          docsFound: querySnapshot.size 
+        });
+        
+        if (existsInFirestore) {
+          // Found in Firestore - need to verify these are not orphaned documents
+          // If Auth check passed (no exception) and returned empty, these are orphaned
+          console.log('⚠️ Found user documents in Firestore but not in Auth - likely orphaned data');
+          console.log('✅ Allowing registration - orphaned data will be cleaned up');
+          return false;
+        }
+      } catch (firestoreError) {
+        console.error('❌ Firestore check error:', firestoreError);
+      }
+      
+      // If both checks indicate email doesn't exist, allow registration
+      console.log('✅ Email does not exist in Auth or Firestore - allowing registration');
+      return false;
+      
+    } catch (error: any) {
+      console.error('❌ Unexpected error in checkEmailExists:', error);
+      
+      // Handle specific error codes
+      if (error.code === 'auth/invalid-email') {
+        console.log('Invalid email format');
+        return false;
+      }
+      
+      // If there's an unexpected error, assume email doesn't exist to avoid blocking users
+      return false;
+    }
+  }
+
+  // Listen for auth state changes
+  static onAuthStateChanged(callback: (user: AuthUser | null) => void) {
+    return onAuthStateChanged(auth, (user) => {
+      if (user) {
+        callback({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName
+        });
+      } else {
+        callback(null);
+      }
+    });
+  }
+}

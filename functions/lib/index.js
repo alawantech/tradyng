@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkTrialExpirations = exports.generateUploadUrl = exports.verifyPaymentAndAwardCommission = exports.initializePayment = exports.sendOrderApprovalEmail = exports.sendOrderDeliveryEmail = exports.sendAdminPaymentReceiptNotification = exports.sendPaymentReceiptNotification = exports.sendMessageNotification = exports.healthCheck = exports.debugResetOtp = exports.testFullOtpFlow = exports.testOtpHash = exports.resetPassword = exports.verifyResetOtp = exports.sendResetOtp = exports.verifyOtp = exports.sendOtp = void 0;
+exports.sendWithdrawalStatusEmail = exports.checkTrialExpirations = exports.generateUploadUrl = exports.verifyPaymentAndAwardCommission = exports.initializePayment = exports.sendOrderApprovalEmail = exports.sendOrderDeliveryEmail = exports.sendAdminPaymentReceiptNotification = exports.sendPaymentReceiptNotification = exports.sendMessageNotification = exports.healthCheck = exports.debugResetOtp = exports.testFullOtpFlow = exports.testOtpHash = exports.resetPassword = exports.verifyResetOtp = exports.sendResetOtp = exports.verifyOtp = exports.sendOtp = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const crypto_1 = __importDefault(require("crypto"));
@@ -2110,4 +2110,155 @@ async function deleteExpiredBusiness(businessId, ownerId) {
         throw error;
     }
 }
+// =======================
+// Affiliate Withdrawal Notifications
+// =======================
+// sendWithdrawalStatusEmail: POST { affiliateEmail, affiliateName, amount, status, rejectionReason?, transactionReference?, withdrawalId }
+exports.sendWithdrawalStatusEmail = functions.https.onRequest({
+    secrets: ['MAIL_SENDER_API_TOKEN']
+}, async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+    try {
+        if (req.method !== 'POST') {
+            res.status(405).send({ error: 'Method not allowed, use POST' });
+            return;
+        }
+        const { affiliateEmail, affiliateName, amount, status, rejectionReason, transactionReference, withdrawalId } = req.body || {};
+        if (!affiliateEmail || !amount || !status || !withdrawalId) {
+            res.status(400).send({ error: 'Missing required fields: affiliateEmail, amount, status, withdrawalId' });
+            return;
+        }
+        let subject;
+        let html;
+        if (status === 'approved') {
+            subject = `💰 Withdrawal Request Approved - ₦${amount.toLocaleString()}`;
+            html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333; margin-bottom: 20px;">✅ Withdrawal Approved!</h2>
+
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0 0 10px 0;"><strong>Hello ${affiliateName || 'Affiliate'},</strong></p>
+            <p style="margin: 0 0 15px 0;">Great news! Your withdrawal request has been approved by the admin.</p>
+
+            <div style="background: #d4edda; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+              <p style="margin: 0 0 10px 0;"><strong>Withdrawal Details:</strong></p>
+              <p style="margin: 0 0 5px 0;">Withdrawal ID: <strong>${withdrawalId}</strong></p>
+              <p style="margin: 0 0 5px 0;">Amount: <strong style="color: #28a745; font-size: 20px;">₦${amount.toLocaleString()}</strong></p>
+              <p style="margin: 0;">Status: <span style="color: #28a745; font-weight: bold;">✅ Approved</span></p>
+            </div>
+          </div>
+
+          <div style="background: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin: 20px 0;">
+            <p style="margin: 0; color: #856404;">
+              <strong>Next Steps:</strong> Your payment will be processed soon. You will receive another email once the payment has been completed with transaction details.
+            </p>
+          </div>
+
+          <p style="margin: 20px 0;">
+            Thank you for being a valued affiliate partner with Rady.ng!
+          </p>
+
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #999; font-size: 12px; text-align: center;">
+            This is an automated notification from Rady.ng Affiliate Program
+          </p>
+        </div>
+      `;
+        }
+        else if (status === 'rejected') {
+            subject = `❌ Withdrawal Request Rejected - ₦${amount.toLocaleString()}`;
+            html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333; margin-bottom: 20px;">❌ Withdrawal Rejected</h2>
+
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0 0 10px 0;"><strong>Hello ${affiliateName || 'Affiliate'},</strong></p>
+            <p style="margin: 0 0 15px 0;">We regret to inform you that your withdrawal request has been rejected.</p>
+
+            <div style="background: #f8d7da; padding: 15px; border-radius: 6px; border-left: 4px solid #dc3545;">
+              <p style="margin: 0 0 10px 0;"><strong>Withdrawal Details:</strong></p>
+              <p style="margin: 0 0 5px 0;">Withdrawal ID: <strong>${withdrawalId}</strong></p>
+              <p style="margin: 0 0 5px 0;">Amount: <strong>₦${amount.toLocaleString()}</strong></p>
+              <p style="margin: 0;">Status: <span style="color: #dc3545; font-weight: bold;">❌ Rejected</span></p>
+            </div>
+          </div>
+
+          ${rejectionReason ? `
+          <div style="background: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin: 20px 0;">
+            <p style="margin: 0 0 10px 0; color: #856404;"><strong>Reason for Rejection:</strong></p>
+            <p style="margin: 0; color: #856404;">${rejectionReason}</p>
+          </div>
+          ` : ''}
+
+          <div style="background: #e8f4fd; padding: 15px; border-radius: 6px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+            <p style="margin: 0; color: #1e40af;">
+              <strong>What's Next:</strong> The funds have been returned to your available balance. You can submit a new withdrawal request at any time from your affiliate dashboard.
+            </p>
+          </div>
+
+          <p style="margin: 20px 0;">
+            If you have any questions about this rejection, please contact our support team.
+          </p>
+
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #999; font-size: 12px; text-align: center;">
+            This is an automated notification from Rady.ng Affiliate Program
+          </p>
+        </div>
+      `;
+        }
+        else if (status === 'paid') {
+            subject = `✅ Payment Completed - ₦${amount.toLocaleString()}`;
+            html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333; margin-bottom: 20px;">🎉 Payment Completed!</h2>
+
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0 0 10px 0;"><strong>Hello ${affiliateName || 'Affiliate'},</strong></p>
+            <p style="margin: 0 0 15px 0;">Excellent news! Your withdrawal has been successfully processed and paid.</p>
+
+            <div style="background: #d4edda; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+              <p style="margin: 0 0 10px 0;"><strong>Payment Details:</strong></p>
+              <p style="margin: 0 0 5px 0;">Withdrawal ID: <strong>${withdrawalId}</strong></p>
+              <p style="margin: 0 0 5px 0;">Amount: <strong style="color: #28a745; font-size: 20px;">₦${amount.toLocaleString()}</strong></p>
+              <p style="margin: 0;">Status: <span style="color: #28a745; font-weight: bold;">✅ Paid</span></p>
+              ${transactionReference ? `<p style="margin: 10px 0 0 0;">Transaction Reference: <strong>${transactionReference}</strong></p>` : ''}
+            </div>
+          </div>
+
+          <div style="background: #e8f4fd; padding: 15px; border-radius: 6px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+            <p style="margin: 0; color: #1e40af;">
+              <strong>Important:</strong> Please allow 2-5 business days for the funds to reflect in your bank account. Keep the transaction reference for your records.
+            </p>
+          </div>
+
+          <p style="margin: 20px 0;">
+            Thank you for being a valued affiliate partner with Rady.ng! Keep referring and earning more commissions.
+          </p>
+
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #999; font-size: 12px; text-align: center;">
+            This is an automated notification from Rady.ng Affiliate Program
+          </p>
+        </div>
+      `;
+        }
+        else {
+            res.status(400).send({ error: 'Invalid status. Must be: approved, rejected, or paid' });
+            return;
+        }
+        await sendEmailViaMailerSend(affiliateEmail, subject, html);
+        res.json({ ok: true, recipient: affiliateEmail, status });
+    }
+    catch (errAny) {
+        console.error('sendWithdrawalStatusEmail error:', errAny);
+        res.status(500).send({ error: String(errAny) });
+    }
+});
 //# sourceMappingURL=index.js.map

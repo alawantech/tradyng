@@ -1,12 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../components/ui/Card';
-import { AffiliateService, Affiliate } from '../../services/affiliate';
-import { Users, Mail, DollarSign, TrendingUp } from 'lucide-react';
+import { AffiliateService, Affiliate, Referral } from '../../services/affiliate';
+import { BusinessService } from '../../services/business';
+import { Users, Mail, DollarSign, TrendingUp, Eye, X, Building2, Calendar, CreditCard } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
 import toast from 'react-hot-toast';
+
+interface ReferralWithDetails extends Referral {
+  businessName?: string;
+  businessSubdomain?: string;
+}
 
 export const Affiliates: React.FC = () => {
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showReferralsModal, setShowReferralsModal] = useState(false);
+  const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null);
+  const [referrals, setReferrals] = useState<ReferralWithDetails[]>([]);
+  const [loadingReferrals, setLoadingReferrals] = useState(false);
 
   useEffect(() => {
     fetchAffiliates();
@@ -51,6 +62,39 @@ export const Affiliates: React.FC = () => {
       toast.error('Failed to load affiliates');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const viewReferrals = async (affiliate: Affiliate) => {
+    try {
+      setSelectedAffiliate(affiliate);
+      setLoadingReferrals(true);
+      setShowReferralsModal(true);
+      
+      const affiliateReferrals = await AffiliateService.getAffiliateReferrals(affiliate.id!);
+      
+      // Fetch business details for each referral
+      const referralsWithDetails = await Promise.all(
+        affiliateReferrals.map(async (referral) => {
+          try {
+            const business = await BusinessService.getBusinessById(referral.referredBusinessId);
+            return {
+              ...referral,
+              businessName: business?.name || referral.referredBusinessName,
+              businessSubdomain: business?.subdomain
+            };
+          } catch (error) {
+            return referral;
+          }
+        })
+      );
+      
+      setReferrals(referralsWithDetails);
+    } catch (error: any) {
+      console.error('Error fetching referrals:', error);
+      toast.error('Failed to load referrals');
+    } finally {
+      setLoadingReferrals(false);
     }
   };
 
@@ -146,6 +190,9 @@ export const Affiliates: React.FC = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Joined
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -204,10 +251,137 @@ export const Affiliates: React.FC = () => {
                           })
                         : 'N/A'}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => viewReferrals(affiliate)}
+                        className="flex items-center"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View Referrals
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Referrals Modal */}
+      {showReferralsModal && selectedAffiliate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Referrals by {selectedAffiliate.username}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Total: {referrals.length} referrals
+                </p>
+              </div>
+              <button
+                onClick={() => setShowReferralsModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingReferrals ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                </div>
+              ) : referrals.length === 0 ? (
+                <div className="text-center py-12">
+                  <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No referrals yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {referrals.map((referral, index) => (
+                    <Card key={referral.id || index} className="p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <div className="bg-indigo-100 p-2 rounded-lg">
+                              <Building2 className="h-5 w-5 text-indigo-600" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-900">
+                                {referral.businessName || 'Unknown Store'}
+                              </h4>
+                              {referral.businessSubdomain && (
+                                <p className="text-xs text-gray-500">
+                                  {referral.businessSubdomain}.rady.ng
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 mt-3">
+                            <div>
+                              <p className="text-xs text-gray-500">Plan</p>
+                              <div className="flex items-center mt-1">
+                                <CreditCard className="h-4 w-4 text-gray-400 mr-1" />
+                                <span className="text-sm font-medium text-gray-900 capitalize">
+                                  {referral.planType}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-gray-500">Commission</p>
+                              <div className="flex items-center mt-1">
+                                <DollarSign className="h-4 w-4 text-green-500 mr-1" />
+                                <span className="text-sm font-bold text-green-600">
+                                  ₦{referral.commissionAmount.toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-gray-500">Payment Status</p>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${
+                                referral.paymentStatus === 'completed' 
+                                  ? 'bg-green-100 text-green-800'
+                                  : referral.paymentStatus === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {referral.paymentStatus}
+                              </span>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-gray-500">Date</p>
+                              <div className="flex items-center mt-1">
+                                <Calendar className="h-4 w-4 text-gray-400 mr-1" />
+                                <span className="text-sm text-gray-900">
+                                  {referral.createdAt
+                                    ? new Date(referral.createdAt.seconds * 1000).toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric'
+                                      })
+                                    : 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
