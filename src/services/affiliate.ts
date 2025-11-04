@@ -20,6 +20,7 @@ export interface Affiliate {
   fullName: string;
   username: string; // Unique, lowercase, alphanumeric
   email: string;
+  whatsappNumber: string;
   password: string; // Will be hashed by Firebase Auth
   firebaseUid?: string;
   bankDetails?: {
@@ -73,6 +74,8 @@ export interface WithdrawalRequest {
 export class AffiliateService {
   // Create a new affiliate account
   static async createAffiliate(affiliateData: Omit<Affiliate, 'id' | 'firebaseUid' | 'totalReferrals' | 'totalEarnings' | 'status' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    let userCredential: any = null;
+    
     try {
       console.log('🔗 Creating affiliate account for:', affiliateData.username);
 
@@ -83,7 +86,7 @@ export class AffiliateService {
         throw new Error('Username is already taken. Please choose a different username.');
       }
 
-      // Check if email already has an affiliate account
+      // Check if email already has an affiliate account in Firestore
       const emailQuery = query(collection(db, 'affiliates'), where('email', '==', affiliateData.email.toLowerCase()));
       const emailSnapshot = await getDocs(emailQuery);
       if (!emailSnapshot.empty) {
@@ -91,14 +94,42 @@ export class AffiliateService {
         throw new Error('Email is already registered. Please use a different email.');
       }
 
-      // First, create Firebase Auth user
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        affiliateData.email,
-        affiliateData.password
-      );
-
-      console.log('✅ Firebase Auth user created:', userCredential.user.uid);
+      // Try to create Firebase Auth user
+      try {
+        userCredential = await createUserWithEmailAndPassword(
+          auth,
+          affiliateData.email,
+          affiliateData.password
+        );
+        console.log('✅ Firebase Auth user created:', userCredential.user.uid);
+      } catch (authError: any) {
+        // If email already exists in Auth, check if affiliate document exists
+        if (authError.code === 'auth/email-already-in-use') {
+          console.warn('⚠️ Firebase Auth user already exists, checking for affiliate document...');
+          
+          // Try to get user by email from Auth
+          try {
+            const { signInWithEmailAndPassword } = await import('firebase/auth');
+            const signInResult = await signInWithEmailAndPassword(auth, affiliateData.email, affiliateData.password);
+            
+            // Check if affiliate document exists
+            const existingAffiliate = await this.getAffiliateByFirebaseUid(signInResult.user.uid);
+            if (existingAffiliate) {
+              console.log('✅ Affiliate already exists, returning existing ID');
+              return existingAffiliate.id!;
+            }
+            
+            // Auth user exists but no affiliate document - create it now
+            console.log('⚠️ Auth user exists but no affiliate document, creating document...');
+            userCredential = signInResult;
+          } catch (signInError) {
+            // Password doesn't match or other error
+            throw new Error('Email is already registered with a different password. Please try logging in or use forgot password.');
+          }
+        } else {
+          throw authError;
+        }
+      }
 
       // Check if this Firebase UID already has an affiliate document (duplicate prevention)
       const existingAffiliate = await this.getAffiliateByFirebaseUid(userCredential.user.uid);
@@ -110,7 +141,10 @@ export class AffiliateService {
       // Create affiliate document in Firestore
       const now = Timestamp.now();
       const docRef = await addDoc(collection(db, 'affiliates'), {
-        ...affiliateData,
+        fullName: affiliateData.fullName,
+        username: affiliateData.username.toLowerCase(),
+        email: affiliateData.email.toLowerCase(),
+        whatsappNumber: affiliateData.whatsappNumber,
         firebaseUid: userCredential.user.uid,
         totalReferrals: 0,
         totalEarnings: 0,
@@ -128,9 +162,6 @@ export class AffiliateService {
 
     } catch (error: any) {
       console.error('❌ Error creating affiliate:', error);
-
-      // If Firestore creation fails, we should clean up the Auth user
-      // But for now, let the error propagate
       throw error;
     }
   }
@@ -344,8 +375,14 @@ export class AffiliateService {
         id: doc.id,
         ...doc.data()
       })) as Referral[];
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting affiliate referrals:', error);
+      // If it's an index error, return empty array (indexes are building)
+      if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
+        console.warn('Firestore index is building. Returning empty array for now.');
+        return [];
+      }
+      // For other errors, throw
       throw error;
     }
   }
@@ -441,8 +478,14 @@ export class AffiliateService {
         id: doc.id,
         ...doc.data()
       })) as WithdrawalRequest[];
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting affiliate withdrawals:', error);
+      // If it's an index error, return empty array (indexes are building)
+      if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
+        console.warn('Firestore index is building. Returning empty array for now.');
+        return [];
+      }
+      // For other errors, throw
       throw error;
     }
   }

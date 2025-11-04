@@ -702,7 +702,55 @@ export const Orders: React.FC = () => {
         return newSet;
       });
     }
-  };  // Handler for adding a product to the order
+  };
+
+  // Handler for rejecting an order
+  const handleRejectOrder = async (orderId: string) => {
+    if (!business?.id) return;
+
+    // Confirm rejection
+    if (!window.confirm('Are you sure you want to reject this order? This action cannot be undone.')) {
+      return;
+    }
+
+    // Set loading state
+    setApprovingOrders(prev => new Set(prev).add(orderId));
+
+    try {
+      // Get the order details
+      const order = orders.find(o => o.orderId === orderId || o.id === orderId);
+      if (!order) {
+        toast.error('Order not found');
+        return;
+      }
+
+      // Update order status to cancelled
+      await OrderService.updateOrder(business.id, orderId, {
+        status: 'cancelled',
+        paymentStatus: 'failed',
+        rejectedAt: new Date(),
+        rejectionReason: 'Rejected by admin'
+      });
+
+      // TODO: Send rejection email to customer (optional - add Cloud Function if needed)
+      // For now, just show success message
+
+      toast.success(`Order ${orderId} has been rejected`);
+      loadData(); // Reload orders
+    } catch (error) {
+      console.error('Error rejecting order:', error);
+      toast.error('Failed to reject order');
+    } finally {
+      // Clear loading state
+      setApprovingOrders(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
+      });
+    }
+  };
+
+  // Handler for adding a product to the order
   function handleAddProduct() {
     setOrderData(prev => ({
       ...prev,
@@ -1269,25 +1317,46 @@ export const Orders: React.FC = () => {
                           <Eye className="h-4 w-4 mr-1" />
                           View Receipt
                         </Button>
-                        {/* Only show Approve button for customer manual payment orders, not admin orders */}
+                        {/* Only show Approve/Reject buttons for customer manual payment orders, not admin orders */}
                         {order.status === 'pending' && order.paymentMethod === 'manual' && !isAdminOrder && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleApproveOrder(order.orderId || order.id || 'unknown')}
-                            disabled={approvingOrders.has(order.orderId || order.id || 'unknown')}
-                          >
-                            {approvingOrders.has(order.orderId || order.id || 'unknown') ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
-                                Approving...
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Approve
-                              </>
-                            )}
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveOrder(order.orderId || order.id || 'unknown')}
+                              disabled={approvingOrders.has(order.orderId || order.id || 'unknown')}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              {approvingOrders.has(order.orderId || order.id || 'unknown') ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
+                                  Approving...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Approve
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleRejectOrder(order.orderId || order.id || 'unknown')}
+                              disabled={approvingOrders.has(order.orderId || order.id || 'unknown')}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              {approvingOrders.has(order.orderId || order.id || 'unknown') ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
+                                  Rejecting...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-4 w-4 mr-1 rotate-45" />
+                                  Reject
+                                </>
+                              )}
+                            </Button>
+                          </>
                         )}
                         {/* Receipt Modal */}
                         {showReceipt === (order.orderId || order.id) && (
