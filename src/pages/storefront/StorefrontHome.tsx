@@ -438,7 +438,6 @@ export const StorefrontHome: React.FC = () => {
                         {product.category && (
                           <span className="text-xs font-semibold text-black mb-1" style={{ backgroundColor: '#f9f9f9' }}>{product.category}</span>
                         )}
-                        <p className={`${colorScheme.text.secondary} text-xs mb-2 line-clamp-2`}>{product.description}</p>
                         <div className="flex items-center mb-2" style={{ backgroundColor: '#f9f9f9' }}>
                           <div className="flex text-yellow-400">
                             {renderStars(product.averageRating || generateProductRating(product.id || '').averageRating).map((starType, index) => (
@@ -454,15 +453,15 @@ export const StorefrontHome: React.FC = () => {
                         </div>
                       </div>
                     </Link>
-                    <div className="px-4 pb-3" style={{ backgroundColor: '#f9f9f9' }}>
-                      <div className="flex gap-2">
+                    <div className="px-4 pb-3 flex justify-center" style={{ backgroundColor: '#f9f9f9' }}>
+                      <div className="flex gap-2 w-full">
                         <Button 
                           size="sm" 
                           className="flex-1 px-1 py-1 rounded font-semibold text-xs text-white hover:bg-gray-800 transition-all whitespace-nowrap"
                           style={{ backgroundColor: 'black', fontSize: '10px' }}
                           onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
+                            e?.preventDefault();
+                            e?.stopPropagation();
                             handleAddToCart(product);
                           }}
                         >

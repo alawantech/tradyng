@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart, Plus, Minus, Trash2, ArrowLeft, Sparkles, Heart, Star } from 'lucide-react';
@@ -11,6 +11,11 @@ import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 export const Cart: React.FC = () => {
   const { items, total, itemCount, updateQuantity, removeItem, clearCart } = useCart();
   const { business } = useStore();
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   if (!business) {
     return (

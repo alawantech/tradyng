@@ -29,6 +29,13 @@ import { CustomerService, CustomerAddress, CustomerProfile } from '../../service
 import { customerAuthService } from '../../services/customerAuth';
 import toast from 'react-hot-toast';
 
+// Scroll to top when component mounts
+const useScrollToTop = () => {
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+};
+
 interface CheckoutFormData {
   firstName: string;
   lastName: string;
@@ -62,6 +69,9 @@ export const EnhancedCheckout: React.FC = () => {
   const { business } = useStore();
   const { user, signUp } = useCustomerAuth();
   const navigate = useNavigate();
+
+  // Scroll to top on mount
+  useScrollToTop();
 
   // State management
   const [formData, setFormData] = useState<CheckoutFormData>({

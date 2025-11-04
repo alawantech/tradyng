@@ -26,6 +26,11 @@ export const Payment: React.FC = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   useEffect(() => {
     if (!checkoutData) {
       toast.error('Checkout information not found');

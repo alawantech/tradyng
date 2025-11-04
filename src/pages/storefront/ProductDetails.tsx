@@ -47,6 +47,11 @@ export const ProductDetails: React.FC = () => {
   // Get color scheme based on business background color
   const colorScheme = useColorScheme(business?.branding?.storeBackgroundColor);
 
+  // Scroll to top when product changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [id]);
+
   useEffect(() => {
     const loadProduct = async () => {
       if (!id || !business?.id) return;
