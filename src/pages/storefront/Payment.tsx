@@ -118,7 +118,7 @@ export const Payment: React.FC = () => {
 
       // Send order confirmation email to customer
       try {
-        console.log('Sending order confirmation email...');
+        console.log('Sending order confirmation email to customer...');
         const response = await fetch('https://sendpaymentreceiptnotification-rv5lqk7lxa-uc.a.run.app', {
           method: 'POST',
           headers: {
@@ -135,12 +135,40 @@ export const Payment: React.FC = () => {
         });
 
         if (response.ok) {
-          console.log('Order confirmation email sent successfully');
+          console.log('Order confirmation email sent to customer successfully');
         } else {
-          console.warn('Failed to send order confirmation email:', response.status);
+          console.warn('Failed to send order confirmation email to customer:', response.status);
         }
       } catch (emailError) {
-        console.warn('Error sending order confirmation email:', emailError);
+        console.warn('Error sending order confirmation email to customer:', emailError);
+        // Don't fail the order if email fails
+      }
+
+      // Send notification email to admin/business owner
+      try {
+        console.log('Sending order notification email to admin...');
+        const adminResponse = await fetch('https://sendadminpaymentreceiptnotification-rv5lqk7lxa-uc.a.run.app', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            adminEmail: business.email,
+            customerName: checkoutData.customerName,
+            customerEmail: checkoutData.customerEmail,
+            orderId: orderId,
+            businessName: business.name || 'Rady.ng',
+            businessId: business.id
+          })
+        });
+
+        if (adminResponse.ok) {
+          console.log('Order notification email sent to admin successfully');
+        } else {
+          console.warn('Failed to send order notification email to admin:', adminResponse.status);
+        }
+      } catch (emailError) {
+        console.warn('Error sending order notification email to admin:', emailError);
         // Don't fail the order if email fails
       }
       
