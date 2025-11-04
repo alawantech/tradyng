@@ -90,7 +90,7 @@ export const Navbar: React.FC = () => {
                   Sign In
                 </Button>
               </Link>
-              <Link to="/pricing#business">
+              <Link to="/pricing">
                 <Button variant="primary" className="font-medium">
                   Get Started
                 </Button>
@@ -167,7 +167,7 @@ export const Navbar: React.FC = () => {
                 Sign In
               </Button>
             </Link>
-            <Link to="/pricing#business" className="block">
+            <Link to="/pricing" className="block">
               <Button
                 variant="primary"
                 className="w-full justify-start font-medium"

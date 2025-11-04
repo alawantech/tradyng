@@ -67,7 +67,7 @@ export const LandingPage: React.FC = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-6 mb-12">
-                <Link to="/pricing#business">
+                <Link to="/pricing">
                   <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-lg">
                     Start Your Store Today
                     <ArrowRight className="ml-2 h-5 w-5" />
