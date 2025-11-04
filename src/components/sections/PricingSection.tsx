@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Shield, ChevronDown, Rocket, Building, Crown, Sparkles, ArrowRight, Users, TrendingUp, Award, Clock } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -19,6 +19,29 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   sectionId = 'pricing'
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Scroll to business plan when hash is #business
+  useEffect(() => {
+    if (location.hash === '#business') {
+      // Small delay to ensure the component is fully rendered
+      setTimeout(() => {
+        const businessPlanCard = document.getElementById('business-plan-card');
+        if (businessPlanCard) {
+          businessPlanCard.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+          
+          // Add a highlight effect
+          businessPlanCard.classList.add('highlight-pulse');
+          setTimeout(() => {
+            businessPlanCard.classList.remove('highlight-pulse');
+          }, 2000);
+        }
+      }, 300);
+    }
+  }, [location.hash]);
 
   // FAQ data
   const faqData = [
@@ -225,6 +248,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             return (
               <motion.div
                 key={plan.id}
+                id={plan.id === 'business' ? 'business-plan-card' : undefined}
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{

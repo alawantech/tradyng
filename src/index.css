@@ -583,3 +583,27 @@ html {
 .rotate-float {
   animation: rotateFloat 8s ease-in-out infinite;
 }
+
+/* Highlight pulse animation for pricing card focus */
+@keyframes highlightPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    transform: scale(1);
+  }
+  25% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0.3), 0 0 30px rgba(16, 185, 129, 0.2);
+    transform: scale(1.02);
+  }
+  50% {
+    box-shadow: 0 0 0 20px rgba(16, 185, 129, 0.15), 0 0 40px rgba(16, 185, 129, 0.15);
+    transform: scale(1.03);
+  }
+  75% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0.3), 0 0 30px rgba(16, 185, 129, 0.2);
+    transform: scale(1.02);
+  }
+}
+
+.highlight-pulse {
+  animation: highlightPulse 2s ease-in-out;
+}
