@@ -203,12 +203,11 @@ export const Payment: React.FC = () => {
     return null;
   }
 
-  // Bank details (you can make this dynamic from business settings later)
+  // Bank details from store registration
   const bankDetails = {
-    bankName: business?.settings?.bankName || 'First Bank of Nigeria',
-    accountName: business?.settings?.accountName || business?.name,
-    accountNumber: business?.settings?.accountNumber || '1234567890',
-    swiftCode: business?.settings?.swiftCode || 'FBNINGLA',
+    bankName: business?.bankDetails?.bankName || 'Not set',
+    accountName: business?.bankDetails?.accountName || business?.name || 'Not set',
+    accountNumber: business?.bankDetails?.accountNumber || 'Not set'
   };
 
   return (

@@ -75,22 +75,33 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
     setOpenFAQ(openFAQ === id ? null : id);
   };
 
-  const handlePlanSelection = (plan: typeof PRICING_PLANS[0]) => {
+  const handlePlanSelection = async (plan: typeof PRICING_PLANS[0]) => {
     try {
-      const currentUser = AuthService.getCurrentUser();
+      console.log('🎯 Plan selected:', plan.id, plan.name);
+      
+      // Free plan always goes to signup - no coupon needed
+      if (plan.id === 'free') {
+        console.log('🆓 Free plan selected - redirecting to signup');
+        navigate(`/auth/signup?plan=${plan.id}`);
+        return;
+      }
+      
+      // For paid plans, check if user is authenticated
+      const currentUser = await AuthService.getCurrentUser();
 
       if (currentUser) {
-        // User is authenticated - redirect to coupon page
-        console.log('✅ Authenticated user selecting plan:', plan.id);
+        // User is authenticated - redirect to coupon page for paid plans
+        console.log('✅ Authenticated user selecting paid plan:', plan.id);
         navigate(`/coupon?plan=${plan.id}&amount=${plan.yearlyPrice}`);
       } else {
-        // User not authenticated - redirect to signup
-        console.log('🔐 Non-authenticated user - redirecting to signup');
+        // User not authenticated - redirect to signup with plan
+        console.log('🔐 Non-authenticated user - redirecting to signup with plan:', plan.id);
         navigate(`/auth/signup?plan=${plan.id}`);
       }
     } catch (error) {
       console.error('❌ Error in handlePlanSelection:', error);
       // Fallback to signup if there's an error
+      console.log('⚠️ Fallback - redirecting to signup');
       navigate(`/auth/signup?plan=${plan.id}`);
     }
   };
@@ -169,71 +180,91 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         }}></div>
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
         {showHeader && (
           <motion.div
-            className="text-center mb-6 sm:mb-8 lg:mb-10"
+            className="text-center mb-8 sm:mb-10 lg:mb-12"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            {/* Animated Icon */}
+            {/* Compelling Badge */}
             <motion.div
-              className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl mb-6 sm:mb-8 shadow-2xl"
-              animate={{
-                rotate: [0, 5, -5, 0],
-                scale: [1, 1.05, 1]
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full border border-green-200 mb-6"
             >
-              <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600"></span>
+              </span>
+              <span className="text-sm font-bold text-green-700">💰 Incredibly Affordable - Just ₦16k/Year</span>
             </motion.div>
 
             <motion.h2
-              className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent mb-4 sm:mb-6 px-4"
+              className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-4 px-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              Choose Your Perfect Plan
+              <span className="block text-gray-900 mb-2">Simple, Transparent Pricing</span>
+              <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                That Grows With You
+              </span>
             </motion.h2>
 
             <motion.p
-              className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-6 sm:mb-8 px-4"
+              className="text-lg sm:text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed mb-8 px-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             >
-              Transform your business with our powerful e-commerce platform.
-              Start free and scale seamlessly as you grow.
+              Choose the plan that fits your business and <span className="font-bold text-blue-600">start selling today</span>. 
+              <span className="block mt-2 font-semibold text-gray-900">Incredibly affordable. No hidden fees. Cancel anytime.</span>
             </motion.p>
 
-            {/* Trust Indicators */}
+            {/* Enhanced Trust Indicators */}
             <motion.div
-              className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 text-sm text-gray-500 px-4"
+              className="flex flex-wrap justify-center items-center gap-6 sm:gap-8 mb-6"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
             >
-              <div className="flex items-center space-x-2">
-                <Check className="w-4 h-4 text-green-500" />
-                <span>No setup fees</span>
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-2 text-green-600 font-bold">
+                  <Check className="w-5 h-5" />
+                  <span className="text-lg">No Setup Fees</span>
+                </div>
+                <span className="text-xs text-gray-500">Get started instantly</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <Check className="w-4 h-4 text-green-500" />
-                <span>Cancel anytime</span>
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-2 text-blue-600 font-bold">
+                  <Shield className="w-5 h-5" />
+                  <span className="text-lg">Free Setup Help</span>
+                </div>
+                <span className="text-xs text-gray-500">We'll build it for you</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <Check className="w-4 h-4 text-green-500" />
-                <span>Free setup assistance</span>
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-2 text-purple-600 font-bold">
+                  <Users className="w-5 h-5" />
+                  <span className="text-lg">5000+ Stores</span>
+                </div>
+                <span className="text-xs text-gray-500">Join successful businesses</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-blue-500" />
-                <span>1000+ businesses trust us</span>
+            </motion.div>
+
+            {/* Value Proposition */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+              className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl shadow-lg"
+            >
+              <div className="text-3xl">🎉</div>
+              <div className="text-left">
+                <div className="text-sm font-bold text-gray-900">Special Launch Offer</div>
+                <div className="text-xs text-gray-600">Pay yearly and save 20% - That's just ₦1,333/month!</div>
               </div>
             </motion.div>
           </motion.div>
@@ -401,40 +432,78 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.8 }}
         >
-          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl sm:rounded-3xl p-8 sm:p-12 max-w-5xl mx-auto shadow-xl border border-white/50 backdrop-blur-sm">
-            <motion.div
-              className="flex items-center justify-center mb-4 sm:mb-6"
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+          <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl sm:rounded-3xl p-8 sm:p-12 max-w-5xl mx-auto shadow-2xl overflow-hidden">
+            {/* Animated Background */}
+            <div className="absolute inset-0">
+              <div className="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+              <div className="absolute bottom-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+            </div>
+
+            <div className="relative z-10">
+              <motion.div
+                className="flex items-center justify-center mb-6"
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg border-2 border-white/30">
+                  <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                </div>
+              </motion.div>
+
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 px-4">
+                🎯 Can't Set Up Your Store?
+              </h3>
+              <p className="text-xl sm:text-2xl text-white mb-3 px-4 font-bold">
+                We'll Do It For You - 100% FREE!
+              </p>
+              <p className="text-base sm:text-lg text-blue-100 mb-8 max-w-2xl mx-auto px-4 leading-relaxed">
+                Our expert team will build your complete store, upload products, set up payments, and customize everything - 
+                <span className="font-bold text-white"> absolutely FREE</span>. You just provide the content, we handle the rest!
+              </p>
+
+              {/* Benefits Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 px-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <div className="text-3xl mb-2">🚀</div>
+                  <div className="text-sm font-bold text-white">Quick Setup</div>
+                  <div className="text-xs text-blue-100">Ready in 24-48hrs</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <div className="text-3xl mb-2">💼</div>
+                  <div className="text-sm font-bold text-white">Professional</div>
+                  <div className="text-xs text-blue-100">Expert designers</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <div className="text-3xl mb-2">🎁</div>
+                  <div className="text-sm font-bold text-white">100% Free</div>
+                  <div className="text-xs text-blue-100">No extra charges</div>
+                </div>
               </div>
-            </motion.div>
 
-            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4 px-4">
-              Need Help Getting Started?
-            </h3>
-            <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
-              Can't set up your store? No problem! Our expert team will create your entire store for FREE.
-              We also offer enterprise plans with custom features and dedicated support.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/contact">
-                  <Button size="lg" className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl w-full sm:w-auto">
-                    Get Free Setup Help
-                  </Button>
-                </Link>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/contact">
-                  <Button variant="outline" size="lg" className="border-2 border-gray-300 hover:border-purple-400 hover:bg-purple-50 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl transition-all duration-300 w-full sm:w-auto">
-                    Contact Sales Team
-                  </Button>
-                </Link>
-              </motion.div>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center px-4">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Link to="/contact">
+                    <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700 shadow-2xl hover:shadow-white/20 px-8 py-4 text-lg font-bold rounded-xl w-full sm:w-auto">
+                      <span className="flex items-center gap-2">
+                        Launch Your Store Now
+                        <ArrowRight className="w-5 h-5" />
+                      </span>
+                    </Button>
+                  </Link>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <a href="https://wa.me/2348156853636" target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" size="lg" className="bg-white/10 backdrop-blur-sm border-2 border-white text-white hover:bg-white/20 hover:text-white px-8 py-4 text-lg font-bold rounded-xl w-full sm:w-auto">
+                      <span className="flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                        Contact Sales Team
+                      </span>
+                    </Button>
+                  </a>
+                </motion.div>
+              </div>
             </div>
           </div>
         </motion.div>

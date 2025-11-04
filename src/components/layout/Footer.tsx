@@ -36,7 +36,7 @@ export const Footer: React.FC = () => {
               </a>
               <div className="flex items-center space-x-2 text-gray-400">
                 <MapPin className="h-4 w-4" />
-                <span>Lagos, Nigeria</span>
+                <span>Abuja, Nigeria</span>
               </div>
             </div>
           </div>
@@ -44,10 +44,10 @@ export const Footer: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2 text-gray-400">
-              <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
+              <li><a href="/features" className="hover:text-white transition-colors">Features</a></li>
+              <li><a href="/pricing" className="hover:text-white transition-colors">Pricing</a></li>
               <li><a href="/affiliate" className="hover:text-white transition-colors">Affiliate Program</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
+              <li><a href="/contact" className="hover:text-white transition-colors">Contact</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
             </ul>
           </div>
@@ -64,7 +64,7 @@ export const Footer: React.FC = () => {
         </div>
         
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-          <p>&copy; 2024 Rady.ng. All rights reserved.</p>
+          <p>&copy; 2025 Rady.ng. All rights reserved.</p>
         </div>
       </div>
     </footer>

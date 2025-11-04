@@ -7,7 +7,7 @@ export const PricingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="pt-16">
+      <div className="pt-6 sm:pt-8">
         <PricingSection showHeader={true} />
       </div>
       <Footer />

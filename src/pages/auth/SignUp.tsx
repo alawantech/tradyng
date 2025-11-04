@@ -25,6 +25,9 @@ interface FormData {
   countryCode: string;
   country: string;
   state: string;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
 }
 
 interface DomainStatus {
@@ -38,7 +41,8 @@ const steps = [
   { id: 2, title: 'Email', description: 'Enter your email address' },
   { id: 3, title: 'Password', description: 'Create a secure password' },
   { id: 4, title: 'Whatsapp Number', description: 'Add your store Whatsapp number' },
-  { id: 5, title: 'Location', description: 'Where is your business?' }
+  { id: 5, title: 'Location', description: 'Where is your business?' },
+  { id: 6, title: 'Bank Details', description: 'Enter your bank information' }
 ];
 
 export const SignUp: React.FC = () => {
@@ -57,7 +61,10 @@ export const SignUp: React.FC = () => {
     phone: '',
     countryCode: '234',
     country: 'Nigeria', // Default to Nigeria
-    state: ''
+    state: '',
+    bankName: '',
+    accountName: '',
+    accountNumber: ''
   });
 
   const [domainStatus, setDomainStatus] = useState<DomainStatus>({
@@ -242,6 +249,8 @@ export const SignUp: React.FC = () => {
         return formData.phone.trim().length >= 7;
       case 5:
         return formData.country.trim() !== '' && formData.state.trim() !== '';
+      case 6:
+        return formData.bankName.trim() !== '' && formData.accountName.trim() !== '' && formData.accountNumber.trim().length >= 10;
       default:
         return false;
     }
@@ -277,7 +286,7 @@ export const SignUp: React.FC = () => {
       return;
     }
 
-    if (currentStep < 5 && isStepValid(currentStep)) {
+    if (currentStep < 6 && isStepValid(currentStep)) {
       setCurrentStep(prev => prev + 1);
     }
   };
@@ -289,7 +298,7 @@ export const SignUp: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!isStepValid(5)) return;
+    if (!isStepValid(6)) return;
     
     setLoading(true);
     
@@ -812,6 +821,11 @@ export const SignUp: React.FC = () => {
         state: formData.state,
         plan: planId as 'free' | 'business' | 'pro' | 'test',
         status: 'active' as const,
+        bankDetails: {
+          bankName: formData.bankName,
+          accountName: formData.accountName,
+          accountNumber: formData.accountNumber
+        },
         settings: {
           currency: defaultCurrency,
           primaryColor: '#3B82F6',
@@ -1030,28 +1044,45 @@ export const SignUp: React.FC = () => {
                     ? 'bg-red-900/30 border-red-600'
                     : 'bg-gray-800 border-gray-600'
                 }`}>
-                  <div className="flex items-center space-x-2">
-                    {domainStatus.checking && (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
-                        <span className="text-yellow-400 text-sm">{domainStatus.message}</span>
-                      </>
-                    )}
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center space-x-2">
+                      {domainStatus.checking && (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+                          <span className="text-yellow-400 text-sm">{domainStatus.message}</span>
+                        </>
+                      )}
+                      
+                      {domainStatus.available === true && (
+                        <>
+                          <Check className="h-4 w-4 text-green-400" />
+                          <span className="text-green-400 text-sm">✅ {domainStatus.message}</span>
+                        </>
+                      )}
+                      
+                      {domainStatus.available === false && (
+                        <>
+                          <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">!</span>
+                          </div>
+                          <span className="text-red-400 text-sm">❌ {domainStatus.message}</span>
+                        </>
+                      )}
+                    </div>
                     
-                    {domainStatus.available === true && (
-                      <>
-                        <Check className="h-4 w-4 text-green-400" />
-                        <span className="text-green-400 text-sm">✅ {domainStatus.message}</span>
-                      </>
-                    )}
-                    
-                    {domainStatus.available === false && (
-                      <>
-                        <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">!</span>
-                        </div>
-                        <span className="text-red-400 text-sm">❌ {domainStatus.message}</span>
-                      </>
+                    {/* Show login prompt when subdomain is taken */}
+                    {domainStatus.available === false && !checkingStoreName && (
+                      <div className="pt-2 border-t border-red-600/30">
+                        <p className="text-red-300 text-xs mb-2">
+                          This store URL is already in use. Please sign in with your existing account or choose a different store name.
+                        </p>
+                        <Link 
+                          to={`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}` : ''}`}
+                          className="inline-block px-3 py-1.5 bg-blue-500 text-white text-sm rounded-lg font-medium hover:bg-blue-600 transition-colors"
+                        >
+                          Sign In to Continue
+                        </Link>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1238,6 +1269,52 @@ export const SignUp: React.FC = () => {
                 className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
               />
             )}
+          </div>
+        );
+
+      case 6:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Bank Name *
+              </label>
+              <Input
+                type="text"
+                placeholder="e.g. Access Bank, GTBank, First Bank"
+                value={formData.bankName}
+                onChange={(e) => handleInputChange('bankName', e.target.value)}
+                className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Account Name *
+              </label>
+              <Input
+                type="text"
+                placeholder="Account holder name"
+                value={formData.accountName}
+                onChange={(e) => handleInputChange('accountName', e.target.value)}
+                className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Account Number *
+              </label>
+              <Input
+                type="text"
+                placeholder="10-digit account number"
+                value={formData.accountNumber}
+                onChange={(e) => handleInputChange('accountNumber', e.target.value.replace(/[^0-9]/g, ''))}
+                maxLength={10}
+                className="w-full h-12 px-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">This is where you'll receive payments from your customers</p>
+            </div>
           </div>
         );
 

@@ -6,6 +6,7 @@ import { CartProvider } from './contexts/CartContext';
 import { CustomerAuthProvider } from './contexts/CustomerAuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ScrollToTop } from './components/ScrollToTop';
+import { WhatsAppFloat } from './components/ui/WhatsAppFloat';
 
 // Initialize Firebase
 import './config/firebase';
@@ -16,6 +17,7 @@ import { PricingPage } from './pages/PricingPage';
 import { CouponPage } from './pages/CouponPage';
 import { FeaturesPage } from './pages/features/FeaturesPage';
 import { StoreExamples } from './pages/StoreExamples';
+import { ContactPage } from './pages/ContactPage';
 import { SignUp } from './pages/auth/SignUp';
 import { SignIn } from './pages/auth/SignIn';
 import { PaymentCallback } from './pages/auth/PaymentCallback';
@@ -127,6 +129,7 @@ function App() {
               <Route path="/coupon" element={<CouponPage />} />
               <Route path="/features" element={<FeaturesPage />} />
               <Route path="/store-examples" element={<StoreExamples />} />
+              <Route path="/contact" element={<ContactPage />} />
               <Route path="/demo/subdomains" element={<StoreSubdomainDemo />} />
               <Route path="/demo/test" element={<SubdomainTest />} />
               <Route path="/demo/email-test" element={<EmailTest />} />
@@ -178,6 +181,9 @@ function App() {
               },
             }}
           />
+          
+          {/* WhatsApp Float Button - Visible on all pages */}
+          <WhatsAppFloat />
         </div>
       </Router>
     </ThemeProvider>

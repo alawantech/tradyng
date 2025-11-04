@@ -1334,8 +1334,8 @@ exports.initializePayment = functions.https.onRequest({
             },
             meta: meta || {},
             customizations: {
-                title: 'Rady.ng',
-                description: 'Payment for Rady.ng services',
+                title: 'Programmers College',
+                description: 'Payment for Programmers College',
                 logo: 'https://rady.ng/logo.png'
             }
         };

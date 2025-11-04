@@ -24,7 +24,10 @@ export const Settings: React.FC = () => {
     address: '',
     country: '',
     state: '',
-    currency: DEFAULT_CURRENCY
+    currency: DEFAULT_CURRENCY,
+    bankName: '',
+    accountName: '',
+    accountNumber: ''
   });
 
   const [brandingSettings, setBrandingSettings] = useState({
@@ -138,7 +141,10 @@ export const Settings: React.FC = () => {
         address: business.address || '',
         country: business.country || 'Nigeria',
         state: business.state || '',
-        currency: business.settings?.currency || DEFAULT_CURRENCY
+        currency: business.settings?.currency || DEFAULT_CURRENCY,
+        bankName: business.bankDetails?.bankName || '',
+        accountName: business.bankDetails?.accountName || '',
+        accountNumber: business.bankDetails?.accountNumber || ''
       };
       
       console.log('📝 Setting store data:', newStoreData);
@@ -334,6 +340,12 @@ export const Settings: React.FC = () => {
         settings: {
           currency: storeData.currency || DEFAULT_CURRENCY,
           enableNotifications: business.settings?.enableNotifications || true
+        },
+        // Include bank details
+        bankDetails: {
+          bankName: storeData.bankName || '',
+          accountName: storeData.accountName || '',
+          accountNumber: storeData.accountNumber || ''
         },
         // Include branding settings
         branding: {
@@ -962,6 +974,65 @@ export const Settings: React.FC = () => {
               This currency will be used for all product prices and transactions in your store.
               You can always change this later, but remember that currency and country can be different.
             </p>
+          </div>
+          
+          {/* Bank Details Section */}
+          <div className="mt-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Account Details</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              This is where customers will send payment for their orders. Make sure this information is correct.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bank Name *
+                </label>
+                <Input
+                  name="bankName"
+                  type="text"
+                  value={storeData.bankName}
+                  onChange={handleChange}
+                  placeholder="e.g. Access Bank, GTBank, First Bank"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Account Number *
+                </label>
+                <Input
+                  name="accountNumber"
+                  type="text"
+                  value={storeData.accountNumber}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    setStoreData(prev => ({ ...prev, accountNumber: value }));
+                  }}
+                  placeholder="10-digit account number"
+                  maxLength={10}
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Account Name *
+                </label>
+                <Input
+                  name="accountName"
+                  type="text"
+                  value={storeData.accountName}
+                  onChange={handleChange}
+                  placeholder="Account holder name"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the name exactly as it appears on your bank account
+                </p>
+              </div>
+            </div>
           </div>
           
           <div className="mt-4 p-4 bg-green-50 rounded-lg">

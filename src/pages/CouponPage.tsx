@@ -331,7 +331,28 @@ export const CouponPage: React.FC = () => {
         // Get business info for the authenticated user
         const businesses = await BusinessService.getBusinessesByOwnerId(currentUser.uid);
         if (!businesses || businesses.length === 0) {
-          throw new Error('Business account not found');
+          console.log('⚠️ User is authenticated but has no business account - redirecting to signup');
+          
+          // Store coupon info for after signup
+          if (appliedCoupon) {
+            sessionStorage.setItem('appliedCoupon', JSON.stringify({
+              code: appliedCoupon.code,
+              discount: discountAmount,
+              planId: planId
+            }));
+          }
+
+          // Redirect to signup to complete account creation
+          const url = new URL('/auth/signup', window.location.origin);
+          url.searchParams.set('plan', planId!);
+          url.searchParams.set('amount', finalAmount.toString());
+          if (appliedCoupon) {
+            url.searchParams.set('coupon', appliedCoupon.code);
+            url.searchParams.set('discount', discountAmount.toString());
+          }
+
+          navigate(url.pathname + url.search);
+          return;
         }
 
         const business = businesses[0];

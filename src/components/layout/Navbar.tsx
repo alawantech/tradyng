@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Home, Star, ShoppingBag, DollarSign, LogIn, UserPlus } from 'lucide-react';
+import { Menu, X, Home, Star, ShoppingBag, DollarSign, LogIn, UserPlus, MessageCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 export const Navbar: React.FC = () => {
@@ -46,6 +46,7 @@ export const Navbar: React.FC = () => {
     { to: isHomePage ? '#features' : '/features', label: 'Features', icon: Star, isScroll: isHomePage },
     { to: '/store-examples', label: 'Store Examples', icon: ShoppingBag },
     { to: '/pricing', label: 'Pricing', icon: DollarSign },
+    { to: '/contact', label: 'Contact', icon: MessageCircle },
   ];
 
   return (
