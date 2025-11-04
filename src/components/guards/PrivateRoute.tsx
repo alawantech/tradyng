@@ -8,10 +8,10 @@ interface PrivateRouteProps {
 
 /**
  * Private Route Guard
- * Protects routes that require authentication
+ * Protects routes that require authentication and checks trial expiration
  */
 export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isTrialExpired } = useAuth();
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -30,6 +30,11 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     return <Navigate to="/auth/signin" replace />;
   }
 
-  // User is authenticated
+  // Redirect to trial expired page if trial has ended
+  if (isTrialExpired) {
+    return <Navigate to="/trial-expired" replace />;
+  }
+
+  // User is authenticated and trial is active (or not on free plan)
   return <>{children}</>;
 };

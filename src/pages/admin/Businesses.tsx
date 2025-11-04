@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '../../components/ui/Card';
 import { BusinessService } from '../../services/business';
 import { UserService } from '../../services/user';
-import { Building2, Mail, User, CreditCard, TrendingUp, Calendar } from 'lucide-react';
+import { Building2, CreditCard, Trash2, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { SendReminderModal } from '../../components/modals/SendReminderModal';
+import { Button } from '../../components/ui/Button';
 
-interface Business {
+interface AdminBusiness {
   id: string;
   name: string;
   ownerId: string;
@@ -15,11 +17,16 @@ interface Business {
   status?: string;
   createdAt?: any;
   subdomain?: string;
+  trialEndDate?: any;
+  email?: string;
 }
 
 export const Businesses: React.FC = () => {
-  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [businesses, setBusinesses] = useState<AdminBusiness[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reminderModalOpen, setReminderModalOpen] = useState(false);
+  const [selectedBusiness, setSelectedBusiness] = useState<AdminBusiness | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBusinesses();
@@ -48,13 +55,70 @@ export const Businesses: React.FC = () => {
         })
       );
       
-      setBusinesses(businessesWithOwners);
+      setBusinesses(businessesWithOwners as AdminBusiness[]);
     } catch (error: any) {
       console.error('Error fetching businesses:', error);
       toast.error('Failed to load businesses');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSendReminder = async (businessId: string, message: string) => {
+    try {
+      const response = await fetch('https://sendtrialreminder-rv5lqk7lxa-uc.a.run.app', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessId, customMessage: message })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send reminder');
+      }
+
+      toast.success('Reminder email sent successfully!');
+    } catch (error: any) {
+      console.error('Error sending reminder:', error);
+      toast.error('Failed to send reminder email');
+      throw error;
+    }
+  };
+
+  const handleDeleteBusiness = async (business: AdminBusiness) => {
+    if (!confirm(`Are you sure you want to permanently delete "${business.name}"? This will delete all products, orders, customers, and the owner's account. This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingId(business.id);
+    try {
+      const response = await fetch('https://admindeletebusiness-rv5lqk7lxa-uc.a.run.app', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessId: business.id })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete business');
+      }
+
+      toast.success(`Business "${business.name}" deleted successfully!`);
+      // Refresh the list
+      await fetchBusinesses();
+    } catch (error: any) {
+      console.error('Error deleting business:', error);
+      toast.error('Failed to delete business');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const getDaysRemaining = (trialEndDate: any) => {
+    if (!trialEndDate) return null;
+    const now = new Date();
+    const endDate = trialEndDate.toDate ? trialEndDate.toDate() : new Date(trialEndDate.seconds * 1000);
+    const diffTime = endDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
 
   if (loading) {
@@ -101,10 +165,15 @@ export const Businesses: React.FC = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Created
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {businesses.map((business) => (
+                {businesses.map((business) => {
+                  const daysRemaining = business.plan === 'free' ? getDaysRemaining(business.trialEndDate) : null;
+                  return (
                   <tr key={business.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -149,12 +218,70 @@ export const Businesses: React.FC = () => {
                           })
                         : 'N/A'}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      {business.plan === 'free' ? (
+                        <div className="flex items-center space-x-2">
+                          {/* Trial Status */}
+                          {daysRemaining !== null && (
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              daysRemaining <= 0 
+                                ? 'bg-red-100 text-red-800' 
+                                : daysRemaining === 1 
+                                ? 'bg-orange-100 text-orange-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {daysRemaining <= 0 ? 'EXPIRED' : `${daysRemaining}d left`}
+                            </span>
+                          )}
+                          {/* Send Reminder Button */}
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedBusiness(business);
+                              setReminderModalOpen(true);
+                            }}
+                            className="flex items-center space-x-1"
+                          >
+                            <Send className="h-3 w-3" />
+                            <span>Remind</span>
+                          </Button>
+                          {/* Delete Button */}
+                          <Button
+                            onClick={() => handleDeleteBusiness(business)}
+                            disabled={deletingId === business.id}
+                            className="flex items-center space-x-1 bg-red-600 hover:bg-red-700"
+                            size="sm"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span>{deletingId === business.id ? 'Deleting...' : 'Delete'}</span>
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
+      )}
+
+      {/* Send Reminder Modal */}
+      {selectedBusiness && (
+        <SendReminderModal
+          isOpen={reminderModalOpen}
+          onClose={() => {
+            setReminderModalOpen(false);
+            setSelectedBusiness(null);
+          }}
+          businessName={selectedBusiness.name}
+          businessId={selectedBusiness.id}
+          onSendReminder={handleSendReminder}
+        />
       )}
     </div>
   );

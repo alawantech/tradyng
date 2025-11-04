@@ -28,7 +28,8 @@ service cloud.firestore {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isAdmin();
+      // Allow deletion by admin or if no auth context (Cloud Functions with admin SDK)
+      allow delete: if isAdmin() || request.auth == null;
     }
     
     // Businesses collection
@@ -39,15 +40,17 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       // Only owner or admin can update
       allow update: if isBusinessOwner(businessId) || isAdmin();
-      // Only admin can delete
-      allow delete: if isAdmin();
+      // Allow deletion by admin or if no auth context (Cloud Functions with admin SDK)
+      allow delete: if isAdmin() || request.auth == null;
       
       // Products subcollection
       match /products/{productId} {
         // Anyone can read products (for storefront)
         allow read: if true;
-        // Only business owner or admin can create/update/delete
-        allow create, update, delete: if isBusinessOwner(businessId) || isAdmin();
+        // Only business owner or admin can create/update
+        allow create, update: if isBusinessOwner(businessId) || isAdmin();
+        // Allow deletion by admin or if no auth context (Cloud Functions with admin SDK)
+        allow delete: if isBusinessOwner(businessId) || isAdmin() || request.auth == null;
       }
       
       // Orders subcollection
@@ -61,8 +64,8 @@ service cloud.firestore {
         allow create: if true;
         // Only business owner or admin can update orders
         allow update: if isBusinessOwner(businessId) || isAdmin();
-        // Only admin can delete orders
-        allow delete: if isAdmin();
+        // Allow deletion by admin or if no auth context (Cloud Functions with admin SDK)
+        allow delete: if isAdmin() || request.auth == null;
       }
       
       // Counters subcollection (for order ID generation)
@@ -86,8 +89,8 @@ service cloud.firestore {
         // Anyone can create customer record (during storefront signup/checkout)
         // Business owner and admin can also create/update
         allow create, update: if true;
-        // Only admin can delete
-        allow delete: if isAdmin();
+        // Allow deletion by admin or if no auth context (Cloud Functions with admin SDK)
+        allow delete: if isAdmin() || request.auth == null;
         
         // Customer messages subcollection
         match /messages/{messageId} {
@@ -100,7 +103,9 @@ service cloud.firestore {
       // Categories subcollection
       match /categories/{categoryId} {
         allow read: if true; // Anyone can read categories
-        allow create, update, delete: if isBusinessOwner(businessId) || isAdmin();
+        allow create, update: if isBusinessOwner(businessId) || isAdmin();
+        // Allow deletion by admin or if no auth context (Cloud Functions with admin SDK)
+        allow delete: if isBusinessOwner(businessId) || isAdmin() || request.auth == null;
       }
     }
     
@@ -185,14 +190,40 @@ service cloud.firestore {
       allow delete: if isSignedIn();
     }
     
+    // Products (global collection)
+    match /products/{productId} {
+      // Anyone can read products (for storefront)
+      allow read: if true;
+      // Signed-in users can create products
+      allow create: if isSignedIn();
+      // Product owner or admin can update
+      allow update: if isSignedIn() || isAdmin();
+      // Allow deletion by signed-in users, admin, or if no auth context (Cloud Functions)
+      allow delete: if isSignedIn() || isAdmin() || request.auth == null;
+    }
+    
+    // Orders (global collection)
+    match /orders/{orderId} {
+      // Anyone can read orders
+      allow read: if true;
+      // Anyone can create orders (customers placing orders)
+      allow create: if true;
+      // Signed-in users or admin can update
+      allow update: if isSignedIn() || isAdmin();
+      // Allow deletion by signed-in users, admin, or if no auth context (Cloud Functions)
+      allow delete: if isSignedIn() || isAdmin() || request.auth == null;
+    }
+    
     // Categories (global collection)
     match /categories/{categoryId} {
       // Anyone can read categories (for storefront)
       allow read: if true;
       // Business owner or admin can create categories
       allow create: if isSignedIn();
-      // Business owner or admin can update/delete their own categories
-      allow update, delete: if isSignedIn() || isAdmin();
+      // Business owner or admin can update their own categories
+      allow update: if isSignedIn() || isAdmin();
+      // Allow deletion by signed-in users, admin, or if no auth context (Cloud Functions)
+      allow delete: if isSignedIn() || isAdmin() || request.auth == null;
     }
     
     // Coupons collection

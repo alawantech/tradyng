@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendWithdrawalStatusEmail = exports.checkTrialExpirations = exports.generateUploadUrl = exports.verifyPaymentAndAwardCommission = exports.initializePayment = exports.sendOrderApprovalEmail = exports.sendOrderDeliveryEmail = exports.sendAdminPaymentReceiptNotification = exports.sendPaymentReceiptNotification = exports.sendMessageNotification = exports.healthCheck = exports.debugResetOtp = exports.testFullOtpFlow = exports.testOtpHash = exports.resetPassword = exports.verifyResetOtp = exports.sendResetOtp = exports.verifyOtp = exports.sendOtp = void 0;
+exports.adminDeleteBusiness = exports.sendTrialReminder = exports.sendWithdrawalStatusEmail = exports.checkTrialExpirations = exports.generateUploadUrl = exports.verifyPaymentAndAwardCommission = exports.initializePayment = exports.sendOrderApprovalEmail = exports.sendOrderDeliveryEmail = exports.sendAdminPaymentReceiptNotification = exports.sendPaymentReceiptNotification = exports.sendMessageNotification = exports.healthCheck = exports.resetPassword = exports.verifyResetOtp = exports.sendResetOtp = exports.verifyOtp = exports.sendOtp = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const crypto_1 = __importDefault(require("crypto"));
@@ -561,144 +561,6 @@ exports.resetPassword = functions.https.onRequest({
     }
     catch (errAny) {
         console.error('resetPassword error:', errAny);
-        res.status(500).send({ error: String(errAny) });
-    }
-});
-// Temporary test function to verify hash logic
-exports.testOtpHash = functions.https.onRequest(async (req, res) => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-        res.status(204).send('');
-        return;
-    }
-    try {
-        const { code, salt } = req.body || {};
-        if (!code || !salt) {
-            res.status(400).send({ error: 'Missing code or salt' });
-            return;
-        }
-        const computed = hashOtp(code, salt);
-        const testOtp = generateNumericOtp(4);
-        const testSalt = crypto_1.default.randomBytes(16).toString('hex');
-        const testHash = hashOtp(testOtp, testSalt);
-        res.json({
-            input: { code, salt },
-            computedHash: computed,
-            testGeneration: {
-                otp: testOtp,
-                salt: testSalt,
-                hash: testHash,
-                verification: hashOtp(testOtp, testSalt) === testHash
-            }
-        });
-    }
-    catch (errAny) {
-        console.error('testOtpHash error:', errAny);
-        res.status(500).send({ error: String(errAny) });
-    }
-});
-// Test full OTP flow: create, verify, clean up
-exports.testFullOtpFlow = functions.https.onRequest(async (req, res) => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-        res.status(204).send('');
-        return;
-    }
-    try {
-        const { email, keepRecord } = req.body || {};
-        if (!email) {
-            res.status(400).send({ error: 'Missing email' });
-            return;
-        }
-        // Generate test OTP
-        const testOtp = generateNumericOtp(4);
-        const testSalt = crypto_1.default.randomBytes(16).toString('hex');
-        const testHash = hashOtp(testOtp, testSalt);
-        console.log('TEST: Generated OTP:', {
-            email,
-            otp: testOtp,
-            salt: testSalt,
-            hash: testHash
-        });
-        // Store in Firestore
-        const docId = encodeURIComponent(email);
-        const docRef = admin.firestore().collection(RESET_OTP_COLLECTION).doc(docId);
-        await docRef.set({
-            email,
-            otpHash: testHash,
-            salt: testSalt,
-            expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
-            attempts: 0,
-            createdAt: Date.now()
-        });
-        // Try to verify with correct code
-        const computedHash = hashOtp(testOtp, testSalt);
-        const verificationResult = computedHash === testHash;
-        console.log('TEST: Verification attempt:', {
-            originalOtp: testOtp,
-            computedHash,
-            storedHash: testHash,
-            match: verificationResult
-        });
-        // Clean up unless keepRecord is true
-        if (!keepRecord) {
-            await docRef.delete();
-        }
-        res.json({
-            testOtp,
-            testSalt,
-            testHash,
-            computedHash,
-            verificationResult,
-            success: verificationResult,
-            docId,
-            keepRecord: !!keepRecord
-        });
-    }
-    catch (errAny) {
-        console.error('testFullOtpFlow error:', errAny);
-        res.status(500).send({ error: String(errAny) });
-    }
-});
-// Debug endpoint to inspect OTP records
-exports.debugResetOtp = functions.https.onRequest(async (req, res) => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-        res.status(204).send('');
-        return;
-    }
-    try {
-        const email = req.query.email;
-        if (!email) {
-            res.status(400).send({ error: 'Missing email parameter' });
-            return;
-        }
-        const docId = encodeURIComponent(email);
-        const docRef = admin.firestore().collection(RESET_OTP_COLLECTION).doc(docId);
-        const snap = await docRef.get();
-        if (!snap.exists) {
-            res.status(404).send({ error: 'No OTP found for this email' });
-            return;
-        }
-        const data = snap.data();
-        res.json({
-            email: data.email,
-            attempts: data.attempts,
-            expiresAt: new Date(data.expiresAt).toISOString(),
-            createdAt: new Date(data.createdAt).toISOString(),
-            isExpired: Date.now() > data.expiresAt,
-            hasSalt: !!data.salt,
-            hasOtpHash: !!data.otpHash
-        });
-    }
-    catch (errAny) {
-        console.error('debugResetOtp error:', errAny);
         res.status(500).send({ error: String(errAny) });
     }
 });
@@ -1905,6 +1767,12 @@ exports.checkTrialExpirations = functions.scheduler.onSchedule({
                     console.log(`⚠️ Day 3 - Afternoon final warning sent to: ${business.email}`);
                 }
             }
+            // Send admin notification when trial expires (exactly at expiration)
+            if (hoursUntilExpiry <= 0 && hoursUntilExpiry > -1 && !business.adminNotifiedExpired) {
+                console.log(`📧 Sending admin notification - trial expired for: ${business.name}`);
+                await sendAdminTrialNotification(business.name, businessDoc.id, business.email, 0);
+                await businessDoc.ref.update({ adminNotifiedExpired: true });
+            }
             // DELETE: 3 hours after last email on day 3
             if (business.lastEmailSentAt) {
                 const lastEmailDate = business.lastEmailSentAt.toDate();
@@ -1957,7 +1825,7 @@ async function sendTrialReminderEmail(email, businessName, dayNumber, timeOfDay)
             <p><strong>You have ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining</strong> to enjoy all features.</p>
             <p>Don't lose your progress! Upgrade now to keep your store running after the trial ends.</p>
             <p style="text-align: center;">
-              <a href="https://tradyng.com/pricing" class="button">Upgrade Now</a>
+              <a href="https://rady.ng/pricing" class="button">Upgrade Now</a>
             </p>
             <p>Need help? Contact us at support@rady.ng</p>
           </div>
@@ -2015,7 +1883,7 @@ async function sendFinalWarningEmail(email, businessName, timeOfDay) {
               <li>Access to your dashboard</li>
             </ul>
             <p style="text-align: center;">
-              <a href="https://tradyng.com/pricing" class="button">UPGRADE NOW - Save Your Store!</a>
+              <a href="https://rady.ng/pricing" class="button">UPGRADE NOW - Save Your Store!</a>
             </p>
             <p style="color: #f5576c;"><strong>Don't wait! Act now to keep everything you've built.</strong></p>
             <p>Need help? Contact us immediately at support@rady.ng</p>
@@ -2035,6 +1903,78 @@ async function sendFinalWarningEmail(email, businessName, timeOfDay) {
     catch (error) {
         console.error('Error sending final warning email:', error);
         throw error;
+    }
+}
+// Helper function to send admin notification about expired trials
+async function sendAdminTrialNotification(businessName, businessId, ownerEmail, daysRemaining) {
+    try {
+        const adminEmail = 'admin@tradyng.com'; // Replace with actual admin email
+        const subject = `⚠️ Free Trial Alert: ${businessName} ${daysRemaining === 0 ? 'EXPIRED' : `expires in ${daysRemaining} days`}`;
+        const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f7fafc; padding: 30px; border-radius: 0 0 10px 10px; border: 2px solid #667eea; }
+          .info-box { background: white; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0; }
+          .warning { background: #fff5f5; border-left: 4px solid #f56565; padding: 15px; margin: 20px 0; }
+          .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 10px 5px; font-weight: bold; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⚠️ Free Trial Management Alert</h1>
+          </div>
+          <div class="content">
+            <h2>Store Trial ${daysRemaining === 0 ? 'Has Expired' : 'Expiring Soon'}</h2>
+            <div class="${daysRemaining === 0 ? 'warning' : 'info-box'}">
+              <p style="margin: 0;"><strong>Business:</strong> ${businessName}</p>
+              <p style="margin: 5px 0 0 0;"><strong>Business ID:</strong> ${businessId}</p>
+              <p style="margin: 5px 0 0 0;"><strong>Owner Email:</strong> ${ownerEmail}</p>
+              <p style="margin: 5px 0 0 0;"><strong>Status:</strong> ${daysRemaining === 0 ? '🔴 EXPIRED' : `⏰ ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`}</p>
+            </div>
+            
+            ${daysRemaining === 0 ? `
+              <div class="warning">
+                <p style="margin: 0;"><strong>⚠️ This store has reached its 3-day trial limit!</strong></p>
+                <p style="margin: 10px 0 0 0;">The automated system will delete this store in a few hours unless you take action.</p>
+              </div>
+            ` : ''}
+            
+            <h3>Admin Actions Available:</h3>
+            <ul>
+              <li>Send a custom reminder email to the store owner</li>
+              <li>Manually extend the trial period (if needed)</li>
+              <li>Manually delete the store immediately</li>
+              <li>Monitor for upgrade/payment</li>
+            </ul>
+            
+            <p style="text-align: center;">
+              <a href="https://rady.ng/admin/businesses" class="button">Go to Admin Panel</a>
+            </p>
+            
+            <p style="font-size: 12px; color: #666; margin-top: 20px;">
+              <strong>Note:</strong> This is an automated notification from the trial management system.
+            </p>
+          </div>
+          <div class="footer">
+            <p>© 2025 Tradyng Admin System</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+        await sendEmailViaMailerSend(adminEmail, subject, html);
+        console.log(`📧 Admin notification sent for business: ${businessName}`);
+    }
+    catch (error) {
+        console.error('Error sending admin notification:', error);
+        // Don't throw - we don't want this to break the main flow
     }
 }
 // Helper function to delete expired business
@@ -2259,6 +2199,159 @@ exports.sendWithdrawalStatusEmail = functions.https.onRequest({
     catch (errAny) {
         console.error('sendWithdrawalStatusEmail error:', errAny);
         res.status(500).send({ error: String(errAny) });
+    }
+});
+// =======================
+// Admin: Send Custom Reminder to Trial Store
+// =======================
+exports.sendTrialReminder = functions.https.onRequest({
+    memory: '256MiB',
+    timeoutSeconds: 60,
+    minInstances: 0,
+    secrets: ['MAIL_SENDER_API_TOKEN']
+}, async (req, res) => {
+    // Set CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+    try {
+        if (req.method !== 'POST') {
+            res.status(405).json({ error: 'Method not allowed, use POST' });
+            return;
+        }
+        const { businessId, customMessage } = req.body;
+        if (!businessId || !customMessage) {
+            res.status(400).json({ error: 'businessId and customMessage are required' });
+            return;
+        }
+        // Get business details
+        const businessDoc = await admin.firestore().collection('businesses').doc(businessId).get();
+        if (!businessDoc.exists) {
+            res.status(404).json({ error: 'Business not found' });
+            return;
+        }
+        const business = businessDoc.data();
+        if (!business) {
+            res.status(404).json({ error: 'Business data not found' });
+            return;
+        }
+        const subject = `📢 Important Message About Your ${business.name} Store`;
+        const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f7fafc; padding: 30px; border-radius: 0 0 10px 10px; border: 2px solid #667eea; }
+          .message-box { background: white; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; }
+          .button { display: inline-block; background: #667eea; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; font-size: 16px; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📢 Message from Tradyng Team</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${business.name}!</h2>
+            <p>We wanted to reach out to you regarding your store:</p>
+            
+            <div class="message-box">
+              ${customMessage.replace(/\n/g, '<br>')}
+            </div>
+            
+            <p>We're here to help you succeed! If you have any questions or need assistance, please don't hesitate to reach out.</p>
+            
+            <p style="text-align: center;">
+              <a href="https://rady.ng/pricing" class="button">View Pricing Plans</a>
+            </p>
+            
+            <p>Best regards,<br>
+            <strong>The Tradyng Team</strong></p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="font-size: 12px; color: #666;">
+              Need help? Reply to this email or contact us at support@tradyng.com
+            </p>
+          </div>
+          <div class="footer">
+            <p>© 2025 Tradyng - Your Online Store Platform</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+        await sendEmailViaMailerSend(business.email, subject, html);
+        // Log the reminder in Firestore
+        await admin.firestore().collection('adminReminders').add({
+            businessId,
+            businessName: business.name,
+            recipientEmail: business.email,
+            message: customMessage,
+            sentAt: admin.firestore.Timestamp.now()
+        });
+        console.log(`📧 Admin reminder sent to ${business.email} for business: ${business.name}`);
+        res.json({ success: true, message: 'Reminder email sent successfully' });
+    }
+    catch (error) {
+        console.error('Error sending trial reminder:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// =======================
+// Admin: Delete Business Completely
+// =======================
+exports.adminDeleteBusiness = functions.https.onRequest({
+    memory: '256MiB',
+    timeoutSeconds: 120,
+    minInstances: 0,
+    secrets: ['MAIL_SENDER_API_TOKEN']
+}, async (req, res) => {
+    // Set CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+    try {
+        if (req.method !== 'POST') {
+            res.status(405).json({ error: 'Method not allowed, use POST' });
+            return;
+        }
+        const { businessId } = req.body;
+        if (!businessId) {
+            res.status(400).json({ error: 'businessId is required' });
+            return;
+        }
+        // Get business to find ownerId
+        const businessDoc = await admin.firestore().collection('businesses').doc(businessId).get();
+        if (!businessDoc.exists) {
+            res.status(404).json({ error: 'Business not found' });
+            return;
+        }
+        const business = businessDoc.data();
+        if (!business) {
+            res.status(404).json({ error: 'Business data not found' });
+            return;
+        }
+        console.log(`🗑️ Admin deleting business: ${business.name} (${businessId})`);
+        // Use the existing delete function
+        await deleteExpiredBusiness(businessId, business.ownerId);
+        console.log(`✅ Admin successfully deleted business: ${business.name}`);
+        res.json({ success: true, message: 'Business deleted successfully' });
+    }
+    catch (error) {
+        console.error('Error in admin delete business:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 //# sourceMappingURL=index.js.map

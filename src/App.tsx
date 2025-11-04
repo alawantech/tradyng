@@ -5,6 +5,7 @@ import { SubdomainService, SubdomainInfo } from './services/subdomain';
 import { CartProvider } from './contexts/CartContext';
 import { CustomerAuthProvider } from './contexts/CustomerAuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ScrollToTop } from './components/ScrollToTop';
 
 // Initialize Firebase
 import './config/firebase';
@@ -20,6 +21,7 @@ import { SignIn } from './pages/auth/SignIn';
 import { PaymentCallback } from './pages/auth/PaymentCallback';
 import { AffiliatePage } from './pages/AffiliatePage';
 import { AffiliateDashboard } from './pages/AffiliateDashboard';
+import { TrialExpired } from './pages/TrialExpired';
 
 // Dashboard
 import { DashboardLayout } from './pages/dashboard/DashboardLayout';
@@ -95,6 +97,7 @@ function App() {
   return (
     <ThemeProvider>
       <Router>
+        <ScrollToTop />
         <div className="App min-h-screen bg-gray-50">
           {subdomainInfo?.isSubdomain ? (
             // Store routes - only show storefront for subdomains
@@ -132,6 +135,9 @@ function App() {
               <Route path="/auth/signup" element={<SignUp />} />
               <Route path="/auth/signin" element={<SignIn />} />
               <Route path="/payment/callback" element={<PaymentCallback />} />
+              
+              {/* Trial Expired */}
+              <Route path="/trial-expired" element={<TrialExpired />} />
               
               {/* Affiliate */}
               <Route path="/affiliate" element={<AffiliatePage />} />

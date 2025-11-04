@@ -7,6 +7,7 @@ export const useAuth = () => {
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [authInitialized, setAuthInitialized] = useState(false);
+  const [isTrialExpired, setIsTrialExpired] = useState(false);
 
   useEffect(() => {
     let businessQueryPromise: Promise<void> | null = null;
@@ -30,7 +31,32 @@ export const useAuth = () => {
             if (businesses.length > 0) {
               console.log('✅ Setting business data:', businesses[0]);
               console.log('🔑 Business subdomain:', businesses[0].subdomain);
-              setBusiness(businesses[0]);
+              
+              const businessData = businesses[0];
+              
+              // Check if trial has expired for free plan users
+              if (businessData.plan === 'free' && businessData.trialEndDate) {
+                const now = new Date();
+                const trialEndDate = businessData.trialEndDate.toDate 
+                  ? businessData.trialEndDate.toDate() 
+                  : new Date(businessData.trialEndDate as any);
+                
+                if (now > trialEndDate) {
+                  console.log('❌ Trial has expired for business:', businessData.name);
+                  console.log('   Trial ended:', trialEndDate.toISOString());
+                  console.log('   Current time:', now.toISOString());
+                  setIsTrialExpired(true);
+                  setBusiness(businessData); // Still set business for display purposes
+                } else {
+                  console.log('✅ Trial is still active');
+                  setIsTrialExpired(false);
+                  setBusiness(businessData);
+                }
+              } else {
+                // Not a free plan or no trial end date
+                setIsTrialExpired(false);
+                setBusiness(businessData);
+              }
             } else {
               console.log('❌ No businesses found for user UID:', authUser.uid);
               console.log('🔍 This could mean:');
@@ -38,6 +64,7 @@ export const useAuth = () => {
               console.log('   2. Business ownerId does not match user UID');
               console.log('   3. Database query is not working');
               setBusiness(null);
+              setIsTrialExpired(false);
             }
           } catch (error) {
             console.error('❌ Error fetching business:', error);
@@ -50,6 +77,7 @@ export const useAuth = () => {
       } else if (!authUser) {
         console.log('🚫 No authenticated user');
         setBusiness(null);
+        setIsTrialExpired(false);
         setAuthInitialized(false);
         setLoading(false);
       } else if (authUser && authInitialized) {
@@ -62,5 +90,5 @@ export const useAuth = () => {
     return () => unsubscribe();
   }, [authInitialized]);
 
-  return { user, business, loading };
+  return { user, business, loading, isTrialExpired };
 };
