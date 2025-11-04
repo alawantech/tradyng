@@ -662,7 +662,7 @@ export const CouponPage: React.FC = () => {
                     'Processing...'
                   ) : (
                     <span className="flex items-center justify-center space-x-2">
-                      <span>{isAuthenticated ? 'Continue to Payment' : 'Continue to Sign Up'}</span>
+                      <span>{isAuthenticated ? 'Continue to Payment' : 'Continue to Registration'}</span>
                       <Sparkles className="w-5 h-5" />
                     </span>
                   )}
@@ -692,7 +692,7 @@ export const CouponPage: React.FC = () => {
           <p className="text-sm text-gray-500">
             {isAuthenticated 
               ? "Don't have a coupon code? No problem! Continue to payment to complete your plan upgrade."
-              : "Don't have a coupon code? No problem! Continue to sign up to complete your purchase."
+              : "Don't have a coupon code? No problem! You'll register your account in the next step."
             }
           </p>
         </motion.div>
