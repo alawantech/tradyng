@@ -164,139 +164,149 @@ export const StorefrontHome: React.FC = () => {
 
   return (
     <div>
-      {/* Hero Section - Dynamic Design Based on Branding Settings - Fixed Height */}
+      {/* Hero Section - Professional Dynamic Design */}
       <section 
-        className="hero-section relative text-white overflow-hidden h-[400px] flex items-center" 
+        className="hero-section relative text-white overflow-hidden h-[500px] flex items-center" 
         style={{
           ...(business?.branding?.heroBannerImage ? {} : getHeroStyle()),
-          height: '400px',
-          maxHeight: '400px',
-          minHeight: '400px'
+          height: '500px',
+          maxHeight: '500px',
+          minHeight: '500px'
         }}
       >
-        {/* Custom Hero Background Image (replaces gradient background) */}
+        {/* Custom Hero Background Image with Smart Overlay */}
         {business?.branding?.heroBannerImage && (
-          <div className="absolute inset-0 w-full h-full overflow-hidden">
-            <img 
-              src={business.branding.heroBannerImage}
-              alt={`${business.name} hero background`}
-              className="w-full h-full object-cover object-center"
-              onError={(e) => {
-                console.error('Hero banner image failed to load, falling back to gradient');
-                // Hide the image and show gradient background
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-              onLoad={() => {
-                // Image loaded successfully, hide all overlays for clear image visibility
-                const geometricOverlay = document.querySelector('.hero-section .absolute.inset-0.opacity-20');
-                if (geometricOverlay) {
-                  (geometricOverlay as HTMLElement).style.display = 'none';
-                }
-                
-                // Hide floating orbs when image is present
-                const floatingOrbs = document.querySelectorAll('.hero-section .absolute.w-28, .hero-section .absolute.w-20, .hero-section .absolute.w-16, .hero-section .absolute.w-12');
-                floatingOrbs.forEach(orb => {
-                  (orb as HTMLElement).style.display = 'none';
-                });
+          <>
+            <div className="absolute inset-0 w-full h-full overflow-hidden">
+              <img 
+                src={business.branding.heroBannerImage}
+                alt={`${business.name} hero background`}
+                className="w-full h-full object-cover object-center transition-transform duration-[20s] ease-out hover:scale-110"
+                onError={(e) => {
+                  console.error('Hero banner image failed to load, falling back to gradient');
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+                style={{
+                  animation: 'elegantZoom 30s ease-in-out infinite alternate'
+                }}
+              />
+            </div>
+            {/* Smart Gradient Overlay for Better Text Readability */}
+            <div 
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 30%, rgba(0, 0, 0, 0.2) 60%, rgba(0, 0, 0, 0.4) 100%)',
+                animation: 'overlayPulse 8s ease-in-out infinite'
               }}
             />
-            {/* NO OVERLAY - Image shows completely clear */}
-          </div>
+          </>
         )}
 
-        {/* Animated Geometric Pattern Overlay */}
-        <div 
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.6'%3E%3Ccircle cx='40' cy='40' r='3'/%3E%3Ccircle cx='20' cy='20' r='2'/%3E%3Ccircle cx='60' cy='20' r='2'/%3E%3Ccircle cx='20' cy='60' r='2'/%3E%3Ccircle cx='60' cy='60' r='2'/%3E%3Crect x='38' y='18' width='4' height='4' rx='2'/%3E%3Crect x='18' y='38' width='4' height='4' rx='2'/%3E%3Crect x='58' y='38' width='4' height='4' rx='2'/%3E%3Crect x='38' y='58' width='4' height='4' rx='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            backgroundSize: '80px 80px',
-            animation: 'float 8s ease-in-out infinite'
-          }}
-        />
+        {/* Animated Geometric Pattern Overlay - Only for Gradient Backgrounds */}
+        {!business?.branding?.heroBannerImage && (
+          <div 
+            className="absolute inset-0 opacity-10 pointer-events-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.6'%3E%3Ccircle cx='40' cy='40' r='3'/%3E%3Ccircle cx='20' cy='20' r='2'/%3E%3Ccircle cx='60' cy='20' r='2'/%3E%3Ccircle cx='20' cy='60' r='2'/%3E%3Ccircle cx='60' cy='60' r='2'/%3E%3Crect x='38' y='18' width='4' height='4' rx='2'/%3E%3Crect x='18' y='38' width='4' height='4' rx='2'/%3E%3Crect x='58' y='38' width='4' height='4' rx='2'/%3E%3Crect x='38' y='58' width='4' height='4' rx='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundSize: '80px 80px',
+              animation: 'float 12s ease-in-out infinite'
+            }}
+          />
+        )}
         
-        {/* Enhanced Floating Orbs with Continuous Animation */}
-        <div 
-          className="absolute top-10 left-10 w-28 h-28 rounded-full blur-xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 70%)',
-            animation: 'float 6s ease-in-out infinite, pulse-glow 4s ease-in-out infinite'
-          }}
-        />
-        <div 
-          className="absolute top-20 right-20 w-20 h-20 rounded-full blur-lg"
-          style={{ 
-            background: 'radial-gradient(circle, rgba(200, 200, 220, 0.4) 0%, rgba(180, 190, 210, 0.2) 70%)',
-            animationDelay: '2s',
-            animation: 'float 8s ease-in-out infinite 2s, pulse-glow 5s ease-in-out infinite 1s'
-          }} 
-        />
-        <div 
-          className="absolute bottom-16 left-1/4 w-16 h-16 rounded-full blur-lg"
-          style={{ 
-            background: 'radial-gradient(circle, rgba(180, 200, 230, 0.3) 0%, rgba(160, 180, 210, 0.15) 70%)',
-            animation: 'float 7s ease-in-out infinite 1s, pulse-glow 6s ease-in-out infinite 3s'
-          }} 
-        />
-        <div 
-          className="absolute top-1/2 right-10 w-12 h-12 rounded-full blur-md"
-          style={{ 
-            background: 'radial-gradient(circle, rgba(220, 225, 240, 0.35) 0%, rgba(200, 210, 230, 0.18) 70%)',
-            animation: 'float 5s ease-in-out infinite 3s, pulse-glow 7s ease-in-out infinite 2s'
-          }} 
-        />
+        {/* Enhanced Floating Orbs - Only for Gradient Backgrounds */}
+        {!business?.branding?.heroBannerImage && (
+          <>
+            <div 
+              className="absolute top-16 left-16 w-32 h-32 rounded-full blur-2xl pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.05) 70%)',
+                animation: 'parallaxFloat 8s ease-in-out infinite, pulse-glow 5s ease-in-out infinite'
+              }}
+            />
+            <div 
+              className="absolute top-24 right-24 w-24 h-24 rounded-full blur-xl pointer-events-none"
+              style={{ 
+                background: 'radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.08) 70%)',
+                animation: 'parallaxFloat 10s ease-in-out infinite 2s, pulse-glow 6s ease-in-out infinite 1s'
+              }} 
+            />
+            <div 
+              className="absolute bottom-20 left-1/3 w-20 h-20 rounded-full blur-xl pointer-events-none"
+              style={{ 
+                background: 'radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 70%)',
+                animation: 'parallaxFloat 9s ease-in-out infinite 1s, pulse-glow 7s ease-in-out infinite 3s'
+              }} 
+            />
+            <div 
+              className="absolute top-1/3 right-12 w-16 h-16 rounded-full blur-lg pointer-events-none"
+              style={{ 
+                background: 'radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.07) 70%)',
+                animation: 'parallaxFloat 7s ease-in-out infinite 3s, pulse-glow 8s ease-in-out infinite 2s'
+              }} 
+            />
+          </>
+        )}
         
-        {/* Main Content - Always visible on top with enhanced visibility */}
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Main Content - Professional Layout with Enhanced Visibility */}
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="mb-4"
+              transition={{ duration: 0.9, ease: "easeOut" }}
+              className="mb-6"
             >
               <h1 
-                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight px-6 py-3 rounded-xl inline-block"
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-4 leading-tight px-8 py-4 rounded-2xl inline-block"
                 style={{
                   color: '#ffffff',
                   textShadow: business?.branding?.heroBannerImage 
-                    ? '0 1px 2px rgba(0,0,0,0.3), 0 0 4px rgba(0,0,0,0.2)'
-                    : '0 1px 2px rgba(0,0,0,0.1)',
+                    ? '2px 2px 4px rgba(0,0,0,0.5), 0 0 30px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3)'
+                    : '2px 2px 8px rgba(0,0,0,0.2), 0 0 20px rgba(0,0,0,0.1)',
                   backgroundColor: business?.branding?.heroBannerImage 
-                    ? 'rgba(0, 0, 0, 0.15)' 
-                    : 'rgba(0, 0, 0, 0.08)',
-                  backdropFilter: business?.branding?.heroBannerImage ? 'blur(20px)' : 'blur(8px)',
-                  border: 'none',
+                    ? 'rgba(0, 0, 0, 0.25)' 
+                    : 'rgba(0, 0, 0, 0.12)',
+                  backdropFilter: business?.branding?.heroBannerImage ? 'blur(15px) saturate(180%)' : 'blur(10px)',
+                  border: business?.branding?.heroBannerImage 
+                    ? '1px solid rgba(255, 255, 255, 0.15)' 
+                    : '1px solid rgba(255, 255, 255, 0.08)',
                   boxShadow: business?.branding?.heroBannerImage
-                    ? '0 0 2px rgba(0, 0, 0, 0.01)'
-                    : 'none'
+                    ? '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                    : '0 4px 20px rgba(0, 0, 0, 0.1)',
+                  animation: 'fadeInUp 1s ease-out'
                 }}
               >
                 Welcome to{' '}
                 <span className="relative inline-block">
                   <span 
-                    className="font-extrabold"
+                    className="font-black tracking-tight"
                     style={{
                       background: business?.branding?.heroBannerImage 
-                        ? 'white'
+                        ? 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 50%, #ffffff 100%)'
                         : 'linear-gradient(90deg, #ffffff 0%, #f3f4f6 25%, #ffffff 50%, #e5e7eb 75%, #ffffff 100%)',
                       backgroundSize: '200% 100%',
                       WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: business?.branding?.heroBannerImage ? 'white' : 'transparent',
-                      animation: business?.branding?.heroBannerImage ? 'none' : 'shimmer 3s ease-in-out infinite',
-                      textShadow: business?.branding?.heroBannerImage 
-                        ? '3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.8)'
-                        : 'none',
-                      WebkitTextStroke: business?.branding?.heroBannerImage ? '1px black' : 'none'
+                      WebkitTextFillColor: 'transparent',
+                      animation: 'shimmer 4s ease-in-out infinite',
+                      filter: business?.branding?.heroBannerImage 
+                        ? 'drop-shadow(3px 3px 6px rgba(0,0,0,0.7)) drop-shadow(0 0 20px rgba(0,0,0,0.5))'
+                        : 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))'
                     }}
                   >
                     {business.name}
                   </span>
                   <div 
-                    className="absolute -bottom-1 left-0 w-full h-0.5 rounded-full"
+                    className="absolute -bottom-2 left-0 w-full h-1 rounded-full"
                     style={{
-                      background: 'linear-gradient(90deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.8) 100%)',
+                      background: business?.branding?.heroBannerImage
+                        ? 'linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.9) 100%)'
+                        : 'linear-gradient(90deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%)',
                       backgroundSize: '200% 100%',
-                      animation: 'shimmer 3s ease-in-out infinite'
+                      animation: 'shimmer 3s ease-in-out infinite',
+                      boxShadow: business?.branding?.heroBannerImage
+                        ? '0 2px 10px rgba(255, 255, 255, 0.5)'
+                        : '0 2px 6px rgba(255, 255, 255, 0.3)'
                     }}
                   />
                 </span>
@@ -304,78 +314,113 @@ export const StorefrontHome: React.FC = () => {
             </motion.div>
             
             <motion.p
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 25 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-base sm:text-lg md:text-xl mb-6 max-w-2xl mx-auto leading-relaxed px-6 py-3 rounded-xl"
+              transition={{ duration: 0.9, delay: 0.3, ease: "easeOut" }}
+              className="text-lg sm:text-xl md:text-2xl mb-8 max-w-3xl mx-auto leading-relaxed px-8 py-4 rounded-2xl font-medium"
               style={{
                 color: '#ffffff',
                 textShadow: business?.branding?.heroBannerImage 
-                  ? '0 2px 8px rgba(0,0,0,0.8), 0 0 16px rgba(0,0,0,0.6)'
-                  : '0 1px 4px rgba(0,0,0,0.3)',
+                  ? '1px 1px 3px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4)'
+                  : '1px 1px 3px rgba(0,0,0,0.3), 0 0 12px rgba(0,0,0,0.2)',
                 backgroundColor: business?.branding?.heroBannerImage 
-                  ? 'rgba(0, 0, 0, 0.45)' 
-                  : 'rgba(0, 0, 0, 0.25)',
-                backdropFilter: business?.branding?.heroBannerImage ? 'blur(8px)' : 'blur(2px)',
+                  ? 'rgba(0, 0, 0, 0.35)' 
+                  : 'rgba(0, 0, 0, 0.18)',
+                backdropFilter: business?.branding?.heroBannerImage ? 'blur(12px) saturate(150%)' : 'blur(8px)',
                 border: business?.branding?.heroBannerImage 
-                  ? '1px solid rgba(255, 255, 255, 0.1)' 
-                  : '1px solid rgba(255, 255, 255, 0.05)',
+                  ? '1px solid rgba(255, 255, 255, 0.2)' 
+                  : '1px solid rgba(255, 255, 255, 0.1)',
                 boxShadow: business?.branding?.heroBannerImage
-                  ? '0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                  : '0 2px 10px rgba(0, 0, 0, 0.1)'
+                  ? '0 6px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                  : '0 4px 16px rgba(0, 0, 0, 0.15)',
+                animation: 'textReveal 1.2s ease-out 0.3s both'
               }}
             >
               {business.description || `Discover amazing products from ${business.name}. Quality guaranteed, fast shipping.`}
             </motion.p>
             
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="flex flex-col sm:flex-row gap-3 justify-center items-center"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.9, delay: 0.6, ease: "easeOut" }}
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
               <button 
                 onClick={scrollToProducts}
-                className="relative font-semibold px-6 py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg border overflow-hidden cursor-pointer"
+                className="group relative font-bold px-10 py-4 rounded-full transition-all duration-500 transform hover:scale-110 shadow-2xl border-2 overflow-hidden cursor-pointer text-lg"
                 style={{
-                  backgroundColor: business?.branding?.heroBannerImage ? 'rgba(255, 255, 255, 0.95)' : 'white',
-                  color: business?.branding?.heroBannerImage ? '#1f2937' : '#374151',
-                  borderColor: business?.branding?.heroBannerImage ? 'rgba(255, 255, 255, 0.8)' : '#e5e7eb',
+                  backgroundColor: business?.branding?.heroBannerImage ? 'rgba(255, 255, 255, 0.98)' : 'rgba(255, 255, 255, 0.95)',
+                  color: business?.branding?.heroBannerImage ? '#111827' : '#1f2937',
+                  borderColor: business?.branding?.heroBannerImage ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.5)',
                   boxShadow: business?.branding?.heroBannerImage 
-                    ? '0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                    : '0 4px 15px rgba(0, 0, 0, 0.1), 0 0 20px rgba(255, 255, 255, 0.1)',
-                  backdropFilter: business?.branding?.heroBannerImage ? 'blur(8px)' : 'none',
-                  animation: 'buttonPulse 3s ease-in-out infinite, buttonGlow 2s ease-in-out infinite alternate'
+                    ? '0 10px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.4)'
+                    : '0 8px 30px rgba(0, 0, 0, 0.15), 0 0 25px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+                  backdropFilter: business?.branding?.heroBannerImage ? 'blur(10px) saturate(180%)' : 'blur(5px)',
+                  animation: 'scaleUp 0.6s ease-out 0.6s both, buttonPulse 4s ease-in-out 1s infinite'
                 }}
                 onMouseEnter={(e) => {
                   if (business?.branding?.heroBannerImage) {
                     e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.4), 0 0 25px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4)';
+                    e.currentTarget.style.boxShadow = '0 15px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 255, 255, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.5)';
+                    e.currentTarget.style.transform = 'scale(1.12) translateY(-2px)';
                   } else {
-                    e.currentTarget.style.background = 'linear-gradient(45deg, #f8fafc, #f1f5f9)';
-                    e.currentTarget.style.color = '#374151';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)';
+                    e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.2), 0 0 35px rgba(255, 255, 255, 0.3)';
+                    e.currentTarget.style.transform = 'scale(1.12) translateY(-2px)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (business?.branding?.heroBannerImage) {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
-                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.98)';
+                    e.currentTarget.style.boxShadow = '0 10px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.4)';
+                    e.currentTarget.style.transform = 'scale(1)';
                   } else {
-                    e.currentTarget.style.background = 'white';
-                    e.currentTarget.style.color = '#374151';
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
+                    e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.15), 0 0 25px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                    e.currentTarget.style.transform = 'scale(1)';
                   }
                 }}
               >
-                Shop Now
+                <span className="relative z-10 flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5" />
+                  Shop Now
+                </span>
+                {/* Animated shine effect */}
+                <div 
+                  className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
+                    transform: 'translateX(-100%)',
+                    animation: 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.animation = 'shimmer 1.5s ease-in-out';
+                  }}
+                />
               </button>
             </motion.div>
           </div>
         </div>
         
-        {/* Bottom Wave - Seamless transition to store background */}
-        <div className="absolute bottom-0 left-0 w-full">
-          <svg viewBox="0 0 1200 80" preserveAspectRatio="none" className="relative block w-full h-12">
-            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="#c5cbe1"></path>
+        {/* Bottom Wave - Elegant Seamless Transition */}
+        <div className="absolute bottom-0 left-0 w-full pointer-events-none">
+          <svg 
+            viewBox="0 0 1200 120" 
+            preserveAspectRatio="none" 
+            className="relative block w-full h-16 sm:h-20"
+            style={{
+              filter: business?.branding?.heroBannerImage 
+                ? 'drop-shadow(0 -2px 8px rgba(0, 0, 0, 0.1))'
+                : 'none'
+            }}
+          >
+            <path 
+              d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" 
+              style={{
+                fill: '#ffffff',
+                opacity: 0.95
+              }}
+            />
           </svg>
         </div>
       </section>
