@@ -11,6 +11,7 @@ import { OrderReceipt } from '../../components/ui/OrderReceipt';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
 import toast from 'react-hot-toast';
 import html2pdf from 'html2pdf.js';
+import { Timestamp } from 'firebase/firestore';
 
 export const Orders: React.FC = () => {
   const { business } = useAuth();
@@ -50,6 +51,8 @@ export const Orders: React.FC = () => {
   });
   const [adminOrderStatus, setAdminOrderStatus] = useState<'paid' | 'pending'>('paid');
   const [delivered, setDelivered] = useState(false);
+  const [sendReceiptEmail, setSendReceiptEmail] = useState(false);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   // Filter state for orders table
   const [filterType, setFilterType] = useState<'all' | 'day' | 'month' | 'year'>('all');
   const [filterDate, setFilterDate] = useState<string>('');
@@ -174,10 +177,20 @@ export const Orders: React.FC = () => {
       notes: ''
     });
     setDelivered(false);
+    setSendReceiptEmail(false);
+    setAdminOrderStatus('paid');
   };
+
+
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent double submission
+    if (isCreatingOrder) {
+      console.log('Order creation already in progress, ignoring duplicate submission');
+      return;
+    }
     
     console.log('=== ORDER CREATION DEBUG ===');
     console.log('Form data:', orderData);
@@ -192,6 +205,7 @@ export const Orders: React.FC = () => {
       return;
     }
 
+    setIsCreatingOrder(true);
     try {
       // Validate required fields
       console.log('Validating product selection...');
@@ -242,16 +256,16 @@ export const Orders: React.FC = () => {
       const items = orderData.products
         .map(prod => {
           const selectedProduct = products.find(p => p.id === prod.productId);
-          if (!selectedProduct) return undefined;
+          if (!selectedProduct || !selectedProduct.id) return undefined;
           return {
-            productId: selectedProduct.id,
+            productId: selectedProduct.id as string,
             productName: selectedProduct.name,
             quantity: prod.quantity,
             price: selectedProduct.price,
             total: selectedProduct.price * prod.quantity
           };
         })
-        .filter((item): item is NonNullable<typeof item> => !!item);
+        .filter((item): item is NonNullable<typeof item> => !!item && !!item.productId);
       const subtotal = items.reduce((sum, item) => sum + item.total, 0);
       
       console.log('Order calculations:', {
@@ -271,19 +285,30 @@ export const Orders: React.FC = () => {
           ...(selectedCustomer.phone && selectedCustomer.phone.trim() ? { customerPhone: selectedCustomer.phone.trim() } : {})
         };
       } else {
-        // Manual customer entry - create new customer
-        console.log('Creating new customer from manual entry...');
+        // Manual customer entry - check if customer with this email already exists
+        console.log('Processing manual customer entry...');
         
-        // Check if customer with this email already exists
+        // Check if customer with this email already exists IN THIS STORE
         const existingCustomers = await CustomerService.getCustomersByBusinessId(business.id);
-        const duplicateCustomer = existingCustomers.find(c => c.email.toLowerCase() === orderData.customerEmail.toLowerCase());
+        const existingCustomer = existingCustomers.find(c => c.email.toLowerCase() === orderData.customerEmail.toLowerCase());
         
-        if (duplicateCustomer) {
-          console.log('Customer with this email already exists:', duplicateCustomer);
-          toast.error(`Customer with email "${orderData.customerEmail}" already exists! Please select from existing customers instead of entering manually.`);
-          return; // Stop order creation
+        if (existingCustomer) {
+          // Customer exists - use existing customer for this order
+          console.log('Customer with this email already exists, using existing customer:', existingCustomer);
+          customerId = existingCustomer.id;
+          customerData = {
+            customerId: existingCustomer.id,
+            customerName: existingCustomer.name, // Use existing customer name
+            customerEmail: existingCustomer.email,
+            // Use the phone number provided in the form for this specific order
+            ...(orderData.customerPhone && orderData.customerPhone.trim() ? { customerPhone: orderData.customerPhone.trim() } : 
+                (existingCustomer.phone && existingCustomer.phone.trim() ? { customerPhone: existingCustomer.phone.trim() } : {}))
+          };
+          console.log('Order will be created for existing customer. Address and phone will be specific to this order.');
         } else {
-          // Create new customer
+          // Creating completely new customer
+          console.log('Creating new customer from manual entry...');
+          
           const newCustomerData = {
             name: orderData.customerName,
             email: orderData.customerEmail,
@@ -317,7 +342,9 @@ export const Orders: React.FC = () => {
             ...(orderData.customerPhone && orderData.customerPhone.trim() ? { customerPhone: orderData.customerPhone.trim() } : {})
           };
         }
-      }      // Prepare shipping address if provided
+      }
+      
+      // Prepare shipping address if provided
       const shippingAddress = (orderData.street && orderData.country) ? {
         street: orderData.street,
         ...(orderData.city && orderData.city.trim() ? { city: orderData.city.trim() } : {}),
@@ -336,6 +363,14 @@ export const Orders: React.FC = () => {
       // Helper to check if admin is creating the order
       const isAdminCreating = !!business?.ownerId;
 
+      // Determine order status based on admin selections
+      let orderStatus: 'pending' | 'paid' | 'delivered' | 'approved' | 'refunded' | 'processing' | 'shipped' | 'cancelled' = 'pending';
+      if (isAdminCreating && adminOrderStatus === 'paid') {
+        // If delivered checkbox is checked, set status to 'delivered'
+        // Otherwise, set to 'approved'
+        orderStatus = delivered ? 'delivered' : 'approved';
+      }
+
       const orderPayload = {
         ...customerData,
         ...(shippingAddress ? { shippingAddress } : {}),
@@ -344,9 +379,9 @@ export const Orders: React.FC = () => {
         tax: 0,
         shipping: 0,
         total: subtotal,
-        status: isAdminCreating ? adminOrderStatus : 'pending',
+        status: orderStatus,
         paymentMethod: 'manual' as const,
-        paymentStatus: isAdminCreating && adminOrderStatus === 'paid' ? 'completed' : 'pending' as const,
+        paymentStatus: (isAdminCreating && adminOrderStatus === 'paid' ? 'completed' : 'pending') as 'pending' | 'completed' | 'failed' | 'refunded',
         delivered,
         ...(orderData.notes && orderData.notes.trim() ? { notes: orderData.notes.trim() } : {})
       };
@@ -355,6 +390,60 @@ export const Orders: React.FC = () => {
 
       const orderId = await OrderService.createOrder(business.id, orderPayload);
       console.log('Order created successfully with ID:', orderId);
+
+      // Send receipt email if checkbox is checked
+      if (sendReceiptEmail && orderId) {
+        try {
+          console.log('Sending receipt email to customer...');
+          
+          // Get the created order to generate PDF
+          const createdOrder = {
+            ...orderPayload,
+            id: orderId,
+            orderId: orderId,
+            createdAt: new Date()
+          };
+
+          // Generate PDF receipt
+          const pdfBase64 = await generateOrderPDF(createdOrder as any);
+
+          // Send approval email with PDF attachment
+          const response = await fetch('https://sendorderapprovalemail-rv5lqk7lxa-uc.a.run.app', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              customerEmail: customerData.customerEmail,
+              customerName: customerData.customerName,
+              customerPhone: customerData.customerPhone || '',
+              shippingAddress: shippingAddress,
+              orderId: orderId,
+              businessName: business.name || 'Rady.ng',
+              businessEmail: business.email,
+              businessPhone: business.phone,
+              items: items,
+              total: subtotal,
+              paymentMethod: 'manual',
+              createdAt: new Date().toISOString(),
+              currency: business?.settings?.currency || 'NGN',
+              pdfBase64
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+          console.log('Receipt email sent successfully:', result);
+          toast.success('Receipt email sent to customer');
+        } catch (emailError) {
+          console.warn('Error sending receipt email:', emailError);
+          toast.error('Order created but failed to send receipt email');
+          // Don't fail the order creation if email fails
+        }
+      }
 
       // Update customer statistics if we have a customer ID
       if (customerId || (customerOption === 'existing' && selectedCustomer)) {
@@ -411,6 +500,8 @@ export const Orders: React.FC = () => {
       }
       
       toast.error(errorMessage);
+    } finally {
+      setIsCreatingOrder(false);
     }
   };
   const getStatusColor = (status: string | undefined) => {
@@ -694,52 +785,6 @@ export const Orders: React.FC = () => {
     } catch (error) {
       console.error('Error approving order:', error);
       toast.error('Failed to approve order');
-    } finally {
-      // Clear loading state
-      setApprovingOrders(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(orderId);
-        return newSet;
-      });
-    }
-  };
-
-  // Handler for rejecting an order
-  const handleRejectOrder = async (orderId: string) => {
-    if (!business?.id) return;
-
-    // Confirm rejection
-    if (!window.confirm('Are you sure you want to reject this order? This action cannot be undone.')) {
-      return;
-    }
-
-    // Set loading state
-    setApprovingOrders(prev => new Set(prev).add(orderId));
-
-    try {
-      // Get the order details
-      const order = orders.find(o => o.orderId === orderId || o.id === orderId);
-      if (!order) {
-        toast.error('Order not found');
-        return;
-      }
-
-      // Update order status to cancelled
-      await OrderService.updateOrder(business.id, orderId, {
-        status: 'cancelled',
-        paymentStatus: 'failed',
-        rejectedAt: new Date(),
-        rejectionReason: 'Rejected by admin'
-      });
-
-      // TODO: Send rejection email to customer (optional - add Cloud Function if needed)
-      // For now, just show success message
-
-      toast.success(`Order ${orderId} has been rejected`);
-      loadData(); // Reload orders
-    } catch (error) {
-      console.error('Error rejecting order:', error);
-      toast.error('Failed to reject order');
     } finally {
       // Clear loading state
       setApprovingOrders(prev => {
@@ -1036,6 +1081,19 @@ export const Orders: React.FC = () => {
                   <label htmlFor="delivered" className="text-sm font-medium text-gray-700">Delivered</label>
                 </div>
               )}
+              {business?.ownerId && (
+                <div className="mb-4 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="sendReceiptEmail"
+                    checked={sendReceiptEmail}
+                    onChange={e => setSendReceiptEmail(e.target.checked)}
+                  />
+                  <label htmlFor="sendReceiptEmail" className="text-sm font-medium text-gray-700">
+                    Send receipt email to customer
+                  </label>
+                </div>
+              )}
 
               {/* Order Summary */}
               {orderData.products.length > 0 && (
@@ -1065,11 +1123,18 @@ export const Orders: React.FC = () => {
 
               {/* Form Actions */}
               <div className="flex justify-end space-x-3 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={resetModal}>
+                <Button type="button" variant="outline" onClick={resetModal} disabled={isCreatingOrder}>
                   Cancel
                 </Button>
-                <Button type="submit">
-                  Create Order
+                <Button type="submit" disabled={isCreatingOrder}>
+                  {isCreatingOrder ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Order'
+                  )}
                 </Button>
               </div>
             </form>
@@ -1312,51 +1377,31 @@ export const Orders: React.FC = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => handleViewOrder(order.orderId || order.id || 'unknown')}
-                          className="mb-2"
+                          className="mb-2 whitespace-nowrap text-xs"
                         >
-                          <Eye className="h-4 w-4 mr-1" />
+                          <Eye className="h-3 w-3 mr-1" />
                           View Receipt
                         </Button>
-                        {/* Only show Approve/Reject buttons for customer manual payment orders, not admin orders */}
+                        {/* Only show Approve button for customer manual payment orders, not admin orders */}
                         {order.status === 'pending' && order.paymentMethod === 'manual' && !isAdminOrder && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => handleApproveOrder(order.orderId || order.id || 'unknown')}
-                              disabled={approvingOrders.has(order.orderId || order.id || 'unknown')}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              {approvingOrders.has(order.orderId || order.id || 'unknown') ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
-                                  Approving...
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  Approve
-                                </>
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleRejectOrder(order.orderId || order.id || 'unknown')}
-                              disabled={approvingOrders.has(order.orderId || order.id || 'unknown')}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              {approvingOrders.has(order.orderId || order.id || 'unknown') ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
-                                  Rejecting...
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-1 rotate-45" />
-                                  Reject
-                                </>
-                              )}
-                            </Button>
-                          </>
+                          <Button
+                            size="sm"
+                            onClick={() => handleApproveOrder(order.orderId || order.id || 'unknown')}
+                            disabled={approvingOrders.has(order.orderId || order.id || 'unknown')}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            {approvingOrders.has(order.orderId || order.id || 'unknown') ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
+                                Approving...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Approve
+                              </>
+                            )}
+                          </Button>
                         )}
                         {/* Receipt Modal */}
                         {showReceipt === (order.orderId || order.id) && (

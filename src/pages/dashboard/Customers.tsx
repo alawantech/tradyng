@@ -39,17 +39,6 @@ export const Customers: React.FC = () => {
     }
   }, [business]);
 
-  // Auto-refresh customer data every 10 seconds to catch updates from other pages
-  useEffect(() => {
-    if (!business?.id) return;
-    
-    const interval = setInterval(() => {
-      loadCustomers();
-    }, 10000); // Refresh every 10 seconds
-    
-    return () => clearInterval(interval);
-  }, [business?.id]);
-
   const loadCustomers = async () => {
     if (!business?.id) return;
     
