@@ -68,6 +68,25 @@ export const Products: React.FC = () => {
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
+  // Ref to track modal scroll position
+  const modalContentRef = React.useRef<HTMLDivElement>(null);
+  const scrollPositionRef = React.useRef<number>(0);
+
+  // Preserve scroll position when images change
+  useEffect(() => {
+    if (modalContentRef.current && showModal) {
+      // Restore the saved scroll position after state update
+      const savedPosition = scrollPositionRef.current;
+      if (savedPosition > 0) {
+        requestAnimationFrame(() => {
+          if (modalContentRef.current) {
+            modalContentRef.current.scrollTop = savedPosition;
+          }
+        });
+      }
+    }
+  }, [imagePreviewUrls, showModal]);
+
   useEffect(() => {    
     if (authLoading) {
       return;
@@ -198,6 +217,11 @@ export const Products: React.FC = () => {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Save current scroll position
+    if (modalContentRef.current) {
+      scrollPositionRef.current = modalContentRef.current.scrollTop;
+    }
+
     const files = Array.from(e.target.files || []);
     
     // Check plan limits for images
@@ -256,11 +280,19 @@ export const Products: React.FC = () => {
         });
       }
     }
+
+    // Reset the file input to allow selecting the same file again
+    e.target.value = '';
   };
 
   const handleCropComplete = (croppedBlob: Blob) => {
     if (!currentCropImage) return;
     
+    // Save current scroll position before closing cropper
+    if (modalContentRef.current) {
+      scrollPositionRef.current = modalContentRef.current.scrollTop;
+    }
+
     const { file } = currentCropImage; // Remove unused index variable
     
     // Convert blob back to file
@@ -283,6 +315,11 @@ export const Products: React.FC = () => {
   const handleCropSkip = () => {
     if (!currentCropImage) return;
     
+    // Save current scroll position before closing cropper
+    if (modalContentRef.current) {
+      scrollPositionRef.current = modalContentRef.current.scrollTop;
+    }
+
     const { file } = currentCropImage;
     
     // Add original file without cropping
@@ -702,8 +739,11 @@ export const Products: React.FC = () => {
       {/* Create/Edit Product Modal */}
       {showModal && !currentCropImage && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
+          <div 
+            ref={modalContentRef}
+            className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto scroll-smooth"
+          >
+            <div className="p-6 border-b sticky top-0 bg-white z-10">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-gray-900">
                   {editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -903,23 +943,7 @@ export const Products: React.FC = () => {
                 />
               </div>
 
-              {/* Video Upload - Only for Business and Pro plans */}
-              {business?.plan && getPlanLimits(business.plan).allowVideos && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Video (Optional)
-                  </label>
-                  <VideoUploader
-                    onVideoSelect={handleVideoSelect}
-                    onVideoRemove={handleVideoRemove}
-                    maxDurationSeconds={getPlanLimits(business.plan).maxVideoLengthSeconds}
-                    currentVideo={editingProduct?.video}
-                    selectedVideoFile={selectedVideoFile}
-                    disabled={uploadingVideo || creating}
-                  />
-                </div>
-              )}
-
+              {/* Product Images - FIRST */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Product Images
@@ -927,37 +951,44 @@ export const Products: React.FC = () => {
                 
                 {/* Plan limit info */}
                 {business?.plan && (
-                  <div className="mb-2 p-2 bg-gray-50 rounded-md">
-                    <p className="text-xs text-gray-600">
-                      Your {business.plan} plan allows up to {getPlanLimits(business.plan).maxImagesPerProduct} images per product
+                  <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 font-medium">
+                      📸 Your {business.plan.charAt(0).toUpperCase() + business.plan.slice(1)} plan allows up to {getPlanLimits(business.plan).maxImagesPerProduct} images per product
                       {imagePreviewUrls.length > 0 && ` (${imagePreviewUrls.length}/${getPlanLimits(business.plan).maxImagesPerProduct} used)`}
                     </p>
                   </div>
                 )}
                 
-                {/* File Input */}
+                {/* Image Upload Button - Professional */}
                 <div className="mb-4">
+                  <label htmlFor="image-upload-input" className="block">
+                    <div className="border-2 border-dashed border-blue-400 bg-blue-50 rounded-xl p-8 text-center cursor-pointer hover:bg-blue-100 hover:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md">
+                      <Upload className="mx-auto h-16 w-16 text-blue-500 mb-3" />
+                      <p className="text-lg font-semibold text-blue-700 mb-1">Click to Upload Product Images</p>
+                      <p className="text-sm text-blue-600">
+                        JPEG, PNG, WebP • Max 5MB per image
+                        {business?.plan && getPlanLimits(business.plan).maxImagesPerProduct === 1 && (
+                          <span className="block mt-1 text-orange-600 font-medium">Free plan: 1 image only</span>
+                        )}
+                      </p>
+                    </div>
+                  </label>
                   <input
+                    id="image-upload-input"
                     type="file"
                     accept="image/*"
                     multiple={business?.plan ? getPlanLimits(business.plan).maxImagesPerProduct > 1 : true}
                     onChange={handleImageChange}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    className="hidden"
                   />
-                  <p className="mt-1 text-sm text-gray-500">
-                    Upload images (JPEG, PNG, WebM, max 5MB each)
-                    {business?.plan && getPlanLimits(business.plan).maxImagesPerProduct === 1 && (
-                      <span className="text-orange-600"> - Free plan: 1 image only</span>
-                    )}
-                  </p>
                   
                   {/* Cropping Status */}
                   {currentCropImage !== null && (
-                    <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-200">
-                      <p className="text-sm text-blue-700 font-medium">
+                    <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <p className="text-sm text-amber-800 font-medium">
                         🖼️ Cropping image in progress...
                       </p>
-                      <p className="text-xs text-blue-600">
+                      <p className="text-xs text-amber-700 mt-1">
                         Crop your image and click "Apply Crop" to continue
                       </p>
                     </div>
@@ -966,31 +997,36 @@ export const Products: React.FC = () => {
 
                 {/* Image Previews */}
                 {imagePreviewUrls.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {imagePreviewUrls.map((url, index) => (
-                      <div key={index} className="relative">
+                      <div key={index} className="relative group">
                         <img
                           src={url}
                           alt={`Preview ${index + 1}`}
-                          className="w-full h-24 object-cover object-center rounded-lg border bg-gray-100 transition-transform duration-300 hover:scale-105"
-                          style={{boxShadow: '0 4px 16px rgba(0,0,0,0.08)'}}
+                          className="w-full h-32 object-cover object-center rounded-xl border-2 border-gray-200 bg-gray-100 transition-all duration-300 group-hover:scale-105 group-hover:border-blue-400 shadow-md"
                         />
                         <button
                           type="button"
                           onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 shadow-lg transition-all hover:scale-110"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-4 h-4" />
                         </button>
+                        <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                          Image {index + 1}
+                        </div>
                       </div>
                     ))}
-                    {/* Add Image Button if not at max */}
+                    {/* Add More Images Button if not at max */}
                     {imagePreviewUrls.length < getPlanLimits(business.plan).maxImagesPerProduct && (
-                      <div className="flex flex-col items-center justify-center border-2 border-dashed border-blue-300 rounded-lg h-24 cursor-pointer hover:bg-blue-50 transition" onClick={() => document.getElementById('add-image-input')?.click()}>
-                        <Upload className="h-8 w-8 text-blue-400 mb-1" />
-                        <span className="text-xs text-blue-600 font-medium">Add Image</span>
+                      <div 
+                        className="flex flex-col items-center justify-center border-2 border-dashed border-blue-300 bg-blue-50 rounded-xl h-32 cursor-pointer hover:bg-blue-100 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md" 
+                        onClick={() => document.getElementById('add-more-images-input')?.click()}
+                      >
+                        <Upload className="h-10 w-10 text-blue-500 mb-2" />
+                        <span className="text-sm text-blue-700 font-semibold">Add More</span>
                         <input
-                          id="add-image-input"
+                          id="add-more-images-input"
                           type="file"
                           accept="image/*"
                           style={{ display: 'none' }}
@@ -1002,16 +1038,27 @@ export const Products: React.FC = () => {
                     )}
                   </div>
                 )}
-
-                {/* Upload Area */}
-                {imagePreviewUrls.length === 0 && (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <p className="text-gray-500">Click "Choose Files" above to upload images</p>
-                    <p className="text-sm text-gray-400">or drag and drop images here (feature coming soon)</p>
-                  </div>
-                )}
               </div>
+
+              {/* Video Upload - LAST - Only for Business and Pro plans */}
+              {business?.plan && getPlanLimits(business.plan).allowVideos && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Product Video (Optional)
+                  </label>
+                  <div className="border-2 border-dashed border-purple-400 bg-purple-50 rounded-xl p-6 hover:bg-purple-100 hover:border-purple-500 transition-all duration-200 shadow-sm hover:shadow-md">
+                    <VideoUploader
+                      onVideoSelect={handleVideoSelect}
+                      onVideoRemove={handleVideoRemove}
+                      maxDurationSeconds={getPlanLimits(business.plan).maxVideoLengthSeconds}
+                      currentVideo={editingProduct?.video}
+                      selectedVideoFile={selectedVideoFile}
+                      disabled={uploadingVideo || creating}
+                      planType={business.plan as 'free' | 'business' | 'pro'}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end space-x-3 pt-4 border-t">
                 <Button

@@ -12,6 +12,7 @@ interface VideoUploaderProps {
   currentVideo?: string;
   selectedVideoFile?: File | null; // Add this to pass the selected file from parent
   disabled?: boolean;
+  planType?: 'free' | 'business' | 'pro'; // Add plan type
 }
 
 export const VideoUploader: React.FC<VideoUploaderProps> = ({
@@ -20,7 +21,8 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
   maxDurationSeconds,
   currentVideo,
   selectedVideoFile, // Get the selected file from parent
-  disabled = false
+  disabled = false,
+  planType = 'business' // Default to business plan
 }) => {
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
@@ -67,8 +69,8 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
       setIsValidating(false);
       setIsProcessing(true);
 
-      // Process video with automatic trimming if needed
-      const result = await VideoProcessor.processVideoForPlan(file, maxDurationSeconds);
+      // Process video with automatic trimming and compression
+      const result = await VideoProcessor.processVideoForPlan(file, planType);
       
       setProcessingResult(result);
       setVideoPreview(URL.createObjectURL(result.processedFile));
@@ -116,7 +118,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
             <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Product Video</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Upload a video (max {maxDurationSeconds} seconds, MP4/WebM/AVI/MOV format)
+              Upload a video (any duration/size - we'll optimize it automatically!)
             </p>
             
             <input
@@ -138,7 +140,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
             </Button>
             
             <p className="text-xs text-gray-500 mt-2">
-              Max file size: 50MB
+              Max upload size: 500MB • Auto-compressed to fit your plan
             </p>
           </div>
         </div>
@@ -167,11 +169,17 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
       {/* Processing Result */}
       {processingResult && processingResult.wasProcessed && (
         <Card className="p-4 border-l-4 border-green-500 bg-green-50">
-          <div className="flex items-center">
-            <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-            <div className="text-sm text-green-700">
-              <p className="font-medium">Video automatically trimmed to fit your plan</p>
-              <p>Original: {VideoProcessor.formatDuration(processingResult.originalDuration)} → Trimmed: {VideoProcessor.formatDuration(processingResult.processedDuration)}</p>
+          <div className="flex items-start">
+            <CheckCircle className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
+            <div className="text-sm text-green-700 space-y-1">
+              <p className="font-medium">✅ Video automatically optimized for your plan</p>
+              {processingResult.wasTrimmed && (
+                <p>📹 Duration: {VideoProcessor.formatDuration(processingResult.originalDuration)} → {VideoProcessor.formatDuration(processingResult.processedDuration)}</p>
+              )}
+              {processingResult.wasCompressed && (
+                <p>🗜️ Size: {VideoProcessor.formatFileSize(processingResult.originalSize)} → {VideoProcessor.formatFileSize(processingResult.processedSize)}</p>
+              )}
+              <p className="text-xs text-green-600 mt-1">Your video has been compressed to 720p resolution to meet plan requirements</p>
             </div>
           </div>
         </Card>
@@ -243,13 +251,16 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
       )}
 
       {/* Plan Info */}
-      <div className="text-xs text-gray-500">
-        <p>Video length limit for your plan: {formatDuration(maxDurationSeconds)}</p>
-        <p>Supported formats: MP4, WebM, AVI, MOV (max 50MB)</p>
-        <p className="flex items-center mt-1">
+      <div className="text-xs text-gray-500 space-y-1">
+        <p className="font-medium text-gray-700">📋 Your {planType.charAt(0).toUpperCase() + planType.slice(1)} Plan Limits:</p>
+        <p>⏱️ Duration: {formatDuration(maxDurationSeconds)} max</p>
+        <p>📦 File Size: {planType === 'pro' ? '15 MB' : '8 MB'} max</p>
+        <p>📺 Resolution: 720p (1280x720)</p>
+        <p className="flex items-center mt-2 text-green-600 font-medium">
           <Scissors className="h-3 w-3 mr-1" />
-          Videos longer than {formatDuration(maxDurationSeconds)} will be automatically trimmed
+          Videos that exceed limits will be automatically optimized
         </p>
+        <p className="text-xs text-gray-400 mt-1">Supported formats: MP4, WebM, AVI, MOV</p>
       </div>
     </div>
   );

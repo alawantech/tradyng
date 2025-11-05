@@ -36,7 +36,8 @@ export class VideoUploadService {
 
   // Validate video file
   static validateVideoFile(file: File): { isValid: boolean; error?: string } {
-    const maxSize = 50 * 1024 * 1024; // 50MB for videos
+    // Increased limit since we now automatically compress videos
+    const maxSize = 500 * 1024 * 1024; // 500MB - we'll compress it down automatically
     const allowedTypes = ['video/mp4', 'video/webm', 'video/avi', 'video/mov', 'video/quicktime'];
     
     if (!allowedTypes.includes(file.type)) {
@@ -49,13 +50,12 @@ export class VideoUploadService {
     if (file.size > maxSize) {
       return {
         isValid: false,
-        error: 'Video size must be less than 50MB'
+        error: 'Video size must be less than 500MB. Please choose a smaller video file.'
       };
     }
     
-    // Note: Duration validation would require loading the video
-    // For now, we'll just validate file type and size
-    // Duration will be checked on the client side after file selection
+    // Note: Videos will be automatically compressed to meet plan limits (8MB or 15MB)
+    // Duration and resolution will be adjusted automatically during processing
     
     return { isValid: true };
   }

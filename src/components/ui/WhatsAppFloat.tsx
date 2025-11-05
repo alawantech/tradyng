@@ -42,11 +42,13 @@ export const WhatsAppFloat: React.FC = () => {
     '/affiliate'
   ];
   
-  // Also show on all dashboard pages (starts with /dashboard)
+  // Hide on dashboard pages (store admin dashboard)
   const isDashboardPage = location.pathname.startsWith('/dashboard');
+  
+  // Show on affiliate dashboard but not store admin dashboard
   const isAffiliateDashboard = location.pathname.startsWith('/affiliate/dashboard');
   
-  const shouldShow = allowedPaths.includes(location.pathname) || isDashboardPage || isAffiliateDashboard;
+  const shouldShow = (allowedPaths.includes(location.pathname) || isAffiliateDashboard) && !isDashboardPage;
 
   if (!shouldShow) {
     return null;
