@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Plus, Users, X, RefreshCw } from 'lucide-react';
+import { Plus, Users, X, RefreshCw } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { CustomerService, Customer } from '../../services/customer';
-import { Timestamp, collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { OrderService } from '../../services/order';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
@@ -15,6 +14,7 @@ export const Customers: React.FC = () => {
   const { business } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerAddresses, setCustomerAddresses] = useState<Record<string, any[]>>({});
+  const [customerOrders, setCustomerOrders] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -46,6 +46,22 @@ export const Customers: React.FC = () => {
       setLoading(true);
       const businessCustomers = await CustomerService.getCustomersByBusinessId(business.id);
       setCustomers(businessCustomers);
+
+      // Fetch orders for the business
+      const allOrders = await OrderService.getOrdersByBusinessId(business.id);
+      
+      // Group orders by customer email
+      const ordersMap: Record<string, any[]> = {};
+      allOrders.forEach(order => {
+        const email = order.customerEmail?.toLowerCase();
+        if (email) {
+          if (!ordersMap[email]) {
+            ordersMap[email] = [];
+          }
+          ordersMap[email].push(order);
+        }
+      });
+      setCustomerOrders(ordersMap);
 
       // Fetch addresses for all customers
       const addressesMap: Record<string, any[]> = {};
@@ -303,6 +319,23 @@ export const Customers: React.FC = () => {
                         }
                       }
                       
+                      // Show phone from most recent order if no other phone found
+                      const customerEmail = customer.email.toLowerCase();
+                      const orders = customerOrders[customerEmail] || [];
+                      if (orders.length > 0) {
+                        // Sort by date (most recent first)
+                        const sortedOrders = [...orders].sort((a, b) => {
+                          const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+                          const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+                          return dateB.getTime() - dateA.getTime();
+                        });
+                        
+                        const orderWithPhone = sortedOrders.find(o => o.customerPhone);
+                        if (orderWithPhone?.customerPhone) {
+                          return <span className="text-purple-600" title="From recent order">{orderWithPhone.customerPhone}</span>;
+                        }
+                      }
+                      
                       // No phone number found
                       return '—';
                     })()}
@@ -331,6 +364,28 @@ export const Customers: React.FC = () => {
                             {savedAddresses.length > 1 && ` (+${savedAddresses.length - 1} more)`}
                           </span>
                         );
+                      }
+                      
+                      // Show address from most recent order if no other address found
+                      const customerEmail = customer.email.toLowerCase();
+                      const orders = customerOrders[customerEmail] || [];
+                      if (orders.length > 0) {
+                        // Sort by date (most recent first)
+                        const sortedOrders = [...orders].sort((a, b) => {
+                          const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+                          const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+                          return dateB.getTime() - dateA.getTime();
+                        });
+                        
+                        const orderWithAddress = sortedOrders.find(o => o.shippingAddress);
+                        if (orderWithAddress?.shippingAddress) {
+                          const addr = orderWithAddress.shippingAddress;
+                          return (
+                            <span className="text-purple-600" title="From recent order">
+                              {addr.street ? addr.street : ''}{addr.city ? ', ' + addr.city : ''}{addr.state ? ', ' + addr.state : ''}{addr.country ? ', ' + addr.country : ''}
+                            </span>
+                          );
+                        }
                       }
                       
                       // No addresses
@@ -543,7 +598,7 @@ export const Customers: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-gray-700">Joined</h3>
-                      <div className="text-gray-900">{viewingCustomer.createdAt?.toDate ? viewingCustomer.createdAt.toDate().toLocaleDateString() : viewingCustomer.createdAt?.toLocaleDateString?.() || 'N/A'}</div>
+                      <div className="text-gray-900">{viewingCustomer.createdAt?.toDate ? viewingCustomer.createdAt.toDate().toLocaleDateString() : 'N/A'}</div>
                     </div>
                   </div>
 
