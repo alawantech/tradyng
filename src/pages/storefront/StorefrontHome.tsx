@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Star, StarHalf } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
 import { useStore } from './StorefrontLayout';
 import { useCart } from '../../contexts/CartContext';
 import { ProductService, Product } from '../../services/product';
@@ -454,66 +453,86 @@ export const StorefrontHome: React.FC = () => {
               ))}
             </div>
           ) : filteredFeaturedProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 justify-center">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
               {filteredFeaturedProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="flex justify-center"
+                  className="group"
                 >
-                  <Card className="border border-gray-200 shadow-sm w-full max-w-xs flex flex-col p-0 hover:shadow-md transition-shadow duration-200" style={{ backgroundColor: '#f9f9f9' }}>
-                    <Link to={`/product/${product.id}`} className="flex flex-col flex-1">
-                      <div className="w-full aspect-square overflow-hidden p-2">
+                  <Card className="relative border border-gray-200 shadow-sm w-full flex flex-col overflow-hidden hover:shadow-xl hover:border-gray-300 transition-all duration-300 bg-white rounded-xl h-full">
+                    {/* Product Image with Link */}
+                    <Link to={`/product/${product.id}`} className="block relative overflow-hidden bg-gray-50 rounded-t-xl">
+                      <div className="w-full aspect-square p-3 sm:p-4">
                         <img
                           src={product.images?.[0] || '/api/placeholder/400/300'}
                           alt={product.name}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105 rounded"
+                          className="w-full h-full object-cover rounded-lg transition-transform duration-500 group-hover:scale-110"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = '/api/placeholder/400/300';
                           }}
                         />
                       </div>
-                      <div className="flex flex-col px-4 py-3 flex-1" style={{ backgroundColor: '#f9f9f9' }}>
-                        <h3 className="text-base font-semibold text-black mb-1 truncate" style={{ backgroundColor: '#f9f9f9' }}>{product.name}</h3>
-                        {/* Price - always black */}
-                        <span className="text-lg font-bold text-black mb-2" style={{ backgroundColor: '#f9f9f9' }}>{formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}</span>
-                        {/* Category - always black, if available */}
-                        {product.category && (
-                          <span className="text-xs font-semibold text-black mb-1" style={{ backgroundColor: '#f9f9f9' }}>{product.category}</span>
-                        )}
-                        <div className="flex items-center mb-2" style={{ backgroundColor: '#f9f9f9' }}>
+                      {/* Category Badge */}
+                      {product.category && (
+                        <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
+                          <span className="inline-block px-2 py-1 text-[9px] sm:text-[10px] font-bold text-white bg-black/80 backdrop-blur-sm rounded-full shadow-lg">
+                            {product.category}
+                          </span>
+                        </div>
+                      )}
+                    </Link>
+                    
+                    {/* Product Info */}
+                    <div className="flex flex-col px-3 sm:px-4 py-3 sm:py-4 flex-1 bg-white">
+                      <Link to={`/product/${product.id}`} className="flex flex-col flex-1">
+                        <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-2 line-clamp-2 leading-snug group-hover:text-gray-700 transition-colors min-h-[2.5rem] sm:min-h-[3rem]">
+                          {product.name}
+                        </h3>
+                        
+                        {/* Rating */}
+                        <div className="flex items-center gap-1 mb-2 sm:mb-3">
                           <div className="flex text-yellow-400">
-                            {renderStars(product.averageRating || generateProductRating(product.id || '').averageRating).map((starType, index) => (
-                              <span key={index}>
-                                {starType === 'full' && <Star className="h-4 w-4 fill-current" />}
-                                {starType === 'half' && <StarHalf className="h-4 w-4 fill-current" />}
-                                {starType === 'empty' && <Star className={`h-4 w-4 ${colorScheme.icon.muted}`} />}
+                            {renderStars(product.averageRating || generateProductRating(product.id || '').averageRating).map((starType, idx) => (
+                              <span key={idx}>
+                                {starType === 'full' && <Star className="h-3 w-3 sm:h-4 sm:w-4 fill-current" />}
+                                {starType === 'half' && <StarHalf className="h-3 w-3 sm:h-4 sm:w-4 fill-current" />}
+                                {starType === 'empty' && <Star className="h-3 w-3 sm:h-4 sm:w-4 text-gray-300" />}
                               </span>
                             ))}
                           </div>
-                          {/* Count - lighter shade, not fully black */}
-                          <span className="text-xs text-gray-700 ml-2">({product.totalReviews || generateProductRating(product.id || '').totalReviews})</span>
+                          <span className="text-[10px] sm:text-xs text-gray-500 font-medium">
+                            ({product.totalReviews || generateProductRating(product.id || '').totalReviews})
+                          </span>
                         </div>
-                      </div>
-                    </Link>
-                    <div className="px-4 pb-3 flex justify-center" style={{ backgroundColor: '#f9f9f9' }}>
-                      <div className="flex gap-2 w-full">
-                        <Button 
-                          size="sm" 
-                          className="flex-1 px-1 py-1 rounded font-semibold text-xs text-white hover:bg-gray-800 transition-all whitespace-nowrap"
-                          style={{ backgroundColor: 'black', fontSize: '10px' }}
+                        
+                        {/* Price */}
+                        <div className="mt-auto">
+                          <span className="text-lg sm:text-xl font-black text-gray-900">
+                            {formatCurrency(product.price, business.settings?.currency || DEFAULT_CURRENCY)}
+                          </span>
+                        </div>
+                      </Link>
+                      
+                      {/* Action Buttons - Side by Side, Centered, Responsive */}
+                      <div className="mt-3 sm:mt-4 flex flex-row gap-2 w-full justify-center">
+                        <button 
+                          className="flex-1 max-w-[45%] px-2 py-2 sm:py-2.5 bg-black text-white text-[10px] sm:text-xs font-bold rounded-lg hover:bg-gray-800 active:scale-95 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-1"
                           onClick={(e) => {
-                            e?.preventDefault();
-                            e?.stopPropagation();
+                            e.preventDefault();
+                            e.stopPropagation();
                             handleAddToCart(product);
                           }}
                         >
-                          Add to Cart
-                        </Button>
-                        <Link to={`/product/${product.id}`} className="flex-1">
-                          <Button size="sm" className="w-full px-1 py-1 rounded font-semibold text-xs text-white hover:bg-gray-800 transition-all whitespace-nowrap" style={{ backgroundColor: 'black', fontSize: '10px' }}>View Details</Button>
+                          <ShoppingCart className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+                          <span className="truncate">Add</span>
+                        </button>
+                        <Link to={`/product/${product.id}`} className="flex-1 max-w-[45%]">
+                          <button className="w-full px-2 py-2 sm:py-2.5 bg-white text-black text-[10px] sm:text-xs font-bold rounded-lg border-2 border-black hover:bg-black hover:text-white active:scale-95 transition-all duration-200 shadow-sm hover:shadow-md truncate">
+                            Details
+                          </button>
                         </Link>
                       </div>
                     </div>

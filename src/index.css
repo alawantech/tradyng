@@ -346,6 +346,40 @@ html {
   color: var(--color-primary-light);
 }
 
+/* Product card footer buttons - keep two CTAs centered and on one line for all screen sizes */
+.product-card-buttons {
+  display: flex;
+  gap: 0.5rem; /* 8px gap between buttons */
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.product-card-button {
+  /* Each button occupies roughly half the available width (minus the gap) */
+  flex: 0 0 calc(50% - 0.25rem);
+  max-width: calc(50% - 0.25rem);
+  box-sizing: border-box;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.75rem; /* 12px */
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 0.5rem;
+}
+
+@media (max-width: 420px) {
+  .product-card-button {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.7rem; /* 11px */
+  }
+}
+
+
 /* Hero button variants */
 .hero-btn-primary {
   background-color: white;
