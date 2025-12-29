@@ -1,16 +1,20 @@
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart, Plus, Minus, Trash2, ArrowLeft, Sparkles, Heart, Star } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useCart } from '../../contexts/CartContext';
 import { useStore } from './StorefrontLayout';
+import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { formatCurrency, DEFAULT_CURRENCY } from '../../constants/currencies';
+import toast from 'react-hot-toast';
 
 export const Cart: React.FC = () => {
   const { items, total, itemCount, updateQuantity, removeItem, clearCart } = useCart();
-  const { business } = useStore();
+  const { business, openAuthModal } = useStore();
+  const { user } = useCustomerAuth();
+  const navigate = useNavigate();
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -308,15 +312,23 @@ export const Cart: React.FC = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 1.0 }}
                     >
-                      <Link to="/checkout" className="block">
+                      <div className="block">
                         <Button
                           size="lg"
                           className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+                          onClick={() => {
+                            if (user) {
+                              navigate('/checkout');
+                            } else {
+                              toast.error('Please login to place an order');
+                              openAuthModal('signin');
+                            }
+                          }}
                         >
                           <Sparkles className="h-5 w-5 mr-2" />
                           Proceed to Checkout
                         </Button>
-                      </Link>
+                      </div>
                     </motion.div>
 
                     <motion.div

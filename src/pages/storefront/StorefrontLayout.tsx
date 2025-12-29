@@ -26,6 +26,7 @@ interface StoreContextType {
   selectedCategory: string;
   setSelectedCategory: (category: string) => void;
   categories: Category[];
+  openAuthModal: (mode?: 'signin' | 'signup') => void;
 }
 
 const StoreContext = createContext<StoreContextType>({
@@ -37,6 +38,7 @@ const StoreContext = createContext<StoreContextType>({
   selectedCategory: '',
   setSelectedCategory: () => { },
   categories: [],
+  openAuthModal: () => { },
 });
 
 export const useStore = () => useContext(StoreContext);
@@ -60,6 +62,11 @@ export const StorefrontLayout: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [subdomainInfo, setSubdomainInfo] = useState<SubdomainInfo | null>(null);
+
+  const openAuthModal = (mode: 'signin' | 'signup' = 'signin') => {
+    setAuthModalMode(mode);
+    setShowAuthModal(true);
+  };
 
   // Close dropdown/mobile menu when clicking outside
   useEffect(() => {
@@ -217,7 +224,8 @@ export const StorefrontLayout: React.FC = () => {
       setSearchTerm,
       selectedCategory,
       setSelectedCategory,
-      categories
+      categories,
+      openAuthModal
     }}>
       <div className="min-h-screen bg-gray-50 storefront-body" style={{ backgroundColor: business?.branding?.storeBackgroundColor || '#1c1c1e' }}>
         {/* Header */}
