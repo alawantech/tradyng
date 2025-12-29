@@ -10,7 +10,6 @@ import { UserService } from '../../services/user';
 import { BusinessService } from '../../services/business';
 import { getDefaultCurrencyForCountry } from '../../constants/currencies';
 import toast from 'react-hot-toast';
-import { AffiliateService } from '../../services/affiliate';
 
 export const PaymentCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -53,7 +52,7 @@ export const PaymentCallback: React.FC = () => {
 
         if (verificationResult.status === 'success' && verificationResult.data?.data?.status === 'successful') {
           setStatus('success');
-          
+
           if (isUpgrade) {
             setMessage('Payment successful! Upgrading your plan...');
             // Extract metadata from the transaction
@@ -78,23 +77,23 @@ export const PaymentCallback: React.FC = () => {
             setMessage('Payment successful!');
           }
         } else {
-        // If verification fails but status is 'successful', it might be a timing issue
-        // Check if the status parameter indicates success
-        if (status === 'successful' || status === 'success' || status === 'completed') {
+          // If verification fails but status is 'successful', it might be a timing issue
+          // Check if the status parameter indicates success
+          if (status === 'successful' || status === 'success' || status === 'completed') {
             console.warn('Flutterwave verification failed but status indicates success - proceeding with account creation');
             setStatus('success');
-            
-          if (isUpgrade) {
-            setMessage('Payment successful! Upgrading your plan...');
-            await upgradeCurrentUserAccount({ planId: 'business' }); // Default to business if meta not available
-            // Note: Affiliate referral recording not available in fallback case
-          } else if (isSignup) {
-            setMessage('Payment successful! Creating your account...');
-            // For signup, we don't have meta data, so we'll need to handle this differently
-            // This is a fallback for when verification fails but payment succeeded
-            await createAccountFromUrlParams();
-            // Note: Affiliate referral recording not available in fallback case
-          } else if (isOrder) {
+
+            if (isUpgrade) {
+              setMessage('Payment successful! Upgrading your plan...');
+              await upgradeCurrentUserAccount({ planId: 'business' }); // Default to business if meta not available
+              // Note: Affiliate referral recording not available in fallback case
+            } else if (isSignup) {
+              setMessage('Payment successful! Creating your account...');
+              // For signup, we don't have meta data, so we'll need to handle this differently
+              // This is a fallback for when verification fails but payment succeeded
+              await createAccountFromUrlParams();
+              // Note: Affiliate referral recording not available in fallback case
+            } else if (isOrder) {
               setMessage('Payment successful! Processing your order...');
               // For orders, we also don't have meta data in this fallback
               setMessage('Payment successful! Please check your orders in the dashboard.');
@@ -111,12 +110,12 @@ export const PaymentCallback: React.FC = () => {
         }
       } catch (error: any) {
         console.error('Payment verification error:', error);
-        
+
         // If it's a network error or verification fails, but status indicates success, proceed
         if (status === 'successful' || status === 'success' || status === 'completed') {
           console.warn('Verification failed but status indicates success - proceeding anyway');
           setStatus('success');
-          
+
           if (isUpgrade) {
             setMessage('Payment successful! Upgrading your plan...');
             await upgradeCurrentUserAccount({ planId: 'business' }); // Default to business if meta not available
@@ -143,7 +142,7 @@ export const PaymentCallback: React.FC = () => {
 
   const createAccountFromPayment = async (meta: any) => {
     try {
-      const { planId, storeName, email, phone, country, state, password, couponCode } = meta;
+      const { planId, storeName, email, phone, country, state, password } = meta;
 
       // 1. Create Firebase Auth user
       const authUser = await AuthService.signUp(email, password);
@@ -167,19 +166,7 @@ export const PaymentCallback: React.FC = () => {
       // Determine currency based on selected country
       const defaultCurrency = getDefaultCurrencyForCountry(country);
 
-      // Get invite source UID if coupon was applied
-      let inviteSourceUid: string | undefined = undefined;
-      if (couponCode) {
-        try {
-          const affiliate = await AffiliateService.getAffiliateByUsername(couponCode.toLowerCase());
-          if (affiliate) {
-            inviteSourceUid = affiliate.firebaseUid;
-            console.log('🎯 Tracking affiliate referral:', { affiliateUsername: couponCode, affiliateUid: inviteSourceUid });
-          }
-        } catch (error) {
-          console.error('Error getting affiliate for invite tracking:', error);
-        }
-      }
+
 
       // 4. Create business document
       await BusinessService.createBusiness({
@@ -200,7 +187,7 @@ export const PaymentCallback: React.FC = () => {
           accentColor: '#F59E0B',
           enableNotifications: true
         },
-        inviteSourceUid: inviteSourceUid,
+
         revenue: 0,
         totalOrders: 0,
         totalProducts: 0
@@ -226,7 +213,7 @@ export const PaymentCallback: React.FC = () => {
       console.log('🔍 Checking localStorage for signup data...');
       const signupDataStr = localStorage.getItem('signupData');
       console.log('📦 Raw localStorage data:', signupDataStr);
-      
+
       if (!signupDataStr) {
         console.error('❌ No signup data found in localStorage');
         // Log all localStorage keys for debugging
@@ -344,7 +331,8 @@ export const PaymentCallback: React.FC = () => {
       }
 
       await BusinessService.updateBusiness(business.id, {
-        plan: planId
+        plan: planId,
+        status: 'active'
       });
 
       console.log('✅ Business plan upgraded successfully:', { businessId: business.id, newPlan: planId });
@@ -375,10 +363,9 @@ export const PaymentCallback: React.FC = () => {
             {status === 'error' && <XCircle className="w-16 h-16 text-red-500 mx-auto" />}
           </div>
 
-          <h1 className={`text-2xl font-bold mb-4 ${
-            status === 'loading' ? 'text-blue-600' :
+          <h1 className={`text-2xl font-bold mb-4 ${status === 'loading' ? 'text-blue-600' :
             status === 'success' ? 'text-green-600' : 'text-red-600'
-          }`}>
+            }`}>
             {status === 'loading' && 'Processing Payment...'}
             {status === 'success' && 'Payment Successful!'}
             {status === 'error' && 'Payment Failed'}

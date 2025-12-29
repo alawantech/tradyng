@@ -31,24 +31,22 @@ export const WhatsAppFloat: React.FC = () => {
 
   // Only show on specific pages of the main site
   const allowedPaths = [
-    '/', 
-    '/features', 
-    '/pricing', 
-    '/store-examples', 
+    '/',
+    '/features',
+    '/pricing',
+    '/store-examples',
     '/contact',
     '/auth/signup',
     '/auth/signin',
-    '/coupon',
-    '/affiliate'
+
   ];
-  
+
   // Hide on dashboard pages (store admin dashboard)
   const isDashboardPage = location.pathname.startsWith('/dashboard');
-  
-  // Show on affiliate dashboard but not store admin dashboard
-  const isAffiliateDashboard = location.pathname.startsWith('/affiliate/dashboard');
-  
-  const shouldShow = (allowedPaths.includes(location.pathname) || isAffiliateDashboard) && !isDashboardPage;
+
+  // Show on affiliate dashboard removed
+
+  const shouldShow = allowedPaths.includes(location.pathname) && !isDashboardPage;
 
   if (!shouldShow) {
     return null;

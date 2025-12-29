@@ -165,7 +165,7 @@ export const Dashboard: React.FC = () => {
                   <h3 className="text-xl font-bold">Free Trial Active</h3>
                 </div>
                 <p className="text-white/90 text-lg mb-1">
-                  {daysRemaining > 0 
+                  {daysRemaining > 0
                     ? `Your free trial expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}.`
                     : 'Your free trial has expired. Upgrade now to keep your store active!'}
                 </p>
@@ -175,7 +175,7 @@ export const Dashboard: React.FC = () => {
               </div>
               <div className="flex space-x-3">
                 <Link
-                  to="/coupon?plan=business&amount=10000"
+                  to="/pricing"
                   className="inline-flex items-center px-6 py-3 bg-white text-purple-600 font-bold rounded-lg shadow-lg hover:shadow-xl hover:bg-gray-50 transition-all duration-200"
                 >
                   <ArrowUpRight className="h-5 w-5 mr-2" />
@@ -348,12 +348,11 @@ export const Dashboard: React.FC = () => {
                         {formatCurrency(order.total || 0, business?.settings?.currency || DEFAULT_CURRENCY)}
                       </p>
                       <div className="flex items-center justify-end mt-1">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          order.status === 'approved' ? 'bg-blue-100 text-blue-800' :
-                          order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            order.status === 'approved' ? 'bg-blue-100 text-blue-800' :
+                              order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                          }`}>
                           {order.status}
                         </span>
                       </div>

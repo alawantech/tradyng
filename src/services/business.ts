@@ -1,11 +1,11 @@
 import { db } from '../config/firebase';
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  getDoc, 
-  getDocs, 
-  updateDoc, 
+import {
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
   deleteDoc,
   query,
   where,
@@ -29,7 +29,7 @@ export interface Business {
   description?: string;
   logo?: string;
   plan: 'free' | 'business' | 'pro' | 'test';
-  status: 'active' | 'suspended' | 'pending';
+  status: 'active' | 'suspended' | 'pending' | 'pending_payment';
   trialStartDate?: Timestamp; // For free plan users - trial start date
   trialEndDate?: Timestamp; // For free plan users - trial end date (3 days from start)
   createdAt: Timestamp;
@@ -57,7 +57,7 @@ export interface Business {
     manualPayment: boolean;
     cardPayment: boolean;
   };
-  inviteSourceUid?: string; // UID of the affiliate who referred this business
+
   revenue: number;
   totalOrders: number;
   totalProducts: number;
@@ -68,7 +68,7 @@ export class BusinessService {
   static async createBusiness(businessData: Omit<Business, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       const now = Timestamp.now();
-      
+
       // Ensure default settings with NGN currency
       const defaultSettings = {
         currency: DEFAULT_CURRENCY,
@@ -128,11 +128,11 @@ export class BusinessService {
         updatedAt: new Date() as any
       } as Business;
     }
-    
+
     try {
       const docRef = doc(db, 'businesses', businessId);
       const docSnap = await getDoc(docRef);
-      
+
       if (docSnap.exists()) {
         return { id: docSnap.id, ...docSnap.data() } as Business;
       }
@@ -147,7 +147,7 @@ export class BusinessService {
     try {
       const q = query(collection(db, 'businesses'), where('subdomain', '==', subdomain));
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         const doc = querySnapshot.docs[0];
         return { id: doc.id, ...doc.data() } as Business;
@@ -163,7 +163,7 @@ export class BusinessService {
     try {
       const q = query(collection(db, 'businesses'), where('customDomain', '==', domain));
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         const doc = querySnapshot.docs[0];
         return { id: doc.id, ...doc.data() } as Business;
@@ -184,7 +184,7 @@ export class BusinessService {
     try {
       const q = query(collection(db, 'businesses'), where('name', '==', name));
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -199,17 +199,17 @@ export class BusinessService {
     try {
       console.log('🔍 Querying businesses for ownerId:', ownerId);
       console.log('🔍 ownerId type:', typeof ownerId);
-      
+
       const q = query(
-        collection(db, 'businesses'), 
+        collection(db, 'businesses'),
         where('ownerId', '==', ownerId)
         // Removed orderBy to avoid index requirement
       );
-      
+
       console.log('📡 Executing Firebase query...');
       const querySnapshot = await getDocs(q);
       console.log('📊 Query executed, found', querySnapshot.docs.length, 'documents');
-      
+
       if (querySnapshot.docs.length > 0) {
         querySnapshot.docs.forEach((doc, index) => {
           const data = doc.data();
@@ -237,7 +237,7 @@ export class BusinessService {
           });
         });
       }
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -257,13 +257,13 @@ export class BusinessService {
         logo: updates.logo ? `Logo present (${updates.logo.length} chars)` : 'No logo',
         settings: updates.settings
       });
-      
+
       const docRef = doc(db, 'businesses', businessId);
       await updateDoc(docRef, {
         ...updates,
         updatedAt: Timestamp.now()
       });
-      
+
       console.log('✅ Business updated successfully');
     } catch (error: any) {
       console.error('❌ Error updating business:', error);
@@ -299,7 +299,7 @@ export class BusinessService {
     try {
       const q = query(collection(db, 'businesses'), orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()

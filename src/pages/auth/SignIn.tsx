@@ -9,7 +9,6 @@ import toast from 'react-hot-toast';
 import { AuthService } from '../../services/auth';
 import { UserService } from '../../services/user';
 import { BusinessService } from '../../services/business';
-import { AffiliateService } from '../../services/affiliate';
 import { flutterwaveService } from '../../services/flutterwaveService';
 import { PRICING_PLANS } from '../../constants/plans';
 import { FirebaseTest } from '../../utils/firebaseTest';
@@ -26,8 +25,7 @@ export const SignIn: React.FC = () => {
   // Check for coupon/plan parameters from URL
   const [searchParams] = useState(() => new URLSearchParams(window.location.search));
   const planFromUrl = searchParams.get('plan');
-  const couponFromUrl = searchParams.get('coupon');
-  const discountFromUrl = searchParams.get('discount');
+
   const redirectFromUrl = searchParams.get('redirect');
 
   // Forgot password states
@@ -50,26 +48,26 @@ export const SignIn: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     console.log('🔐 Attempting to sign in with:', { email: formData.email });
     console.log('🔐 CODE VERSION: 2025-11-03-FIX-v3');
-    
+
     try {
       // Sign in with Firebase Auth
       const authUser = await AuthService.signIn(formData.email, formData.password);
       console.log('✅ Successfully signed in:', { uid: authUser.uid, email: authUser.email });
-      
+
       // Get user role from Firestore
       const userData = await UserService.getUserById(authUser.uid);
       console.log('👤 User data retrieved:', userData);
       console.log('🔍 User role is:', userData?.role, '(type:', typeof userData?.role, ')');
-      
+
       // SUPER AGGRESSIVE ADMIN CHECK - Check IMMEDIATELY
       if (userData && userData.role) {
         const roleStr = String(userData.role).trim().toLowerCase();
         console.log('🔍 Processed role string:', roleStr);
         console.log('🔍 Is it "admin"?:', roleStr === 'admin');
-        
+
         if (roleStr === 'admin') {
           console.log('🚨🚨🚨 ADMIN ROLE CONFIRMED - REDIRECTING NOW 🚨🚨🚨');
           console.log('🚨 Using window.location.href to force redirect');
@@ -80,60 +78,33 @@ export const SignIn: React.FC = () => {
           return; // Stop everything
         }
       }
-      
+
       console.log('⚠️ Admin check passed, continuing with other role checks...');
-      
-      // Check if this is an affiliate (they won't have user data in 'users' collection)
-      let isAffiliate = false;
-      let affiliateData = null;
-      
+
       if (!userData) {
-        try {
-          affiliateData = await AffiliateService.getAffiliateByFirebaseUid(authUser.uid);
-          if (affiliateData) {
-            isAffiliate = true;
-            console.log('🎯 Affiliate user detected:', affiliateData.username);
-          }
-        } catch (error) {
-          console.error('Error checking affiliate status:', error);
-        }
-      }
-      
-      if (!userData && !isAffiliate) {
         throw new Error('User data not found. Please contact support.');
       }
-      
+
       // Update last login for regular users (affiliates don't have user records)
       if (userData) {
         await UserService.updateLastLogin(authUser.uid);
       }
-      
+
       // NOTE: Admin check is at the top of this function - if we reached here, user is NOT admin
       console.log('📍 User is not admin, checking other roles...');
-      
+
       // Check if user has a free plan business that needs payment
       let redirectPath = '/dashboard'; // default for business owners
       let welcomeMessage = 'Welcome back!';
-      
-      // Handle affiliate login
-      if (isAffiliate) {
-        console.log('✅ BRANCH: Affiliate detected');
-        if (redirectFromUrl === '/affiliate/dashboard') {
-          redirectPath = '/affiliate/dashboard';
-          welcomeMessage = 'Welcome back to your affiliate dashboard!';
-        } else {
-          // Default redirect for affiliates
-          redirectPath = '/affiliate/dashboard';
-          welcomeMessage = 'Welcome back to your affiliate dashboard!';
-        }
-      } else if (userData && userData.role && userData.role.trim().toLowerCase() === 'business_owner') {
+
+      if (userData && userData.role && userData.role.trim().toLowerCase() === 'business_owner') {
         console.log('✅ BRANCH: Business owner detected - checking for businesses');
         try {
           const businesses = await BusinessService.getBusinessesByOwnerId(authUser.uid);
           if (businesses && businesses.length > 0) {
             const business = businesses[0];
             console.log('🏢 Business data retrieved:', { id: business.id, plan: business.plan });
-            
+
             // All users with a business (free or paid) go to dashboard
             if (business.plan) {
               console.log('✅ User has paid plan, redirecting to dashboard');
@@ -148,11 +119,9 @@ export const SignIn: React.FC = () => {
               welcomeMessage = 'Welcome back to your store!';
             }
           } else {
-            // No business found, redirect to coupon page to complete signup
-            console.log('❌ No business found, redirecting to coupon page to complete signup');
-            const redirectPlan = planFromUrl && planFromUrl !== 'free' ? planFromUrl : 'business';
-            const couponUrl = `/coupon?plan=${redirectPlan}${couponFromUrl ? `&coupon=${couponFromUrl}&discount=${discountFromUrl}` : ''}`;
-            navigate(couponUrl);
+            // No business found, redirect to finish setup or contact
+            console.log('❌ No business found, redirecting to signup to complete setup');
+            navigate('/auth/signup');
             return;
           }
         } catch (businessError) {
@@ -171,20 +140,20 @@ export const SignIn: React.FC = () => {
         redirectPath = '/dashboard';
         welcomeMessage = 'Welcome back!';
       }
-      
-      console.log('🚀 Redirecting to:', redirectPath, 'for user type:', isAffiliate ? 'affiliate' : userData?.role || 'unknown');
-      
+
+      console.log('🚀 Redirecting to:', redirectPath, 'for user type:', userData?.role || 'unknown');
+
       toast.success(welcomeMessage);
       setTimeout(() => {
         navigate(redirectPath);
       }, 1000);
-      
+
     } catch (error: any) {
       console.error('Signin error:', error);
-      
+
       // Handle specific Firebase auth errors
       let errorMessage = 'Failed to sign in';
-      
+
       switch (error.code) {
         case 'auth/invalid-credential':
           errorMessage = 'Invalid email or password. Please check your credentials and try again.';
@@ -207,7 +176,7 @@ export const SignIn: React.FC = () => {
         default:
           errorMessage = error.message || 'Failed to sign in';
       }
-      
+
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -348,7 +317,7 @@ export const SignIn: React.FC = () => {
   const testFirebase = async () => {
     console.log('🧪 Testing Firebase connection...');
     await FirebaseTest.testConnection();
-    
+
     // Try to create a test user
     try {
       const testEmail = 'test-' + Date.now() + '@example.com';
@@ -356,12 +325,12 @@ export const SignIn: React.FC = () => {
       console.log('🧪 Creating test user:', testEmail);
       const user = await FirebaseTest.testCreateUser(testEmail, testPassword);
       console.log('✅ Test user created:', user.uid);
-      
+
       // Now try to login with the test user
       console.log('🧪 Testing login with test user...');
       await FirebaseTest.testLogin(testEmail, testPassword);
       console.log('✅ Test login successful');
-      
+
       toast.success('Firebase test completed successfully!');
     } catch (error: any) {
       console.error('❌ Firebase test failed:', error);
@@ -553,14 +522,14 @@ export const SignIn: React.FC = () => {
   };
 
   return (
-  <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4">
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-  <div className="bg-gray-800 rounded-2xl shadow-2xl p-8">
+        <div className="bg-gray-800 rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <Link to="/" className="flex items-center justify-center space-x-2 mb-4">
               <img src="/logo.png" alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
@@ -611,7 +580,7 @@ export const SignIn: React.FC = () => {
               </div>
 
               <div className="text-sm">
-                <button 
+                <button
                   type="button"
                   className="font-medium text-blue-400 hover:text-blue-300"
                   onClick={() => {
@@ -651,7 +620,7 @@ export const SignIn: React.FC = () => {
               Sign up
             </Link>
           </p>
-  </div>
+        </div>
       </motion.div>
 
       {/* Forgot Password Modal */}

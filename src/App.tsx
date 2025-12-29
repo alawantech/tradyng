@@ -14,15 +14,14 @@ import './config/firebase';
 // Pages
 import { LandingPage } from './pages/LandingPage';
 import { PricingPage } from './pages/PricingPage';
-import { CouponPage } from './pages/CouponPage';
+
 import { FeaturesPage } from './pages/features/FeaturesPage';
 import { StoreExamples } from './pages/StoreExamples';
 import { ContactPage } from './pages/ContactPage';
 import { SignUp } from './pages/auth/SignUp';
 import { SignIn } from './pages/auth/SignIn';
 import { PaymentCallback } from './pages/auth/PaymentCallback';
-import { AffiliatePage } from './pages/AffiliatePage';
-import { AffiliateDashboard } from './pages/AffiliateDashboard';
+
 import { TrialExpired } from './pages/TrialExpired';
 
 // Dashboard
@@ -52,8 +51,8 @@ import { EmailTest } from './pages/demo/EmailTest';
 // Admin
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { Businesses } from './pages/admin/Businesses';
-import { Affiliates } from './pages/admin/Affiliates';
-import { Withdrawals } from './pages/admin/Withdrawals';
+
+
 import { Subscriptions } from './pages/admin/Subscriptions';
 import { AdminAnalytics } from './pages/admin/AdminAnalytics';
 import { AdminSettings } from './pages/admin/AdminSettings';
@@ -62,7 +61,7 @@ import { AdminOrders } from './pages/admin/Orders';
 // Route Guards
 import { AdminRoute } from './components/guards/AdminRoute';
 import { PrivateRoute } from './components/guards/PrivateRoute';
-import { AffiliateRoute } from './components/guards/AffiliateRoute';
+
 
 function App() {
   const [subdomainInfo, setSubdomainInfo] = useState<SubdomainInfo | null>(null);
@@ -126,26 +125,24 @@ function App() {
               {/* Landing Page */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/coupon" element={<CouponPage />} />
+
               <Route path="/features" element={<FeaturesPage />} />
               <Route path="/store-examples" element={<StoreExamples />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/demo/subdomains" element={<StoreSubdomainDemo />} />
               <Route path="/demo/test" element={<SubdomainTest />} />
               <Route path="/demo/email-test" element={<EmailTest />} />
-              
+
               {/* Authentication */}
               <Route path="/auth/signup" element={<SignUp />} />
               <Route path="/auth/signin" element={<SignIn />} />
               <Route path="/payment/callback" element={<PaymentCallback />} />
-              
+
               {/* Trial Expired */}
               <Route path="/trial-expired" element={<TrialExpired />} />
-              
-              {/* Affiliate */}
-              <Route path="/affiliate" element={<AffiliatePage />} />
-              <Route path="/affiliate/dashboard" element={<AffiliateRoute><AffiliateDashboard /></AffiliateRoute>} />
-              
+
+              {/* Affiliate routes removed */}
+
               {/* Dashboard - Protected Route */}
               <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
                 <Route index element={<Dashboard />} />
@@ -155,21 +152,21 @@ function App() {
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
-              
+
               {/* Admin - Protected Admin Route */}
               <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
                 <Route index element={<Businesses />} />
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="businesses" element={<Businesses />} />
-                <Route path="affiliates" element={<Affiliates />} />
-                <Route path="withdrawals" element={<Withdrawals />} />
+
+
                 <Route path="subscriptions" element={<Subscriptions />} />
                 <Route path="analytics" element={<AdminAnalytics />} />
                 <Route path="settings" element={<AdminSettings />} />
               </Route>
             </Routes>
           )}
-          
+
           <Toaster
             position="top-right"
             toastOptions={{
@@ -181,7 +178,7 @@ function App() {
               },
             }}
           />
-          
+
           {/* WhatsApp Float Button - Visible on all pages */}
           <WhatsAppFloat />
         </div>

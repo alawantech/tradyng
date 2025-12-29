@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Package, 
-  ShoppingCart, 
-  Users, 
-  BarChart3, 
+import {
+  Package,
+  ShoppingCart,
+  Users,
+  BarChart3,
   Settings,
   Building2,
   CreditCard,
@@ -25,7 +25,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = false, onClose }) => {
   const location = useLocation();
-  
+
   const businessMenuItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/dashboard/products', icon: Package, label: 'Products' },
@@ -37,8 +37,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
 
   const adminMenuItems = [
     { path: '/admin/businesses', icon: Building2, label: 'Businesses' },
-    { path: '/admin/affiliates', icon: Users, label: 'Affiliates' },
-    { path: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
+
+
     { path: '/admin/subscriptions', icon: Crown, label: 'Subscriptions' },
     { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },
@@ -95,11 +95,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center px-6 py-3 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'theme-primary-text theme-primary-bg-light border-r-2 theme-primary-border'
-                    : 'text-gray-700 hover:theme-primary-text hover:bg-gray-50'
-                }`}
+                className={`flex items-center px-6 py-3 text-sm font-medium transition-colors ${isActive
+                  ? 'theme-primary-text theme-primary-bg-light border-r-2 theme-primary-border'
+                  : 'text-gray-700 hover:theme-primary-text hover:bg-gray-50'
+                  }`}
                 onClick={onClose}
               >
                 <Icon className="h-5 w-5 mr-3" />

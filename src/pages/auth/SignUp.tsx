@@ -94,8 +94,6 @@ export const SignUp: React.FC = () => {
   // Plan selection from URL params
   const selectedPlanId = searchParams.get('plan') || 'free';
   const selectedPlan = PRICING_PLANS.find(p => p.id === selectedPlanId) || PRICING_PLANS[0];
-  const couponCode = searchParams.get('coupon');
-  const discountAmount = parseInt(searchParams.get('discount') || '0');
 
   // Load countries on component mount
   useEffect(() => {
@@ -104,7 +102,7 @@ export const SignUp: React.FC = () => {
         setLoadingCountries(true);
         const countriesList = await CountryService.getAllCountries();
         setCountries(countriesList);
-        
+
         // Set Nigerian states as default since Nigeria is pre-selected
         const nigerianStates = CountryService.getStatesByCountryCode('NG');
         setStates(nigerianStates);
@@ -143,7 +141,7 @@ export const SignUp: React.FC = () => {
 
   const checkDomainAvailability = useCallback(async (storeName: string) => {
     if (storeName.length < 4) return;
-    
+
     const subdomain = generateSubdomain(storeName);
     if (!subdomain) return;
 
@@ -155,7 +153,7 @@ export const SignUp: React.FC = () => {
 
     try {
       const isAvailable = await BusinessService.checkSubdomainAvailability(subdomain);
-      
+
       if (!isAvailable) {
         setDomainStatus({
           checking: false,
@@ -197,18 +195,18 @@ export const SignUp: React.FC = () => {
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     // Check email existence when email field changes
     if (field === 'email') {
       // Reset email exists state when email changes
       setEmailExists(null);
       setCheckingEmail(false);
-      
+
       // Clear any existing timeout
       if (emailCheckTimeoutRef.current) {
         clearTimeout(emailCheckTimeoutRef.current);
       }
-      
+
       // Debounce the email check
       emailCheckTimeoutRef.current = setTimeout(() => {
         checkEmailExists(value);
@@ -220,12 +218,12 @@ export const SignUp: React.FC = () => {
       // Reset store name exists state when store name changes
       setStoreNameExists(null);
       setCheckingStoreName(false);
-      
+
       // Clear any existing timeout
       if (emailCheckTimeoutRef.current) {
         clearTimeout(emailCheckTimeoutRef.current);
       }
-      
+
       // Debounce the store name check
       emailCheckTimeoutRef.current = setTimeout(() => {
         checkStoreNameExists(value);
@@ -299,80 +297,47 @@ export const SignUp: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!isStepValid(6)) return;
-    
+
     setLoading(true);
-    
+
     console.log('🔐 Creating new account with email:', formData.email);
-    console.log('📋 Selected plan:', selectedPlanId, 'Coupon:', couponCode, 'Discount:', discountAmount);
-    
+    console.log('📋 Selected plan:', selectedPlanId);
+
     try {
-      // Check if we have a coupon applied for a paid plan
-      const hasPaidPlanCoupon = couponCode && selectedPlanId !== 'free' && discountAmount > 0;
-      
-      if (hasPaidPlanCoupon) {
-        // For paid plans with coupon, create account and proceed to payment
-        console.log('💳 Paid plan with coupon detected - creating account with FREE plan, then upgrading via payment');
-        
-        // Create account with FREE plan first (will upgrade after payment)
-        await createAccount('free');
-        
-        // Store signup data for payment flow
-        const signupData = {
-          email: formData.email,
-          storeName: formData.storeName,
-          password: formData.password,
-          phone: `${formData.countryCode}${formData.phone}`,
-          country: formData.country,
-          state: formData.state,
-          planId: selectedPlanId,
-          couponCode: couponCode,
-          discountAmount: discountAmount
-        };
-        localStorage.setItem('signupData', JSON.stringify(signupData));
-        console.log('💾 Stored signup data in localStorage for payment flow');
-        
-        // Then redirect to payment after a short delay to ensure auth state is ready
-        toast.success('Account created! Redirecting to payment...');
+
+      // For any plan, create the account first
+      await createAccount(selectedPlanId);
+
+      if (selectedPlanId === 'free') {
+        console.log('🎉 Free account created successfully');
+        toast.success('Account created successfully!');
         setTimeout(() => {
-          console.log('⏰ Delay complete, calling handlePlanUpgrade...');
-          handlePlanUpgrade();
-        }, 2000); // Increased delay to ensure auth state is fully set
-        return;
+          navigate('/dashboard');
+        }, 1500);
       } else {
-        // For free plan or no coupon, create account normally
-        await createAccount(selectedPlanId);
-        
-        if (selectedPlanId === 'free') {
-          console.log('🎉 Free account created successfully');
-          toast.success('Account created successfully!');
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 1500);
-        } else {
-          // For paid plans without coupon, redirect to coupon page
-          console.log('🎫 Paid plan without coupon - redirecting to coupon page');
-          toast.success('Account created! Redirecting to coupon page...');
-          
-          setTimeout(() => {
-            navigate(`/coupon?plan=${selectedPlanId}&amount=${PRICING_PLANS.find(p => p.id === selectedPlanId)?.yearlyPrice || 0}`);
-          }, 1500);
-        }
-        return;
+        // For paid plans, immediately trigger payment upgrade
+        console.log('💳 Paid plan selected - prompting for payment...');
+        toast.success('Account created! Proceeding to payment...');
+
+        setTimeout(() => {
+          handlePlanUpgrade();
+        }, 1500);
       }
-      
+      return;
+
     } catch (error: any) {
       console.error('Signup error:', error);
-      
+
       // Check if email already exists
       if (error.code === 'auth/email-already-in-use' || error.message?.includes('email-already-in-use') || error.message?.includes('already exists')) {
         console.log('📧 Email already exists, checking for incomplete signup...');
-        
+
         try {
           const existingUser = await checkExistingIncompleteSignup(formData.email);
           if (existingUser) {
             console.log('✅ Found existing account with free plan, redirecting to payment');
             toast.error('Account already exists but appears incomplete. Redirecting to complete setup...');
-            
+
             // Redirect to payment for the selected plan without creating account again
             setTimeout(() => {
               handleExistingUserPayment(existingUser.uid);
@@ -382,10 +347,10 @@ export const SignUp: React.FC = () => {
             // Email exists and account is complete - redirect to sign in
             console.log('❌ Email already exists with complete account');
             toast.error('An account with this email already exists. Please sign in instead.');
-            
+
             // Redirect to sign in after a short delay
             setTimeout(() => {
-              navigate(`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}` : ''}`);
+              navigate(`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}` : ''}`);
             }, 2000);
             return;
           }
@@ -393,12 +358,12 @@ export const SignUp: React.FC = () => {
           console.error('Error checking existing signup:', checkError);
           toast.error('An account with this email already exists. Please sign in instead.');
           setTimeout(() => {
-            navigate(`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}` : ''}`);
+            navigate(`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}` : ''}`);
           }, 2000);
           return;
         }
       }
-      
+
       // Show original error for other cases
       toast.error(error.message || 'Failed to create account');
       setLoading(false);
@@ -414,7 +379,7 @@ export const SignUp: React.FC = () => {
       }
 
       const user = users[0];
-      
+
       // Check if user has a business with free plan
       const businesses = await BusinessService.getBusinessesByOwnerId(user.uid);
       if (!businesses || businesses.length === 0) {
@@ -422,7 +387,7 @@ export const SignUp: React.FC = () => {
       }
 
       const business = businesses[0];
-      
+
       // If business has free plan, it's an incomplete signup
       if (business.plan === 'free') {
         console.log('Found incomplete signup:', { userId: user.uid, businessId: business.id, plan: business.plan });
@@ -436,7 +401,7 @@ export const SignUp: React.FC = () => {
     }
   };
 
-    const checkEmailExists = async (email: string) => {
+  const checkEmailExists = async (email: string) => {
     if (!email || !email.includes('@') || !email.includes('.')) {
       console.log('❌ Invalid email format, skipping check:', email);
       setEmailExists(null);
@@ -451,7 +416,7 @@ export const SignUp: React.FC = () => {
       // If it doesn't exist in Auth, allow registration even if orphaned data exists in Firestore
       const existsInAuth = await AuthService.checkEmailExists(email);
       console.log('✅ Email check completed:', { email, existsInAuth });
-      
+
       if (existsInAuth) {
         console.log('⚠️ EMAIL ALREADY EXISTS - Setting emailExists to TRUE');
         setEmailExists(true);
@@ -480,14 +445,14 @@ export const SignUp: React.FC = () => {
     try {
       // Check if a business with this name already exists in Firestore
       const businesses = await BusinessService.getBusinessesByName(storeName);
-      
+
       if (businesses && businesses.length > 0) {
         // Found businesses with this name - need to verify owners exist in Firebase Auth
         const { doc, getDoc } = await import('firebase/firestore');
         const { db } = await import('../../config/firebase');
-        
+
         let hasValidOwner = false;
-        
+
         for (const business of businesses) {
           // Check if the business owner still exists in Auth
           try {
@@ -501,12 +466,12 @@ export const SignUp: React.FC = () => {
             console.log('Business owner not found, likely orphaned:', business.id);
           }
         }
-        
+
         setStoreNameExists(hasValidOwner);
-        console.log('Store name check result:', { 
-          storeName, 
+        console.log('Store name check result:', {
+          storeName,
           exists: hasValidOwner,
-          businessesFound: businesses.length 
+          businessesFound: businesses.length
         });
       } else {
         setStoreNameExists(false);
@@ -536,8 +501,8 @@ export const SignUp: React.FC = () => {
         paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business')!;
       }
 
-      // Calculate final amount with coupon discount
-      const finalAmount = paymentPlan.yearlyPrice - discountAmount;
+      // Calculate final amount
+      const finalAmount = paymentPlan.yearlyPrice;
 
       // Check if Flutterwave is configured
       if (!flutterwaveService.isConfigured()) {
@@ -565,8 +530,9 @@ export const SignUp: React.FC = () => {
         customerPhone,
         amount: finalAmount,
         planId: paymentPlan.id,
-        discountAmount,
-        couponCode
+
+        discountAmount: 0,
+        couponCode: null
       });
 
       const paymentResult = await flutterwaveService.initializePayment({
@@ -587,8 +553,8 @@ export const SignUp: React.FC = () => {
           customerName: customerName,
           customerPhone: customerPhone,
           originalAmount: paymentPlan.yearlyPrice,
-          discountAmount: discountAmount,
-          couponCode: couponCode || null
+          discountAmount: 0,
+          couponCode: null
         }
       });
 
@@ -610,34 +576,34 @@ export const SignUp: React.FC = () => {
   const cleanupOrphanedData = async (email: string) => {
     try {
       console.log('🧹 Checking for orphaned Firestore data for email:', email);
-      
+
       // Import Firestore functions
       const { collection, query, where, getDocs, deleteDoc, doc } = await import('firebase/firestore');
       const { db } = await import('../../config/firebase');
-      
+
       // Check for orphaned user documents
       const usersRef = collection(db, 'users');
       const userQuery = query(usersRef, where('email', '==', email));
       const userSnapshot = await getDocs(userQuery);
-      
+
       if (!userSnapshot.empty) {
         console.log(`⚠️ Found ${userSnapshot.size} orphaned user document(s) for ${email}`);
-        
+
         // Delete orphaned user documents and their associated businesses
         for (const userDoc of userSnapshot.docs) {
           const userId = userDoc.id;
           console.log('🗑️ Deleting orphaned user document:', userId);
-          
+
           // First, delete associated businesses
           const businessesRef = collection(db, 'businesses');
           const businessQuery = query(businessesRef, where('ownerId', '==', userId));
           const businessSnapshot = await getDocs(businessQuery);
-          
+
           for (const businessDoc of businessSnapshot.docs) {
             console.log('🗑️ Deleting orphaned business document:', businessDoc.id);
             await deleteDoc(doc(db, 'businesses', businessDoc.id));
           }
-          
+
           // Then delete the user document
           await deleteDoc(doc(db, 'users', userId));
           console.log('✅ Orphaned data cleaned up successfully');
@@ -670,9 +636,9 @@ export const SignUp: React.FC = () => {
 
       console.log('📋 Payment plan:', paymentPlan.id, 'Price:', paymentPlan.yearlyPrice);
 
-      // Calculate final amount with coupon discount
-      const finalAmount = paymentPlan.yearlyPrice - discountAmount;
-      console.log('💰 Final amount after discount:', finalAmount);
+      // Calculate final amount
+      const finalAmount = paymentPlan.yearlyPrice;
+      console.log('💰 Final amount:', finalAmount);
 
       // Check if Flutterwave is configured
       if (!flutterwaveService.isConfigured()) {
@@ -710,8 +676,8 @@ export const SignUp: React.FC = () => {
         customerPhone,
         amount: finalAmount,
         planId: paymentPlan.id,
-        discountAmount,
-        couponCode
+        discountAmount: 0,
+        couponCode: null
       });
 
       const paymentResult = await flutterwaveService.initializePayment({
@@ -732,8 +698,8 @@ export const SignUp: React.FC = () => {
           customerName: customerName,
           customerPhone: customerPhone,
           originalAmount: paymentPlan.yearlyPrice,
-          discountAmount: discountAmount,
-          couponCode: couponCode || null
+          discountAmount: 0,
+          couponCode: null
         }
       });
 
@@ -765,16 +731,16 @@ export const SignUp: React.FC = () => {
   const createAccount = async (planId: string) => {
     // Step 1: Clean up any orphaned Firestore data from previous account deletions
     await cleanupOrphanedData(formData.email);
-    
+
     // Step 2: Create new Firebase Auth user
     const authUser = await AuthService.signUp(formData.email, formData.password);
     console.log('✅ Firebase Auth user created:', { uid: authUser.uid, email: authUser.email });
-    
+
     // 3. Create user document in Firestore
     // Check if email should be admin (for testing purposes)
     const isAdminEmail = formData.email.includes('admin@') || formData.email.includes('@admin.');
     const userRole = isAdminEmail ? 'admin' : 'business_owner';
-    
+
     await UserService.createUser({
       uid: authUser.uid,
       email: formData.email,
@@ -782,33 +748,19 @@ export const SignUp: React.FC = () => {
       role: userRole
     });
     console.log('✅ User document created in Firestore with role:', userRole);
-    
+
     // Only create business for business owners, not admins
     if (userRole === 'business_owner') {
       // 3. Generate subdomain from store name
       const subdomain = generateSubdomain(formData.storeName);
       console.log('🌐 Generated subdomain:', subdomain);
-      
+
       // Determine currency based on selected country
       const defaultCurrency = getDefaultCurrencyForCountry(formData.country);
       console.log(`💰 Setting currency based on country "${formData.country}": ${defaultCurrency}`);
-      
-      // Get invite source UID if coupon was applied
-      let inviteSourceUid: string | undefined = undefined;
-      if (couponCode) {
-        try {
-          // Import AffiliateService dynamically if needed
-          const { AffiliateService } = await import('../../services/affiliate');
-          const affiliate = await AffiliateService.getAffiliateByUsername(couponCode.toLowerCase());
-          if (affiliate) {
-            inviteSourceUid = affiliate.firebaseUid;
-            console.log('🎯 Tracking affiliate referral:', { affiliateUsername: couponCode, affiliateUid: inviteSourceUid });
-          }
-        } catch (error) {
-          console.error('Error getting affiliate for invite tracking:', error);
-        }
-      }
-      
+
+
+
       // 4. Create business document
       const businessData: any = {
         name: formData.storeName,
@@ -820,7 +772,7 @@ export const SignUp: React.FC = () => {
         country: formData.country,
         state: formData.state,
         plan: planId as 'free' | 'business' | 'pro' | 'test',
-        status: 'active' as const,
+        status: planId === 'free' ? 'active' : 'pending_payment',
         bankDetails: {
           bankName: formData.bankName,
           accountName: formData.accountName,
@@ -852,14 +804,11 @@ export const SignUp: React.FC = () => {
         });
       }
 
-      // Only add inviteSourceUid if it exists
-      if (inviteSourceUid) {
-        businessData.inviteSourceUid = inviteSourceUid;
-      }
+
 
       await BusinessService.createBusiness(businessData);
       console.log('✅ Business created successfully');
-      
+
       // Don't navigate here - let handleSubmit handle navigation based on plan
       console.log('🎉 Account creation completed successfully');
     } else {
@@ -987,11 +936,10 @@ export const SignUp: React.FC = () => {
               placeholder="Kemi's Fashion Store"
               value={formData.storeName}
               onChange={(e) => handleInputChange('storeName', e.target.value)}
-              className={`w-full h-12 px-4 bg-gray-800 border rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none ${
-                storeNameExists === true ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
-              }`}
+              className={`w-full h-12 px-4 bg-gray-800 border rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none ${storeNameExists === true ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
+                }`}
             />
-            
+
             {/* Store name checking indicator */}
             {checkingStoreName && (
               <div className="mt-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded-lg">
@@ -1001,7 +949,7 @@ export const SignUp: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Existing store message */}
             {storeNameExists === true && !checkingStoreName && (
               <div className="mt-3 p-4 bg-red-900/30 border border-red-600 rounded-lg">
@@ -1014,15 +962,15 @@ export const SignUp: React.FC = () => {
                 <p className="text-red-300 text-sm mb-3">
                   A store with this name already exists. Please sign in with your existing account to continue, or choose a different store name.
                 </p>
-                <Link 
-                  to={`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}` : ''}`}
+                <Link
+                  to={`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}` : ''}`}
                   className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors"
                 >
                   Sign In to Continue
                 </Link>
               </div>
             )}
-            
+
             {/* URL Preview */}
             {formData.storeName && formData.storeName.length >= 4 && storeNameExists === false && (
               <div className="mt-3 p-3 bg-gray-800 rounded-lg border border-gray-600">
@@ -1035,15 +983,14 @@ export const SignUp: React.FC = () => {
             {/* Domain Status */}
             {formData.storeName.length >= 4 && storeNameExists === false && (
               <div className="mt-3">
-                <div className={`p-3 rounded-lg border ${
-                  domainStatus.checking 
-                    ? 'bg-yellow-900/30 border-yellow-600' 
-                    : domainStatus.available === true
+                <div className={`p-3 rounded-lg border ${domainStatus.checking
+                  ? 'bg-yellow-900/30 border-yellow-600'
+                  : domainStatus.available === true
                     ? 'bg-green-900/30 border-green-600'
                     : domainStatus.available === false
-                    ? 'bg-red-900/30 border-red-600'
-                    : 'bg-gray-800 border-gray-600'
-                }`}>
+                      ? 'bg-red-900/30 border-red-600'
+                      : 'bg-gray-800 border-gray-600'
+                  }`}>
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center space-x-2">
                       {domainStatus.checking && (
@@ -1052,14 +999,14 @@ export const SignUp: React.FC = () => {
                           <span className="text-yellow-400 text-sm">{domainStatus.message}</span>
                         </>
                       )}
-                      
+
                       {domainStatus.available === true && (
                         <>
                           <Check className="h-4 w-4 text-green-400" />
                           <span className="text-green-400 text-sm">✅ {domainStatus.message}</span>
                         </>
                       )}
-                      
+
                       {domainStatus.available === false && (
                         <>
                           <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
@@ -1069,15 +1016,15 @@ export const SignUp: React.FC = () => {
                         </>
                       )}
                     </div>
-                    
+
                     {/* Show login prompt when subdomain is taken */}
                     {domainStatus.available === false && !checkingStoreName && (
                       <div className="pt-2 border-t border-red-600/30">
                         <p className="text-red-300 text-xs mb-2">
                           This store URL is already in use. Please sign in with your existing account or choose a different store name.
                         </p>
-                        <Link 
-                          to={`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}` : ''}`}
+                        <Link
+                          to={`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}` : ''}`}
                           className="inline-block px-3 py-1.5 bg-blue-500 text-white text-sm rounded-lg font-medium hover:bg-blue-600 transition-colors"
                         >
                           Sign In to Continue
@@ -1103,12 +1050,11 @@ export const SignUp: React.FC = () => {
                 placeholder="kemi@gmail.com"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className={`w-full h-12 pl-16 pr-4 bg-gray-800 border rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none ${
-                  emailExists === true ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
-                }`}
+                className={`w-full h-12 pl-16 pr-4 bg-gray-800 border rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none ${emailExists === true ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  }`}
               />
             </div>
-            
+
             {/* Email checking indicator */}
             {checkingEmail && (
               <div className="mt-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded-lg">
@@ -1118,7 +1064,7 @@ export const SignUp: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Existing account message */}
             {emailExists === true && !checkingEmail && (
               <div className="mt-3 p-4 bg-red-900/30 border border-red-600 rounded-lg">
@@ -1131,15 +1077,15 @@ export const SignUp: React.FC = () => {
                 <p className="text-red-300 text-sm mb-3">
                   An account with this email address already exists. Please sign in with your existing email and password to continue.
                 </p>
-                <Link 
-                  to={`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}${couponCode ? `&coupon=${couponCode}&discount=${discountAmount}` : ''}` : ''}`}
+                <Link
+                  to={`/auth/signin${selectedPlanId !== 'free' ? `?plan=${selectedPlanId}` : ''}`}
                   className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors"
                 >
                   Sign In to Continue
                 </Link>
               </div>
             )}
-            
+
             {/* OTP cooldown message */}
             {otpCooldown > 0 && emailExists === false && (
               <div className="mt-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded-lg">
@@ -1234,7 +1180,7 @@ export const SignUp: React.FC = () => {
 
       case 5:
         const isNigeria = formData.country === 'Nigeria';
-        
+
         return (
           <div className="space-y-4">
             <Select
@@ -1248,7 +1194,7 @@ export const SignUp: React.FC = () => {
               placeholder={loadingCountries ? 'Loading countries...' : 'Select your country'}
               disabled={loadingCountries}
             />
-            
+
             {isNigeria ? (
               <Select
                 options={states.map(state => ({
@@ -1340,9 +1286,8 @@ export const SignUp: React.FC = () => {
           {steps.map((step) => (
             <div
               key={step.id}
-              className={`w-3 h-3 rounded-full ${
-                currentStep >= step.id ? 'bg-blue-500' : 'bg-gray-600'
-              }`}
+              className={`w-3 h-3 rounded-full ${currentStep >= step.id ? 'bg-blue-500' : 'bg-gray-600'
+                }`}
             />
           ))}
         </div>
@@ -1378,11 +1323,10 @@ export const SignUp: React.FC = () => {
             <Button
               onClick={prevStep}
               disabled={currentStep === 1}
-              className={`flex-1 h-12 rounded-lg font-medium transition-colors ${
-                currentStep === 1 
-                ? 'bg-gray-700 text-gray-400 cursor-not-allowed' 
+              className={`flex-1 h-12 rounded-lg font-medium transition-colors ${currentStep === 1
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 : 'bg-gray-700 text-white hover:bg-gray-600'
-              }`}
+                }`}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
@@ -1392,17 +1336,16 @@ export const SignUp: React.FC = () => {
               <Button
                 onClick={nextStep}
                 disabled={
-                  !isStepValid(currentStep) || 
+                  !isStepValid(currentStep) ||
                   (currentStep === 1 && (checkingStoreName || storeNameExists === true)) ||
                   (currentStep === 2 && (otpLoading || otpCooldown > 0 || checkingEmail || emailExists === true))
                 }
-                className={`flex-1 h-12 rounded-lg font-medium transition-colors ${
-                  isStepValid(currentStep) && 
+                className={`flex-1 h-12 rounded-lg font-medium transition-colors ${isStepValid(currentStep) &&
                   !(currentStep === 1 && (checkingStoreName || storeNameExists === true)) &&
                   !(currentStep === 2 && (otpLoading || otpCooldown > 0 || checkingEmail || emailExists === true))
-                  ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                  ? 'bg-blue-500 text-white hover:bg-blue-600'
                   : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                }`}
+                  }`}
               >
                 Next
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -1411,11 +1354,10 @@ export const SignUp: React.FC = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={!isStepValid(5) || loading}
-                className={`flex-1 h-12 rounded-lg font-medium transition-colors ${
-                  isStepValid(5) && !loading
-                  ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                className={`flex-1 h-12 rounded-lg font-medium transition-colors ${isStepValid(5) && !loading
+                  ? 'bg-blue-500 text-white hover:bg-blue-600'
                   : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                }`}
+                  }`}
               >
                 {loading ? (
                   <>
