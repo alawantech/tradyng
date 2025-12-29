@@ -18,15 +18,14 @@ interface StoreExample {
 
 const storeExamples: StoreExample[] = [
   {
-    id: 'abcomputers',
-    name: 'AB Computers',
-    description: 'A professional computer and electronics store with modern design and comprehensive product catalog.',
-    url: 'https://abcomputers.rady.ng/',
-    category: 'Electronics',
-    features: ['Product catalog', 'Shopping cart', 'Customer reviews', 'Responsive design'],
+    id: 'aystore',
+    name: 'AY Store',
+    description: 'A modern fashion and lifestyle store showcasing our platform\'s capabilities with a clean design and seamless shopping experience.',
+    url: 'https://aystore.rady.ng/',
+    category: 'Fashion & Lifestyle',
+    features: ['Product Catalog', 'Secure Checkout', 'Order Tracking', 'Customer Support'],
     image: '/images/products.PNG' // Using existing image as placeholder
   }
-  // Add more store examples here as they become available
 ];
 
 export const StoreExamples: React.FC = () => {
