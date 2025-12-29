@@ -56,10 +56,9 @@ export const Navbar: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
-              <img src="/logo.png" alt="Rady.ng Logo" className="h-8 w-8 object-contain" />
-              <span className="text-xl font-bold text-gray-900">rady.ng</span>
+              <img src="/logo.png" alt="Rady.ng Logo" className="h-12 w-auto object-contain" />
             </Link>
-            
+
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
               {navLinks.map((link) => (
@@ -83,7 +82,7 @@ export const Navbar: React.FC = () => {
                 )
               ))}
             </div>
-            
+
             {/* Desktop Auth Buttons */}
             <div className="hidden md:flex items-center space-x-4">
               <Link to="/auth/signin">
@@ -125,9 +124,8 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Menu Panel */}
       <div
-        className={`fixed top-16 left-0 right-0 bg-white shadow-lg z-40 md:hidden transform transition-transform duration-300 ease-in-out ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-16 left-0 right-0 bg-white shadow-lg z-40 md:hidden transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="px-4 pt-2 pb-6 space-y-1 max-h-[calc(100vh-4rem)] overflow-y-auto">
           {/* Mobile Navigation Links */}
