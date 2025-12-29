@@ -37,7 +37,7 @@ export const Businesses: React.FC = () => {
       setLoading(true);
       // Get all businesses
       const allBusinesses = await BusinessService.getAllBusinesses();
-      
+
       // Fetch owner details for each business
       const businessesWithOwners = await Promise.all(
         allBusinesses.map(async (business) => {
@@ -54,7 +54,7 @@ export const Businesses: React.FC = () => {
           }
         })
       );
-      
+
       setBusinesses(businessesWithOwners as AdminBusiness[]);
     } catch (error: any) {
       console.error('Error fetching businesses:', error);
@@ -137,7 +137,7 @@ export const Businesses: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">All Businesses</h1>
         <p className="text-gray-600 mt-1">Total: {businesses.length} businesses</p>
       </div>
-      
+
       {businesses.length === 0 ? (
         <Card className="p-8 text-center">
           <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -174,94 +174,132 @@ export const Businesses: React.FC = () => {
                 {businesses.map((business) => {
                   const daysRemaining = business.plan === 'free' ? getDaysRemaining(business.trialEndDate) : null;
                   return (
-                  <tr key={business.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                          <Building2 className="h-5 w-5 text-indigo-600" />
+                    <tr key={business.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                            <Building2 className="h-5 w-5 text-indigo-600" />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{business.name}</div>
+                            {business.subdomain && (
+                              <div className="text-sm text-gray-500">{business.subdomain}.rady.ng</div>
+                            )}
+                          </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{business.name}</div>
-                          {business.subdomain && (
-                            <div className="text-sm text-gray-500">{business.subdomain}.rady.ng</div>
-                          )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{business.ownerName || 'Unknown'}</div>
+                        <div className="text-sm text-gray-500">{business.ownerEmail}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <CreditCard className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-900 capitalize">{business.plan || 'Free'}</span>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{business.ownerName || 'Unknown'}</div>
-                      <div className="text-sm text-gray-500">{business.ownerEmail}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <CreditCard className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-900 capitalize">{business.plan || 'Free'}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          business.status === 'active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {business.status || 'Active'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {business.createdAt
-                        ? new Date(business.createdAt.seconds * 1000).toLocaleDateString('en-US', {
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${business.status === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : business.status === 'pending_payment'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                        >
+                          {business.status === 'pending_payment' ? 'Pending Payment' : (business.status || 'Active')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {business.createdAt
+                          ? new Date(business.createdAt.seconds * 1000).toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric'
                           })
-                        : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {business.plan === 'free' ? (
+                          : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
-                          {/* Trial Status */}
-                          {daysRemaining !== null && (
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              daysRemaining <= 0 
-                                ? 'bg-red-100 text-red-800' 
-                                : daysRemaining === 1 
-                                ? 'bg-orange-100 text-orange-800' 
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {daysRemaining <= 0 ? 'EXPIRED' : `${daysRemaining}d left`}
-                            </span>
+                          {/* Status Toggle Buttons */}
+                          {business.status === 'pending_payment' ? (
+                            <Button
+                              size="sm"
+                              onClick={async () => {
+                                if (confirm(`Mark "${business.name}" as Active? This will unlock their store.`)) {
+                                  try {
+                                    await BusinessService.updateBusiness(business.id, { status: 'active' });
+                                    toast.success('Business marked as Active');
+                                    fetchBusinesses();
+                                  } catch (error) {
+                                    toast.error('Failed to update status');
+                                  }
+                                }
+                              }}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              Mark Active
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                if (confirm(`Mark "${business.name}" as Pending Payment? This will LOCK their store.`)) {
+                                  try {
+                                    await BusinessService.updateBusiness(business.id, { status: 'pending_payment' });
+                                    toast.success('Business marked as Pending Payment');
+                                    fetchBusinesses();
+                                  } catch (error) {
+                                    toast.error('Failed to update status');
+                                  }
+                                }
+                              }}
+                              className="text-yellow-600 border-yellow-600 hover:bg-yellow-50"
+                            >
+                              Lock Store
+                            </Button>
                           )}
-                          {/* Send Reminder Button */}
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedBusiness(business);
-                              setReminderModalOpen(true);
-                            }}
-                            className="flex items-center space-x-1"
-                          >
-                            <Send className="h-3 w-3" />
-                            <span>Remind</span>
-                          </Button>
-                          {/* Delete Button */}
+
+                          {business.plan === 'free' && (
+                            <>
+                              {daysRemaining !== null && (
+                                <span className={`text-xs px-2 py-1 rounded-full ${daysRemaining <= 0
+                                    ? 'bg-red-100 text-red-800'
+                                    : daysRemaining === 1
+                                      ? 'bg-orange-100 text-orange-800'
+                                      : 'bg-yellow-100 text-yellow-800'
+                                  }`}>
+                                  {daysRemaining <= 0 ? 'EXPIRED' : `${daysRemaining}d left`}
+                                </span>
+                              )}
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedBusiness(business);
+                                  setReminderModalOpen(true);
+                                }}
+                                className="flex items-center space-x-1"
+                              >
+                                <Send className="h-3 w-3" />
+                                <span>Remind</span>
+                              </Button>
+                            </>
+                          )}
+
                           <Button
                             onClick={() => handleDeleteBusiness(business)}
                             disabled={deletingId === business.id}
-                            className="flex items-center space-x-1 bg-red-600 hover:bg-red-700"
+                            className="flex items-center space-x-1 bg-red-600 hover:bg-red-700 text-white"
                             size="sm"
                           >
                             <Trash2 className="h-3 w-3" />
                             <span>{deletingId === business.id ? 'Deleting...' : 'Delete'}</span>
                           </Button>
                         </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>

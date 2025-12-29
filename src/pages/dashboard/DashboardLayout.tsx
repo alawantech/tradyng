@@ -128,11 +128,8 @@ export const DashboardLayout: React.FC = () => {
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main content area */}
-      <div className="flex-1 overflow-auto relative">
+      <div className="flex-1 overflow-auto">
         <Outlet />
-        <div className="fixed bottom-0 right-0 bg-red-500 text-white text-xs px-2 py-1 opacity-75 z-50 pointer-events-none">
-          v_debug_2025_12_29_TIMESTAMP
-        </div>
       </div>
     </div>
   );

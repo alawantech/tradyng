@@ -11,6 +11,7 @@ import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { CustomerAuthModal } from '../../components/modals/CustomerAuthModal';
 import { customerAuthService } from '../../services/customerAuth';
 import StoreNotFound from '../../components/sections/StoreNotFound';
+import StoreLocked from '../../components/sections/StoreLocked';
 import { getBusinessWhatsAppConfig } from '../../utils/whatsapp';
 import toast from 'react-hot-toast';
 
@@ -32,9 +33,9 @@ const StoreContext = createContext<StoreContextType>({
   isLoading: true,
   error: null,
   searchTerm: '',
-  setSearchTerm: () => {},
+  setSearchTerm: () => { },
   selectedCategory: '',
-  setSelectedCategory: () => {},
+  setSelectedCategory: () => { },
   categories: [],
 });
 
@@ -94,7 +95,7 @@ export const StorefrontLayout: React.FC = () => {
       try {
         const detectedSubdomain = await SubdomainService.detectSubdomain();
         setSubdomainInfo(detectedSubdomain);
-        
+
         if (detectedSubdomain.businessId) {
           const business = await BusinessService.getBusinessById(detectedSubdomain.businessId);
           if (business) {
@@ -105,15 +106,15 @@ export const StorefrontLayout: React.FC = () => {
               isLoading: false,
               error: null
             });
-            
+
             // Set business ID for customer authentication
             setBusinessId(detectedSubdomain.businessId);
-            
+
             // Set dynamic CSS variables for branding
             if (business.branding?.storeBackgroundColor) {
               document.documentElement.style.setProperty('--store-background-color', business.branding.storeBackgroundColor);
             }
-            
+
             // Load categories for this business
             try {
               const businessCategories = await CategoryService.getCategoriesByBusinessId(detectedSubdomain.businessId);
@@ -182,7 +183,7 @@ export const StorefrontLayout: React.FC = () => {
     if (subdomainInfo?.isSubdomain && subdomainInfo.storeName) {
       return <StoreNotFound storeName={subdomainInfo.storeName} />;
     }
-    
+
     // Default error handling for other cases
     return (
       <div className="min-h-screen flex items-center justify-center relative" style={{
@@ -200,6 +201,12 @@ export const StorefrontLayout: React.FC = () => {
   }
 
   const { business } = storeData;
+
+  // Check if store is locked due to pending payment
+  if (business.status === 'pending_payment') {
+    return <StoreLocked storeName={business.name} />;
+  }
+
   const storeName = business.name;
   const primaryColor = business.settings?.primaryColor || '#2563eb';
 
@@ -228,7 +235,7 @@ export const StorefrontLayout: React.FC = () => {
                 >
                   {showMobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                 </button>
-                
+
                 <Link to="/" className="flex items-center space-x-2">
                   {business.logo ? (
                     <img src={business.logo} alt={storeName} className="h-8 w-8 object-contain" />
@@ -249,7 +256,7 @@ export const StorefrontLayout: React.FC = () => {
                     type="text"
                     placeholder="Search products by name..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-blue-500 text-sm"
-                    style={{ 
+                    style={{
                       '--tw-ring-color': primaryColor,
                       borderColor: `${primaryColor}20`
                     } as React.CSSProperties}
@@ -264,7 +271,7 @@ export const StorefrontLayout: React.FC = () => {
                 <Link to="/cart">
                   <Button variant="ghost" className="relative">
                     <ShoppingCart className="h-5 w-5" />
-                    <span 
+                    <span
                       className="absolute -top-2 -right-2 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
                       style={{ backgroundColor: primaryColor }}
                     >
@@ -274,8 +281,8 @@ export const StorefrontLayout: React.FC = () => {
                 </Link>
                 {user ? (
                   <div className="relative hidden min-[782px]:block" ref={userDropdownRef}>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="flex items-center"
                       onClick={() => setShowUserDropdown(!showUserDropdown)}
                     >
@@ -285,7 +292,7 @@ export const StorefrontLayout: React.FC = () => {
                       </span>
                       <ChevronDown className="h-4 w-4 ml-2" />
                     </Button>
-                    
+
                     {showUserDropdown && (
                       <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                         <div className="py-2">
@@ -297,7 +304,7 @@ export const StorefrontLayout: React.FC = () => {
                               {user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : ''}
                             </p>
                           </div>
-                          
+
                           <Link
                             to="/profile"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -306,7 +313,7 @@ export const StorefrontLayout: React.FC = () => {
                             <UserCircle className="h-4 w-4 mr-3" />
                             My Profile
                           </Link>
-                          
+
                           <Link
                             to="/orders"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -315,7 +322,7 @@ export const StorefrontLayout: React.FC = () => {
                             <Package className="h-4 w-4 mr-3" />
                             Order History
                           </Link>
-                          
+
                           <div className="border-t border-gray-100 mt-1 pt-1">
                             <button
                               onClick={async () => {
@@ -374,7 +381,7 @@ export const StorefrontLayout: React.FC = () => {
                   type="text"
                   placeholder="Search products by name..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-blue-500 text-sm"
-                  style={{ 
+                  style={{
                     '--tw-ring-color': primaryColor,
                     borderColor: `${primaryColor}20`
                   } as React.CSSProperties}
@@ -391,11 +398,10 @@ export const StorefrontLayout: React.FC = () => {
               <nav className="flex space-x-6 py-4 overflow-x-auto">
                 <button
                   onClick={() => setSelectedCategory('')}
-                  className={`font-medium whitespace-nowrap transition-colors ${
-                    selectedCategory === '' 
-                      ? 'text-blue-600 border-b-2 border-blue-600 pb-2' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
+                  className={`font-medium whitespace-nowrap transition-colors ${selectedCategory === ''
+                    ? 'text-blue-600 border-b-2 border-blue-600 pb-2'
+                    : 'text-gray-700 hover:text-blue-600'
+                    }`}
                 >
                   All
                 </button>
@@ -403,11 +409,10 @@ export const StorefrontLayout: React.FC = () => {
                   <button
                     key={category.id}
                     onClick={() => setSelectedCategory(category.name)}
-                    className={`font-medium whitespace-nowrap transition-colors ${
-                      selectedCategory === category.name 
-                        ? 'text-blue-600 border-b-2 border-blue-600 pb-2' 
-                        : 'text-gray-700 hover:text-blue-600'
-                    }`}
+                    className={`font-medium whitespace-nowrap transition-colors ${selectedCategory === category.name
+                      ? 'text-blue-600 border-b-2 border-blue-600 pb-2'
+                      : 'text-gray-700 hover:text-blue-600'
+                      }`}
                   >
                     {category.name}
                   </button>
@@ -430,11 +435,10 @@ export const StorefrontLayout: React.FC = () => {
                       setSelectedCategory('');
                       setShowMobileMenu(false);
                     }}
-                    className={`block w-full text-left px-3 py-2 rounded-md text-sm ${
-                      selectedCategory === '' 
-                        ? 'bg-blue-100 text-blue-600 font-medium' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`block w-full text-left px-3 py-2 rounded-md text-sm ${selectedCategory === ''
+                      ? 'bg-blue-100 text-blue-600 font-medium'
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     All
                   </button>
@@ -445,11 +449,10 @@ export const StorefrontLayout: React.FC = () => {
                         setSelectedCategory(category.name);
                         setShowMobileMenu(false);
                       }}
-                      className={`block w-full text-left px-3 py-2 rounded-md text-sm ${
-                        selectedCategory === category.name 
-                          ? 'bg-blue-100 text-blue-600 font-medium' 
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      className={`block w-full text-left px-3 py-2 rounded-md text-sm ${selectedCategory === category.name
+                        ? 'bg-blue-100 text-blue-600 font-medium'
+                        : 'text-gray-700 hover:bg-gray-100'
+                        }`}
                     >
                       {category.name}
                     </button>
@@ -470,7 +473,7 @@ export const StorefrontLayout: React.FC = () => {
                         {user.email ? customerAuthService.extractRealEmailFromFirebase(user.email) : ''}
                       </p>
                     </div>
-                    
+
                     <Link
                       to="/profile"
                       className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
@@ -479,7 +482,7 @@ export const StorefrontLayout: React.FC = () => {
                       <UserCircle className="h-4 w-4 mr-3" />
                       My Profile
                     </Link>
-                    
+
                     <Link
                       to="/orders"
                       className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
@@ -488,7 +491,7 @@ export const StorefrontLayout: React.FC = () => {
                       <Package className="h-4 w-4 mr-3" />
                       Order History
                     </Link>
-                    
+
                     <button
                       onClick={async () => {
                         setShowMobileMenu(false);
@@ -526,7 +529,7 @@ export const StorefrontLayout: React.FC = () => {
                       <User className="h-4 w-4 mr-3" />
                       Sign In
                     </button>
-                    
+
                     <button
                       onClick={() => {
                         setAuthModalMode('signup');
@@ -567,7 +570,7 @@ export const StorefrontLayout: React.FC = () => {
                 <p className="text-gray-400 mb-6">
                   {business.description || `Welcome to ${storeName}. We deliver quality products to your doorstep.`}
                 </p>
-                
+
                 {/* Location Information */}
                 <div className="space-y-2">
                   {business.address && (
@@ -580,7 +583,7 @@ export const StorefrontLayout: React.FC = () => {
                     <p className="text-gray-400 text-sm flex items-start">
                       <span className="font-medium text-gray-300 mr-2">🌍</span>
                       <span>
-                        {business.state && business.country 
+                        {business.state && business.country
                           ? `${business.state}, ${business.country}`
                           : business.state || business.country
                         }
@@ -589,14 +592,14 @@ export const StorefrontLayout: React.FC = () => {
                   )}
                 </div>
               </div>
-              
+
               <div>
                 <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
                 <ul className="space-y-2 text-gray-400">
                   <li><Link to="/" className="hover:text-white">Home</Link></li>
                 </ul>
               </div>
-              
+
               <div>
                 <h3 className="text-lg font-semibold mb-4">Contact Info</h3>
                 <ul className="space-y-3 text-gray-400">
@@ -620,7 +623,7 @@ export const StorefrontLayout: React.FC = () => {
                     <li>
                       <span className="font-medium text-gray-300 block text-xs mb-1">LOCATION</span>
                       <span className="text-sm">
-                        {business.state && business.country 
+                        {business.state && business.country
                           ? `${business.state}, ${business.country}`
                           : business.state || business.country
                         }
@@ -630,13 +633,13 @@ export const StorefrontLayout: React.FC = () => {
                 </ul>
               </div>
             </div>
-            
+
             <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
               <p>&copy; {new Date().getFullYear()} {storeName}. All rights reserved.</p>
               {(business.state || business.country) && (
                 <p className="text-sm mt-1">
-                  Proudly serving customers from {business.state && business.country 
-                    ? `${business.state}, ${business.country}` 
+                  Proudly serving customers from {business.state && business.country
+                    ? `${business.state}, ${business.country}`
                     : business.state || business.country
                   }
                 </p>
@@ -644,7 +647,7 @@ export const StorefrontLayout: React.FC = () => {
             </div>
           </div>
         </footer>
-        
+
         {/* Customer Authentication Modal */}
         <CustomerAuthModal
           isOpen={showAuthModal}
