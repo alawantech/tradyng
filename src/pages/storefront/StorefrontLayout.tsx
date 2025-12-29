@@ -348,7 +348,7 @@ export const StorefrontLayout: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 hidden min-[782px]:flex">
                     <Button
                       variant="ghost"
                       onClick={() => {

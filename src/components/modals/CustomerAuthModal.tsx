@@ -24,7 +24,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -36,8 +36,9 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
-  const [otpCooldown, setOtpCooldown] = useState(0);
-  const otpCooldownRef = React.useRef<number | null>(null);
+  // OTP cooldown removed
+  // const [otpCooldown, setOtpCooldown] = useState(0);
+  // const otpCooldownRef = React.useRef<number | null>(null);
   const OTP_LENGTH = 4;
 
   // Sync mode with initialMode when modal opens or initialMode changes
@@ -66,11 +67,12 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     setShowOtpInput(false);
     setOtpCode('');
     setOtpLoading(false);
-    setOtpCooldown(0);
-    if (otpCooldownRef.current) {
-      window.clearInterval(otpCooldownRef.current);
-      otpCooldownRef.current = null;
-    }
+    setOtpLoading(false);
+    // setOtpCooldown(0);
+    // if (otpCooldownRef.current) {
+    //   window.clearInterval(otpCooldownRef.current);
+    //   otpCooldownRef.current = null;
+    // }
   };
 
   // OTP helpers
@@ -86,20 +88,10 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       if (result.success) {
         toast.success(result.message);
         setShowOtpInput(true);
-        // Start cooldown
-        const cooldownSec = 30;
-        setOtpCooldown(cooldownSec);
-        if (otpCooldownRef.current) window.clearInterval(otpCooldownRef.current);
-        otpCooldownRef.current = window.setInterval(() => {
-          setOtpCooldown(prev => {
-            if (prev <= 1) {
-              if (otpCooldownRef.current) window.clearInterval(otpCooldownRef.current);
-              otpCooldownRef.current = null;
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        setShowOtpInput(true);
+        // Cooldown timer removed as per user request
+        // const cooldownSec = 30;
+        // setOtpCooldown(cooldownSec); ...
       } else {
         toast.error(result.message);
       }
@@ -163,7 +155,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       );
     } catch (error: any) {
       console.error('Signup error:', error);
-      
+
       // Handle specific Firebase auth errors
       if (error.code === 'auth/email-already-in-use') {
         toast.error('An account with this email already exists. Please sign in instead.');
@@ -201,7 +193,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       });
     } catch (error: any) {
       console.error('Auth error:', error);
-      
+
       // Handle specific Firebase auth errors
       if (error.code === 'auth/user-not-found') {
         toast.error('No account found with this email. Please sign up first.');
@@ -222,7 +214,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Basic validation
     if (!formData.email || !formData.password || !formData.displayName) {
       toast.error('Please fill in all required fields');
@@ -233,7 +225,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       toast.error('Passwords do not match');
       return;
     }
-    
+
     if (formData.password.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
@@ -268,7 +260,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
             className="fixed inset-0 bg-black/60 backdrop-blur-sm auth-modal-backdrop"
             onClick={(e) => e.stopPropagation()}
           />
-          
+
           {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -279,7 +271,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Decorative gradient header */}
-            <div 
+            <div
               className="h-32 relative overflow-hidden"
               style={{
                 background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}CC 50%, ${primaryColor}99 100%)`
@@ -291,12 +283,12 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                 <div className="absolute top-8 right-8 w-16 h-16 rounded-full border-2 border-white/20 floating-orb-2"></div>
                 <div className="absolute bottom-4 left-1/2 w-12 h-12 rounded-full border-2 border-white/25 floating-orb-3"></div>
               </div>
-              
+
               {/* Store branding */}
               <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
                 {business?.logo ? (
-                  <motion.img 
-                    src={business.logo} 
+                  <motion.img
+                    src={business.logo}
                     alt={storeName}
                     className="h-12 w-12 object-contain mb-2 rounded-lg bg-white/20 p-2"
                     initial={{ scale: 0 }}
@@ -313,7 +305,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                     <ShoppingBag className="h-6 w-6 text-white" />
                   </motion.div>
                 )}
-                <motion.h3 
+                <motion.h3
                   className="text-lg font-bold text-center"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -321,7 +313,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                 >
                   {storeName}
                 </motion.h3>
-                <motion.p 
+                <motion.p
                   className="text-xs text-white/80 text-center"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -343,7 +335,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
             {/* Content */}
             <div className="p-8">
               {/* Header */}
-              <motion.div 
+              <motion.div
                 className="mb-8 text-center"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -353,7 +345,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                   {mode === 'signin' ? 'Login' : 'Register'}
                 </h2>
                 <p className="text-gray-600">
-                  {mode === 'signin' 
+                  {mode === 'signin'
                     ? `Continue your shopping journey at ${storeName}`
                     : `Create your account and unlock exclusive benefits`
                   }
@@ -362,7 +354,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 
               {/* Benefits section for signup */}
               {mode === 'signup' && (
-                <motion.div 
+                <motion.div
                   className="mb-6 grid grid-cols-2 gap-3"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -397,8 +389,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 
               {/* SIGN IN FORM */}
               {mode === 'signin' && (
-                <motion.form 
-                  onSubmit={handleSignIn} 
+                <motion.form
+                  onSubmit={handleSignIn}
                   className="space-y-5"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -417,8 +409,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                         value={formData.email}
                         onChange={handleChange}
                         className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50 focus:bg-white auth-input"
-                        style={{ 
-                          '--tw-ring-color': primaryColor 
+                        style={{
+                          '--tw-ring-color': primaryColor
                         } as React.CSSProperties}
                         placeholder="Enter your email"
                       />
@@ -438,8 +430,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                         value={formData.password}
                         onChange={handleChange}
                         className="w-full pl-12 pr-12 py-3.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50 focus:bg-white auth-input"
-                        style={{ 
-                          '--tw-ring-color': primaryColor 
+                        style={{
+                          '--tw-ring-color': primaryColor
                         } as React.CSSProperties}
                         placeholder="Enter your password"
                       />
@@ -471,7 +463,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                       type="submit"
                       disabled={isLoading}
                       className="w-full py-3.5 px-4 rounded-xl text-white font-semibold text-lg transition-all duration-200 transform focus:outline-none focus:ring-4 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl auth-button shimmer-effect"
-                      style={{ 
+                      style={{
                         backgroundColor: primaryColor,
                         '--tw-ring-color': `${primaryColor}50`
                       } as React.CSSProperties}
@@ -494,8 +486,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 
               {/* SIGN UP FORM */}
               {mode === 'signup' && (
-                <motion.form 
-                  onSubmit={handleSignUp} 
+                <motion.form
+                  onSubmit={handleSignUp}
                   className="space-y-5"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -544,8 +536,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                         value={formData.displayName}
                         onChange={handleChange}
                         className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50 focus:bg-white auth-input"
-                        style={{ 
-                          '--tw-ring-color': primaryColor 
+                        style={{
+                          '--tw-ring-color': primaryColor
                         } as React.CSSProperties}
                         placeholder="Enter your full name"
                       />
@@ -565,8 +557,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                         value={formData.email}
                         onChange={handleChange}
                         className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50 focus:bg-white auth-input"
-                        style={{ 
-                          '--tw-ring-color': primaryColor 
+                        style={{
+                          '--tw-ring-color': primaryColor
                         } as React.CSSProperties}
                         placeholder="Enter your email"
                       />
@@ -586,8 +578,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                         value={formData.password}
                         onChange={handleChange}
                         className="w-full pl-12 pr-12 py-3.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50 focus:bg-white auth-input"
-                        style={{ 
-                          '--tw-ring-color': primaryColor 
+                        style={{
+                          '--tw-ring-color': primaryColor
                         } as React.CSSProperties}
                         placeholder="Create a strong password"
                       />
@@ -622,8 +614,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                         value={formData.confirmPassword}
                         onChange={handleChange}
                         className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50 focus:bg-white auth-input"
-                        style={{ 
-                          '--tw-ring-color': primaryColor 
+                        style={{
+                          '--tw-ring-color': primaryColor
                         } as React.CSSProperties}
                         placeholder="Confirm your password"
                       />
@@ -656,8 +648,8 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                               setOtpCode(value);
                             }}
                             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-center text-lg font-mono"
-                            style={{ 
-                              '--tw-ring-color': primaryColor 
+                            style={{
+                              '--tw-ring-color': primaryColor
                             } as React.CSSProperties}
                             placeholder="0000"
                             maxLength={OTP_LENGTH}
@@ -675,21 +667,22 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                           <button
                             type="button"
                             onClick={triggerSendOtp}
-                            disabled={otpLoading || otpCooldown > 0}
+                            disabled={otpLoading}
                             className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
                           >
-                            {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Resend code'}
+                            Resend code
                           </button>
                           <button
                             type="button"
                             onClick={() => {
                               setShowOtpInput(false);
                               setOtpCode('');
-                              setOtpCooldown(0);
-                              if (otpCooldownRef.current) {
-                                window.clearInterval(otpCooldownRef.current);
-                                otpCooldownRef.current = null;
-                              }
+                              setOtpCode('');
+                              // setOtpCooldown(0);
+                              // if (otpCooldownRef.current) {
+                              //   window.clearInterval(otpCooldownRef.current);
+                              //   otpCooldownRef.current = null;
+                              // }
                             }}
                             className="text-sm text-gray-600 hover:text-gray-800"
                           >
@@ -710,7 +703,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                         type="submit"
                         disabled={isLoading || otpLoading}
                         className="w-full py-3.5 px-4 rounded-xl text-white font-semibold text-lg transition-all duration-200 transform focus:outline-none focus:ring-4 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl auth-button shimmer-effect"
-                        style={{ 
+                        style={{
                           backgroundColor: primaryColor,
                           '--tw-ring-color': `${primaryColor}50`
                         } as React.CSSProperties}
@@ -733,27 +726,27 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
               )}
 
               {/* Mode Switch */}
-              <motion.div 
+              <motion.div
                 className="mt-8 text-center"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.6 }}
               >
-                  <p className="text-sm text-gray-600">
-                    {mode === 'signin' ? "New to " + storeName + "? " : "Already shopping with us? "}
-                    <button
-                      type="button"
-                      onClick={switchMode}
-                      className="font-semibold hover:underline transition-colors"
-                      style={{ color: primaryColor }}
-                    >
-                      {mode === 'signin' ? 'Register now' : 'Login instead'}
-                    </button>
-                  </p>
-                </motion.div>
+                <p className="text-sm text-gray-600">
+                  {mode === 'signin' ? "New to " + storeName + "? " : "Already shopping with us? "}
+                  <button
+                    type="button"
+                    onClick={switchMode}
+                    className="font-semibold hover:underline transition-colors"
+                    style={{ color: primaryColor }}
+                  >
+                    {mode === 'signin' ? 'Register now' : 'Login instead'}
+                  </button>
+                </p>
+              </motion.div>
 
               {/* Trust indicators */}
-              <motion.div 
+              <motion.div
                 className="mt-6 pt-6 border-t border-gray-100"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -774,7 +767,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
           </motion.div>
         </div>
       </div>
-      
+
       {/* Email/OTP modals removed on purpose (password reset & OTP flows disabled) */}
     </AnimatePresence>
   );

@@ -67,14 +67,14 @@ async function sendEmailViaMailerSend(to: string, subject: string, html: string)
   const tryMailerSend = async () => {
     if (!mailerToken) throw new Error('MailerSend token not configured');
     try {
-      console.info('MAIL_SENDER_API_TOKEN_MASKED:', mailerToken ? `${mailerToken.slice(0,6)}...${mailerToken.slice(-4)}` : 'MISSING', 'len=', mailerToken ? mailerToken.length : 0);
-    } catch (e) {}
+      console.info('MAIL_SENDER_API_TOKEN_MASKED:', mailerToken ? `${mailerToken.slice(0, 6)}...${mailerToken.slice(-4)}` : 'MISSING', 'len=', mailerToken ? mailerToken.length : 0);
+    } catch (e) { }
 
     const candidateUrls: string[] = [];
     if (configuredUrl) candidateUrls.push(configuredUrl);
     candidateUrls.push('https://api.mailersend.com/v1/email');
 
-        const payload = {
+    const payload = {
       from: { email: 'no-reply@rady.ng', name: 'Rady.ng' },
       to: [{ email: to }],
       subject,
@@ -91,7 +91,7 @@ async function sendEmailViaMailerSend(to: string, subject: string, html: string)
         if (!res.ok) {
           const text = await res.text().catch(() => '');
           // if 404, try next
-          if (res.status === 404) { lastErr = { url, status: res.status, body: text.slice(0,200) }; continue; }
+          if (res.status === 404) { lastErr = { url, status: res.status, body: text.slice(0, 200) }; continue; }
           throw new Error(`MailerSend error: ${res.status} ${text}`);
         }
         const txt = await res.text().catch(() => '');
@@ -166,8 +166,8 @@ export const sendOtp = functions.https.onRequest({
   // Log masked presence of the secret early to help diagnose secret injection issues
   try {
     const t = process.env.MAIL_SENDER_API_TOKEN?.trim();
-    console.info('sendOtp - MAIL_SENDER_API_TOKEN_MASKED:', t ? `${t.slice(0,6)}...${t.slice(-4)}` : 'MISSING', 'len=', t ? t.length : 0);
-  } catch (e) {}
+    console.info('sendOtp - MAIL_SENDER_API_TOKEN_MASKED:', t ? `${t.slice(0, 6)}...${t.slice(-4)}` : 'MISSING', 'len=', t ? t.length : 0);
+  } catch (e) { }
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -189,27 +189,22 @@ export const sendOtp = functions.https.onRequest({
       return;
     }
 
-  // generate OTP
-  const otp = generateNumericOtp(4);
-  // DEBUG: log only length (never log actual OTP value)
-  try { console.info('OTP_LEN', otp.length); } catch (e) {}
+    // generate OTP
+    const otp = generateNumericOtp(4);
+    // DEBUG: log only length (never log actual OTP value)
+    try { console.info('OTP_LEN', otp.length); } catch (e) { }
     const salt = crypto.randomBytes(16).toString('hex');
     const otpHash = hashOtp(otp, salt);
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    // Set expiration to a very far future date (year 9999) - effectively infinite
+    const expiresAt = new Date('9999-12-31').getTime();
 
     // Use a sanitized doc id to avoid invalid characters in doc path
     const docId = encodeURIComponent(email);
     const docRef = admin.firestore().collection(OTP_COLLECTION).doc(docId);
 
-    // Throttle: if an OTP was sent less than 60s ago, reject
-    const existing = await docRef.get();
-    if (existing.exists) {
-      const ex = existing.data() as any;
-      if (ex && ex.createdAt && Date.now() - ex.createdAt < 60 * 1000) {
-        res.status(429).send({ error: 'OTP recently requested. Please wait a minute before requesting again.' });
-        return;
-      }
-    }
+    // Throttle removed as per user request (infinite resend allowed)
+    // const existing = await docRef.get();
+    // if (existing.exists) { ... }
 
     // store in firestore
     await docRef.set({
@@ -223,7 +218,7 @@ export const sendOtp = functions.https.onRequest({
 
     // send email
     const subject = `Your ${businessName || 'Rady.ng'} verification code`;
-    const html = `<p>Your verification code is:</p><h1 style="font-size: 48px; font-weight: bold; color: #333; text-align: center;">${otp}</h1><p>This code expires in 10 minutes.</p>`;
+    const html = `<p>Your verification code is:</p><h1 style="font-size: 48px; font-weight: bold; color: #333; text-align: center;">${otp}</h1><p>This code does not expire.</p>`;
     await sendEmailViaMailerSend(email, subject, html);
 
     res.json({ ok: true });
@@ -240,8 +235,8 @@ export const verifyOtp = functions.https.onRequest({
   // Log masked presence of the secret early to help diagnose secret injection issues
   try {
     const t = process.env.MAIL_SENDER_API_TOKEN?.trim();
-    console.info('verifyOtp - MAIL_SENDER_API_TOKEN_MASKED:', t ? `${t.slice(0,6)}...${t.slice(-4)}` : 'MISSING', 'len=', t ? t.length : 0);
-  } catch (e) {}
+    console.info('verifyOtp - MAIL_SENDER_API_TOKEN_MASKED:', t ? `${t.slice(0, 6)}...${t.slice(-4)}` : 'MISSING', 'len=', t ? t.length : 0);
+  } catch (e) { }
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -263,8 +258,8 @@ export const verifyOtp = functions.https.onRequest({
       return;
     }
 
-  const docId = encodeURIComponent(email);
-  const docRef = admin.firestore().collection(OTP_COLLECTION).doc(docId);
+    const docId = encodeURIComponent(email);
+    const docRef = admin.firestore().collection(OTP_COLLECTION).doc(docId);
     const snap = await docRef.get();
     if (!snap.exists) {
       res.status(400).send({ error: 'No code requested for this email' });
@@ -272,11 +267,8 @@ export const verifyOtp = functions.https.onRequest({
     }
 
     const data = snap.data() as any;
-    if (Date.now() > data.expiresAt) {
-      await docRef.delete();
-      res.status(400).send({ error: 'Code expired' });
-      return;
-    }
+    // Expiration check removed as per user request
+    // if (Date.now() > data.expiresAt) { ... }
 
     if (data.attempts >= 5) {
       await docRef.delete();
@@ -305,8 +297,8 @@ export const sendResetOtp = functions.https.onRequest({
   // Log masked presence of the secret early to help diagnose secret injection issues
   try {
     const t = process.env.MAIL_SENDER_API_TOKEN?.trim();
-    console.info('sendResetOtp - MAIL_SENDER_API_TOKEN_MASKED:', t ? `${t.slice(0,6)}...${t.slice(-4)}` : 'MISSING', 'len=', t ? t.length : 0);
-  } catch (e) {}
+    console.info('sendResetOtp - MAIL_SENDER_API_TOKEN_MASKED:', t ? `${t.slice(0, 6)}...${t.slice(-4)}` : 'MISSING', 'len=', t ? t.length : 0);
+  } catch (e) { }
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -338,7 +330,7 @@ export const sendResetOtp = functions.https.onRequest({
     // generate OTP
     const otp = generateNumericOtp(4);
     // DEBUG: log only length (never log actual OTP value)
-    try { console.info('RESET_OTP_LEN', otp.length); } catch (e) {}
+    try { console.info('RESET_OTP_LEN', otp.length); } catch (e) { }
     const salt = crypto.randomBytes(16).toString('hex');
     const otpHash = hashOtp(otp, salt);
     console.log('DEBUG sendResetOtp generated:', {
@@ -393,8 +385,8 @@ export const verifyResetOtp = functions.https.onRequest({
   // Log masked presence of the secret early to help diagnose secret injection issues
   try {
     const t = process.env.MAIL_SENDER_API_TOKEN?.trim();
-    console.info('verifyResetOtp - MAIL_SENDER_API_TOKEN_MASKED:', t ? `${t.slice(0,6)}...${t.slice(-4)}` : 'MISSING', 'len=', t ? t.length : 0);
-  } catch (e) {}
+    console.info('verifyResetOtp - MAIL_SENDER_API_TOKEN_MASKED:', t ? `${t.slice(0, 6)}...${t.slice(-4)}` : 'MISSING', 'len=', t ? t.length : 0);
+  } catch (e) { }
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -467,7 +459,7 @@ export const verifyResetOtp = functions.https.onRequest({
     if (computed === data.otpHash) {
       // Mark as verified and store user UID for password reset
       const userRecord = await admin.auth().getUserByEmail(email);
-      await docRef.update({ 
+      await docRef.update({
         verifiedAt: Date.now(),
         uid: userRecord.uid
       });
@@ -994,10 +986,10 @@ export const sendOrderDeliveryEmail = functions.https.onRequest({
                 <span style="font-size: 16px; font-weight: 600; color: #374151;">📅 Order Date:</span>
                 <span style="font-size: 16px; font-weight: bold; color: #111827;">
                   ${createdAt ? new Date(createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }) : 'N/A'}
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }) : 'N/A'}
                 </span>
               </div>
             </div>
@@ -1194,10 +1186,10 @@ export const sendOrderApprovalEmail = functions.https.onRequest({
                 <span style="font-size: 16px; font-weight: 600; color: #374151;">📅 Order Date:</span>
                 <span style="font-size: 16px; font-weight: bold; color: #111827;">
                   ${createdAt ? new Date(createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }) : 'N/A'}
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }) : 'N/A'}
                 </span>
               </div>
             </div>
@@ -1284,7 +1276,7 @@ async function sendEmailWithAttachment(to: string, subject: string, html: string
         });
         if (!res.ok) {
           const text = await res.text().catch(() => '');
-          if (res.status === 404) { lastErr = { url, status: res.status, body: text.slice(0,200) }; continue; }
+          if (res.status === 404) { lastErr = { url, status: res.status, body: text.slice(0, 200) }; continue; }
           throw new Error(`MailerSend error: ${res.status} ${text}`);
         }
         const txt = await res.text().catch(() => '');
@@ -1712,11 +1704,11 @@ async function incrementCouponUsage(couponCode: string) {
     if (!couponQuery.empty) {
       const couponDoc = couponQuery.docs[0];
       const currentCount = couponDoc.data().usedCount || 0;
-      
+
       await couponDoc.ref.update({
         usedCount: currentCount + 1
       });
-      
+
       console.log('✅ Coupon usage incremented:', couponCode, 'New count:', currentCount + 1);
     }
   } catch (error) {
@@ -1725,94 +1717,94 @@ async function incrementCouponUsage(couponCode: string) {
   }
 }
 
-  export const generateUploadUrl = functions.https.onRequest(async (req, res) => {
-    // CORS
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+export const generateUploadUrl = functions.https.onRequest(async (req, res) => {
+  // CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  try {
+    if (req.method !== 'POST') {
+      res.status(405).send({ error: 'Method not allowed, use POST' });
       return;
     }
 
-    try {
-      if (req.method !== 'POST') {
-        res.status(405).send({ error: 'Method not allowed, use POST' });
-        return;
-      }
-
-      const authHeader = (req.get('Authorization') || req.get('authorization') || '') as string;
-      if (!authHeader.startsWith('Bearer ')) {
-        res.status(401).send({ error: 'Missing Authorization Bearer token' });
-        return;
-      }
-
-      const idToken = authHeader.split('Bearer ')[1].trim();
-      try {
-        await admin.auth().verifyIdToken(idToken);
-      } catch (err) {
-        console.warn('Invalid ID token for generateUploadUrl', err);
-        res.status(401).send({ error: 'Unauthorized' });
-        return;
-      }
-
-      const { path, contentType, fileData } = req.body || {};
-      if (!path || typeof path !== 'string' || !contentType || typeof contentType !== 'string') {
-        res.status(400).send({ error: 'Missing required fields: path, contentType' });
-        return;
-      }
-
-      const cleanPath = path.replace(/^\/+/, '').replace(/\.\.+/g, '');
-
-      const bucket = admin.storage().bucket();
-      const file = bucket.file(cleanPath);
-
-      // If fileData is provided, upload directly instead of generating signed URL
-      if (fileData && typeof fileData === 'string') {
-        try {
-          // Convert base64 to buffer
-          const buffer = Buffer.from(fileData, 'base64');
-          await file.save(buffer, {
-            metadata: {
-              contentType: contentType,
-            },
-            public: true, // Make the file publicly accessible
-          });
-
-          const bucketName = bucket.name || process.env.GCLOUD_STORAGE_BUCKET || `${process.env.GCLOUD_PROJECT}.appspot.com`;
-          const publicUrl = `https://storage.googleapis.com/${bucketName}/${encodeURI(cleanPath)}`;
-
-          res.json({
-            uploadUrl: null, // No signed URL needed
-            publicUrl,
-            uploaded: true
-          });
-          return;
-        } catch (uploadError) {
-          console.error('Direct upload failed:', uploadError);
-          // Fall back to signed URL approach
-        }
-      }
-
-      // Fallback: Generate signed URL
-      const expiresMs = Date.now() + 15 * 60 * 1000; // 15 minutes
-      const [uploadUrl] = await file.getSignedUrl({
-        version: 'v4',
-        action: 'write',
-        expires: expiresMs,
-        contentType
-      });
-
-      const bucketName = bucket.name || process.env.GCLOUD_STORAGE_BUCKET || `${process.env.GCLOUD_PROJECT}.appspot.com`;
-      const publicUrl = `https://storage.googleapis.com/${bucketName}/${encodeURI(cleanPath)}`;
-
-      res.json({ uploadUrl, publicUrl, expiresAt: new Date(expiresMs).toISOString() });
-    } catch (errAny) {
-      console.error('generateUploadUrl error:', errAny);
-      res.status(500).send({ error: 'Failed to generate upload url', details: String(errAny) });
+    const authHeader = (req.get('Authorization') || req.get('authorization') || '') as string;
+    if (!authHeader.startsWith('Bearer ')) {
+      res.status(401).send({ error: 'Missing Authorization Bearer token' });
+      return;
     }
-  });
+
+    const idToken = authHeader.split('Bearer ')[1].trim();
+    try {
+      await admin.auth().verifyIdToken(idToken);
+    } catch (err) {
+      console.warn('Invalid ID token for generateUploadUrl', err);
+      res.status(401).send({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { path, contentType, fileData } = req.body || {};
+    if (!path || typeof path !== 'string' || !contentType || typeof contentType !== 'string') {
+      res.status(400).send({ error: 'Missing required fields: path, contentType' });
+      return;
+    }
+
+    const cleanPath = path.replace(/^\/+/, '').replace(/\.\.+/g, '');
+
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(cleanPath);
+
+    // If fileData is provided, upload directly instead of generating signed URL
+    if (fileData && typeof fileData === 'string') {
+      try {
+        // Convert base64 to buffer
+        const buffer = Buffer.from(fileData, 'base64');
+        await file.save(buffer, {
+          metadata: {
+            contentType: contentType,
+          },
+          public: true, // Make the file publicly accessible
+        });
+
+        const bucketName = bucket.name || process.env.GCLOUD_STORAGE_BUCKET || `${process.env.GCLOUD_PROJECT}.appspot.com`;
+        const publicUrl = `https://storage.googleapis.com/${bucketName}/${encodeURI(cleanPath)}`;
+
+        res.json({
+          uploadUrl: null, // No signed URL needed
+          publicUrl,
+          uploaded: true
+        });
+        return;
+      } catch (uploadError) {
+        console.error('Direct upload failed:', uploadError);
+        // Fall back to signed URL approach
+      }
+    }
+
+    // Fallback: Generate signed URL
+    const expiresMs = Date.now() + 15 * 60 * 1000; // 15 minutes
+    const [uploadUrl] = await file.getSignedUrl({
+      version: 'v4',
+      action: 'write',
+      expires: expiresMs,
+      contentType
+    });
+
+    const bucketName = bucket.name || process.env.GCLOUD_STORAGE_BUCKET || `${process.env.GCLOUD_PROJECT}.appspot.com`;
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${encodeURI(cleanPath)}`;
+
+    res.json({ uploadUrl, publicUrl, expiresAt: new Date(expiresMs).toISOString() });
+  } catch (errAny) {
+    console.error('generateUploadUrl error:', errAny);
+    res.status(500).send({ error: 'Failed to generate upload url', details: String(errAny) });
+  }
+});
 
 // =======================
 // Free Trial Management
@@ -1824,135 +1816,135 @@ export const checkTrialExpirations = functions.scheduler.onSchedule({
   schedule: '0 */3 * * *', // Every 3 hours
   timeZone: 'UTC'
 }, async (event) => {
-    try {
-      console.log('🕐 Running trial expiration check at:', new Date().toISOString());
+  try {
+    console.log('🕐 Running trial expiration check at:', new Date().toISOString());
 
-      const now = admin.firestore.Timestamp.now();
-      const nowDate = now.toDate();
-      const currentHour = nowDate.getUTCHours();
+    const now = admin.firestore.Timestamp.now();
+    const nowDate = now.toDate();
+    const currentHour = nowDate.getUTCHours();
 
-      // Get all businesses on free plan with trial dates
-      const businessesSnapshot = await admin.firestore()
-        .collection('businesses')
-        .where('plan', '==', 'free')
-        .where('trialEndDate', '!=', null)
-        .get();
+    // Get all businesses on free plan with trial dates
+    const businessesSnapshot = await admin.firestore()
+      .collection('businesses')
+      .where('plan', '==', 'free')
+      .where('trialEndDate', '!=', null)
+      .get();
 
-      console.log(`📊 Found ${businessesSnapshot.size} free trial businesses`);
+    console.log(`📊 Found ${businessesSnapshot.size} free trial businesses`);
 
-      for (const businessDoc of businessesSnapshot.docs) {
-        const business = businessDoc.data();
-        const trialEndDate = business.trialEndDate?.toDate();
-        const trialStartDate = business.trialStartDate?.toDate();
+    for (const businessDoc of businessesSnapshot.docs) {
+      const business = businessDoc.data();
+      const trialEndDate = business.trialEndDate?.toDate();
+      const trialStartDate = business.trialStartDate?.toDate();
 
-        if (!trialEndDate || !trialStartDate) continue;
+      if (!trialEndDate || !trialStartDate) continue;
 
-        const hoursUntilExpiry = (trialEndDate.getTime() - nowDate.getTime()) / (1000 * 60 * 60);
-        const daysUntilExpiry = hoursUntilExpiry / 24;
-        const hoursSinceStart = (nowDate.getTime() - trialStartDate.getTime()) / (1000 * 60 * 60);
+      const hoursUntilExpiry = (trialEndDate.getTime() - nowDate.getTime()) / (1000 * 60 * 60);
+      const daysUntilExpiry = hoursUntilExpiry / 24;
+      const hoursSinceStart = (nowDate.getTime() - trialStartDate.getTime()) / (1000 * 60 * 60);
 
-        console.log(`🏪 Business: ${business.name}`);
-        console.log(`   Hours until expiry: ${hoursUntilExpiry.toFixed(2)}`);
-        console.log(`   Days until expiry: ${daysUntilExpiry.toFixed(2)}`);
-        console.log(`   Hours since start: ${hoursSinceStart.toFixed(2)}`);
+      console.log(`🏪 Business: ${business.name}`);
+      console.log(`   Hours until expiry: ${hoursUntilExpiry.toFixed(2)}`);
+      console.log(`   Days until expiry: ${daysUntilExpiry.toFixed(2)}`);
+      console.log(`   Hours since start: ${hoursSinceStart.toFixed(2)}`);
 
-        // DAY 2 (24-48 hours after registration): Send 3 emails
-        // Morning (8 AM), Afternoon (2 PM), Evening (8 PM)
-        if (hoursSinceStart >= 24 && hoursSinceStart < 48) {
-          const emailsSent = business.day2EmailsSent || [];
-          
-          // Morning email (8 AM UTC)
-          if (currentHour === 8 && !emailsSent.includes('morning')) {
-            await sendTrialReminderEmail(business.email, business.name, 2, 'morning');
-            await businessDoc.ref.update({
-              day2EmailsSent: [...emailsSent, 'morning']
-            });
-            console.log(`📧 Day 2 - Morning reminder sent to: ${business.email}`);
-          }
-          
-          // Afternoon email (2 PM UTC / 14:00)
-          if (currentHour === 14 && !emailsSent.includes('afternoon')) {
-            await sendTrialReminderEmail(business.email, business.name, 2, 'afternoon');
-            await businessDoc.ref.update({
-              day2EmailsSent: [...emailsSent, 'afternoon']
-            });
-            console.log(`📧 Day 2 - Afternoon reminder sent to: ${business.email}`);
-          }
-          
-          // Evening email (8 PM UTC / 20:00)
-          if (currentHour === 20 && !emailsSent.includes('evening')) {
-            await sendTrialReminderEmail(business.email, business.name, 2, 'evening');
-            await businessDoc.ref.update({
-              day2EmailsSent: [...emailsSent, 'evening']
-            });
-            console.log(`📧 Day 2 - Evening reminder sent to: ${business.email}`);
-          }
+      // DAY 2 (24-48 hours after registration): Send 3 emails
+      // Morning (8 AM), Afternoon (2 PM), Evening (8 PM)
+      if (hoursSinceStart >= 24 && hoursSinceStart < 48) {
+        const emailsSent = business.day2EmailsSent || [];
+
+        // Morning email (8 AM UTC)
+        if (currentHour === 8 && !emailsSent.includes('morning')) {
+          await sendTrialReminderEmail(business.email, business.name, 2, 'morning');
+          await businessDoc.ref.update({
+            day2EmailsSent: [...emailsSent, 'morning']
+          });
+          console.log(`📧 Day 2 - Morning reminder sent to: ${business.email}`);
         }
 
-        // DAY 3 (Last day, 48-72 hours): Send 2 emails
-        // Morning (8 AM), Afternoon (2 PM)
-        if (hoursSinceStart >= 48 && hoursUntilExpiry > 3) {
-          const emailsSent = business.day3EmailsSent || [];
-          
-          // Morning email (8 AM UTC)
-          if (currentHour === 8 && !emailsSent.includes('morning')) {
-            await sendFinalWarningEmail(business.email, business.name, 'morning');
-            await businessDoc.ref.update({
-              day3EmailsSent: [...emailsSent, 'morning']
-            });
-            console.log(`⚠️ Day 3 - Morning final warning sent to: ${business.email}`);
-          }
-          
-          // Afternoon email (2 PM UTC / 14:00)
-          if (currentHour === 14 && !emailsSent.includes('afternoon')) {
-            await sendFinalWarningEmail(business.email, business.name, 'afternoon');
-            await businessDoc.ref.update({
-              day3EmailsSent: [...emailsSent, 'afternoon'],
-              lastEmailSentAt: admin.firestore.Timestamp.now()
-            });
-            console.log(`⚠️ Day 3 - Afternoon final warning sent to: ${business.email}`);
-          }
+        // Afternoon email (2 PM UTC / 14:00)
+        if (currentHour === 14 && !emailsSent.includes('afternoon')) {
+          await sendTrialReminderEmail(business.email, business.name, 2, 'afternoon');
+          await businessDoc.ref.update({
+            day2EmailsSent: [...emailsSent, 'afternoon']
+          });
+          console.log(`📧 Day 2 - Afternoon reminder sent to: ${business.email}`);
         }
 
-        // Send admin notification when trial expires (exactly at expiration)
-        if (hoursUntilExpiry <= 0 && hoursUntilExpiry > -1 && !business.adminNotifiedExpired) {
-          console.log(`📧 Sending admin notification - trial expired for: ${business.name}`);
-          await sendAdminTrialNotification(business.name, businessDoc.id, business.email, 0);
-          await businessDoc.ref.update({ adminNotifiedExpired: true });
+        // Evening email (8 PM UTC / 20:00)
+        if (currentHour === 20 && !emailsSent.includes('evening')) {
+          await sendTrialReminderEmail(business.email, business.name, 2, 'evening');
+          await businessDoc.ref.update({
+            day2EmailsSent: [...emailsSent, 'evening']
+          });
+          console.log(`📧 Day 2 - Evening reminder sent to: ${business.email}`);
         }
-        
-        // DELETE: 3 hours after last email on day 3
-        if (business.lastEmailSentAt) {
-          const lastEmailDate = business.lastEmailSentAt.toDate();
-          const hoursSinceLastEmail = (nowDate.getTime() - lastEmailDate.getTime()) / (1000 * 60 * 60);
-          
-          if (hoursSinceLastEmail >= 3 && hoursUntilExpiry <= 0) {
-            console.log(`🗑️ Deleting expired trial business: ${business.name}`);
-            console.log(`   Last email sent: ${hoursSinceLastEmail.toFixed(2)} hours ago`);
-            await deleteExpiredBusiness(businessDoc.id, business.ownerId);
-          }
+      }
+
+      // DAY 3 (Last day, 48-72 hours): Send 2 emails
+      // Morning (8 AM), Afternoon (2 PM)
+      if (hoursSinceStart >= 48 && hoursUntilExpiry > 3) {
+        const emailsSent = business.day3EmailsSent || [];
+
+        // Morning email (8 AM UTC)
+        if (currentHour === 8 && !emailsSent.includes('morning')) {
+          await sendFinalWarningEmail(business.email, business.name, 'morning');
+          await businessDoc.ref.update({
+            day3EmailsSent: [...emailsSent, 'morning']
+          });
+          console.log(`⚠️ Day 3 - Morning final warning sent to: ${business.email}`);
         }
-        
-        // Fallback: Delete if expired for more than 6 hours (safety net)
-        if (hoursUntilExpiry < -6) {
-          console.log(`🗑️ Deleting overdue expired business: ${business.name}`);
+
+        // Afternoon email (2 PM UTC / 14:00)
+        if (currentHour === 14 && !emailsSent.includes('afternoon')) {
+          await sendFinalWarningEmail(business.email, business.name, 'afternoon');
+          await businessDoc.ref.update({
+            day3EmailsSent: [...emailsSent, 'afternoon'],
+            lastEmailSentAt: admin.firestore.Timestamp.now()
+          });
+          console.log(`⚠️ Day 3 - Afternoon final warning sent to: ${business.email}`);
+        }
+      }
+
+      // Send admin notification when trial expires (exactly at expiration)
+      if (hoursUntilExpiry <= 0 && hoursUntilExpiry > -1 && !business.adminNotifiedExpired) {
+        console.log(`📧 Sending admin notification - trial expired for: ${business.name}`);
+        await sendAdminTrialNotification(business.name, businessDoc.id, business.email, 0);
+        await businessDoc.ref.update({ adminNotifiedExpired: true });
+      }
+
+      // DELETE: 3 hours after last email on day 3
+      if (business.lastEmailSentAt) {
+        const lastEmailDate = business.lastEmailSentAt.toDate();
+        const hoursSinceLastEmail = (nowDate.getTime() - lastEmailDate.getTime()) / (1000 * 60 * 60);
+
+        if (hoursSinceLastEmail >= 3 && hoursUntilExpiry <= 0) {
+          console.log(`🗑️ Deleting expired trial business: ${business.name}`);
+          console.log(`   Last email sent: ${hoursSinceLastEmail.toFixed(2)} hours ago`);
           await deleteExpiredBusiness(businessDoc.id, business.ownerId);
         }
       }
 
-      console.log('✅ Trial expiration check completed');
-    } catch (error) {
-      console.error('❌ Error in trial expiration check:', error);
-      throw error;
+      // Fallback: Delete if expired for more than 6 hours (safety net)
+      if (hoursUntilExpiry < -6) {
+        console.log(`🗑️ Deleting overdue expired business: ${business.name}`);
+        await deleteExpiredBusiness(businessDoc.id, business.ownerId);
+      }
     }
-  });
+
+    console.log('✅ Trial expiration check completed');
+  } catch (error) {
+    console.error('❌ Error in trial expiration check:', error);
+    throw error;
+  }
+});
 
 // Helper function to send trial reminder email
 async function sendTrialReminderEmail(email: string, businessName: string, dayNumber: number, timeOfDay: string) {
   try {
     const daysRemaining = 3 - dayNumber + 1;
     const subject = `Reminder: Your ${businessName} free trial - ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`;
-    
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -1988,11 +1980,11 @@ async function sendTrialReminderEmail(email: string, businessName: string, dayNu
       </body>
       </html>
     `;
-    
+
     console.log(`📧 Sending Day ${dayNumber} ${timeOfDay} reminder email to ${email}`);
     await sendEmailViaMailerSend(email, subject, html);
     console.log(`✅ Email sent successfully`);
-    
+
     return true;
   } catch (error) {
     console.error('Error sending reminder email:', error);
@@ -2004,7 +1996,7 @@ async function sendTrialReminderEmail(email: string, businessName: string, dayNu
 async function sendFinalWarningEmail(email: string, businessName: string, timeOfDay: string) {
   try {
     const subject = `🚨 URGENT: Your ${businessName} trial expires TODAY!`;
-    
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -2050,11 +2042,11 @@ async function sendFinalWarningEmail(email: string, businessName: string, timeOf
       </body>
       </html>
     `;
-    
+
     console.log(`⚠️ Sending FINAL ${timeOfDay} warning email to ${email}`);
     await sendEmailViaMailerSend(email, subject, html);
     console.log(`✅ Final warning email sent successfully`);
-    
+
     return true;
   } catch (error) {
     console.error('Error sending final warning email:', error);
@@ -2067,7 +2059,7 @@ async function sendAdminTrialNotification(businessName: string, businessId: stri
   try {
     const adminEmail = 'admin@tradyng.com'; // Replace with actual admin email
     const subject = `⚠️ Free Trial Alert: ${businessName} ${daysRemaining === 0 ? 'EXPIRED' : `expires in ${daysRemaining} days`}`;
-    
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -2157,7 +2149,7 @@ async function deleteExpiredBusiness(businessId: string, ownerId: string) {
       .collection('products')
       .where('businessId', '==', businessId)
       .get();
-    
+
     console.log(`   Deleting ${productsSnapshot.size} products`);
     productsSnapshot.docs.forEach(doc => {
       batch.delete(doc.ref);
@@ -2168,7 +2160,7 @@ async function deleteExpiredBusiness(businessId: string, ownerId: string) {
       .collection('orders')
       .where('businessId', '==', businessId)
       .get();
-    
+
     console.log(`   Deleting ${ordersSnapshot.size} orders`);
     ordersSnapshot.docs.forEach(doc => {
       batch.delete(doc.ref);
@@ -2179,7 +2171,7 @@ async function deleteExpiredBusiness(businessId: string, ownerId: string) {
       .collection('customers')
       .where('businessId', '==', businessId)
       .get();
-    
+
     console.log(`   Deleting ${customersSnapshot.size} customers`);
     customersSnapshot.docs.forEach(doc => {
       batch.delete(doc.ref);
@@ -2190,7 +2182,7 @@ async function deleteExpiredBusiness(businessId: string, ownerId: string) {
       .collection('categories')
       .where('businessId', '==', businessId)
       .get();
-    
+
     console.log(`   Deleting ${categoriesSnapshot.size} categories`);
     categoriesSnapshot.docs.forEach(doc => {
       batch.delete(doc.ref);
@@ -2397,45 +2389,45 @@ export const sendTrialReminder = functions.https.onRequest(
     secrets: ['MAIL_SENDER_API_TOKEN']
   },
   async (req: Request, res: Response) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
+    // Set CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return;
-  }
-
-  try {
-    if (req.method !== 'POST') {
-      res.status(405).json({ error: 'Method not allowed, use POST' });
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
       return;
     }
 
-    const { businessId, customMessage } = req.body;
+    try {
+      if (req.method !== 'POST') {
+        res.status(405).json({ error: 'Method not allowed, use POST' });
+        return;
+      }
 
-    if (!businessId || !customMessage) {
-      res.status(400).json({ error: 'businessId and customMessage are required' });
-      return;
-    }
+      const { businessId, customMessage } = req.body;
 
-    // Get business details
-    const businessDoc = await admin.firestore().collection('businesses').doc(businessId).get();
-    if (!businessDoc.exists) {
-      res.status(404).json({ error: 'Business not found' });
-      return;
-    }
+      if (!businessId || !customMessage) {
+        res.status(400).json({ error: 'businessId and customMessage are required' });
+        return;
+      }
 
-    const business = businessDoc.data();
-    if (!business) {
-      res.status(404).json({ error: 'Business data not found' });
-      return;
-    }
+      // Get business details
+      const businessDoc = await admin.firestore().collection('businesses').doc(businessId).get();
+      if (!businessDoc.exists) {
+        res.status(404).json({ error: 'Business not found' });
+        return;
+      }
 
-    const subject = `📢 Important Message About Your ${business.name} Store`;
-    
-    const html = `
+      const business = businessDoc.data();
+      if (!business) {
+        res.status(404).json({ error: 'Business data not found' });
+        return;
+      }
+
+      const subject = `📢 Important Message About Your ${business.name} Store`;
+
+      const html = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -2484,25 +2476,25 @@ export const sendTrialReminder = functions.https.onRequest(
       </html>
     `;
 
-    await sendEmailViaMailerSend(business.email, subject, html);
+      await sendEmailViaMailerSend(business.email, subject, html);
 
-    // Log the reminder in Firestore
-    await admin.firestore().collection('adminReminders').add({
-      businessId,
-      businessName: business.name,
-      recipientEmail: business.email,
-      message: customMessage,
-      sentAt: admin.firestore.Timestamp.now()
-    });
+      // Log the reminder in Firestore
+      await admin.firestore().collection('adminReminders').add({
+        businessId,
+        businessName: business.name,
+        recipientEmail: business.email,
+        message: customMessage,
+        sentAt: admin.firestore.Timestamp.now()
+      });
 
-    console.log(`📧 Admin reminder sent to ${business.email} for business: ${business.name}`);
-    
-    res.json({ success: true, message: 'Reminder email sent successfully' });
-  } catch (error: any) {
-    console.error('Error sending trial reminder:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+      console.log(`📧 Admin reminder sent to ${business.email} for business: ${business.name}`);
+
+      res.json({ success: true, message: 'Reminder email sent successfully' });
+    } catch (error: any) {
+      console.error('Error sending trial reminder:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 // =======================
 // Admin: Delete Business Completely
@@ -2515,52 +2507,52 @@ export const adminDeleteBusiness = functions.https.onRequest(
     secrets: ['MAIL_SENDER_API_TOKEN']
   },
   async (req: Request, res: Response) => {
-  // Set CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
+    // Set CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return;
-  }
-
-  try {
-    if (req.method !== 'POST') {
-      res.status(405).json({ error: 'Method not allowed, use POST' });
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
       return;
     }
 
-    const { businessId } = req.body;
+    try {
+      if (req.method !== 'POST') {
+        res.status(405).json({ error: 'Method not allowed, use POST' });
+        return;
+      }
 
-    if (!businessId) {
-      res.status(400).json({ error: 'businessId is required' });
-      return;
+      const { businessId } = req.body;
+
+      if (!businessId) {
+        res.status(400).json({ error: 'businessId is required' });
+        return;
+      }
+
+      // Get business to find ownerId
+      const businessDoc = await admin.firestore().collection('businesses').doc(businessId).get();
+      if (!businessDoc.exists) {
+        res.status(404).json({ error: 'Business not found' });
+        return;
+      }
+
+      const business = businessDoc.data();
+      if (!business) {
+        res.status(404).json({ error: 'Business data not found' });
+        return;
+      }
+
+      console.log(`🗑️ Admin deleting business: ${business.name} (${businessId})`);
+
+      // Use the existing delete function
+      await deleteExpiredBusiness(businessId, business.ownerId);
+
+      console.log(`✅ Admin successfully deleted business: ${business.name}`);
+
+      res.json({ success: true, message: 'Business deleted successfully' });
+    } catch (error: any) {
+      console.error('Error in admin delete business:', error);
+      res.status(500).json({ error: error.message });
     }
-
-    // Get business to find ownerId
-    const businessDoc = await admin.firestore().collection('businesses').doc(businessId).get();
-    if (!businessDoc.exists) {
-      res.status(404).json({ error: 'Business not found' });
-      return;
-    }
-
-    const business = businessDoc.data();
-    if (!business) {
-      res.status(404).json({ error: 'Business data not found' });
-      return;
-    }
-
-    console.log(`🗑️ Admin deleting business: ${business.name} (${businessId})`);
-    
-    // Use the existing delete function
-    await deleteExpiredBusiness(businessId, business.ownerId);
-
-    console.log(`✅ Admin successfully deleted business: ${business.name}`);
-    
-    res.json({ success: true, message: 'Business deleted successfully' });
-  } catch (error: any) {
-    console.error('Error in admin delete business:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+  });
