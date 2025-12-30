@@ -32,6 +32,7 @@ import { Orders } from './pages/dashboard/Orders';
 import { Customers } from './pages/dashboard/Customers';
 import { Analytics } from './pages/dashboard/Analytics';
 import { Settings } from './pages/dashboard/Settings';
+import { Expenses } from './pages/dashboard/Expenses';
 
 // Storefront
 import { StorefrontLayout } from './pages/storefront/StorefrontLayout';
@@ -151,6 +152,7 @@ function App() {
                 <Route path="customers" element={<Customers />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="settings" element={<Settings />} />
+                <Route path="expenses" element={<Expenses />} />
               </Route>
 
               {/* Admin - Protected Admin Route */}

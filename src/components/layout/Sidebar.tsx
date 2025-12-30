@@ -7,8 +7,7 @@ import {
   BarChart3,
   Settings,
   Building2,
-  CreditCard,
-  Wallet,
+  Receipt,
   Crown,
   LogOut,
   X,
@@ -32,6 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
     { path: '/dashboard/orders', icon: ShoppingCart, label: 'Orders' },
     { path: '/dashboard/customers', icon: Users, label: 'Customers' },
     { path: '/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
+    { path: '/dashboard/expenses', icon: Receipt, label: 'Expenses' },
     { path: '/dashboard/settings', icon: Settings, label: 'Store Settings' },
   ];
 
