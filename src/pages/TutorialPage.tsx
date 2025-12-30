@@ -29,8 +29,6 @@ export const TutorialPage: React.FC = () => {
     const loadTutorials = async () => {
         try {
             setLoading(true);
-            // Fetching only titles and descriptions 
-            // (Note: videoUrl is stripped in the service or handled here if limited)
             const data = await TutorialService.getTutorials(selectedLanguage);
             setTutorials(data);
         } catch (error) {
@@ -44,7 +42,6 @@ export const TutorialPage: React.FC = () => {
     const handlePlayTutorial = async (tutorial: Tutorial) => {
         try {
             setFetchingVideo(true);
-            // Fetch the full tutorial details (including video URL) only on demand
             const fullTutorial = await TutorialService.getTutorialById(tutorial.id!);
             setPlayingTutorial(fullTutorial);
         } catch (error) {
@@ -170,9 +167,11 @@ export const TutorialPage: React.FC = () => {
                         </video>
                         <div className="bg-black/50 backdrop-blur-md p-4 flex items-center justify-between border-t border-white/5">
                             <h3 className="text-white font-bold text-lg">{playingTutorial.title}</h3>
-                            <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded uppercase">
-                                {playingTutorial.language}
-                            </span>
+                            <div className="flex items-center gap-3">
+                                <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded uppercase">
+                                    {playingTutorial.language}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -246,7 +245,7 @@ const PublicTutorialCard: React.FC<PublicTutorialCardProps> = ({ tutorial, onPla
                         variant="ghost"
                         size="sm"
                         onClick={onPlay}
-                        className="text-blue-600 hover:text-blue-800 font-bold group/btn"
+                        className="text-blue-600 hover:text-blue-800 font-bold group/btn ml-auto"
                     >
                         Watch Now
                         <ChevronRight className="ml-1 h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
