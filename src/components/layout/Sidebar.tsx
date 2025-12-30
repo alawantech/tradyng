@@ -12,7 +12,8 @@ import {
   Crown,
   LogOut,
   X,
-  LayoutDashboard
+  LayoutDashboard,
+  Video
 } from 'lucide-react';
 import { AuthService } from '../../services/auth';
 import toast from 'react-hot-toast';
@@ -42,8 +43,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ type = 'business', open = fals
 
 
     { path: '/admin/subscriptions', icon: Crown, label: 'Subscriptions' },
+    { path: '/admin/orders', icon: Receipt, label: 'All Orders' },
+    { path: '/admin/tutorials', icon: Video, label: 'Tutorials' },
     { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
-    { path: '/admin/settings', icon: Settings, label: 'Settings' },
+    { path: '/admin/settings', icon: Settings, label: 'System Settings' },
   ];
 
   const menuItems = type === 'admin' ? adminMenuItems : businessMenuItems;

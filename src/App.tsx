@@ -59,6 +59,7 @@ import { Subscriptions } from './pages/admin/Subscriptions';
 import { AdminAnalytics } from './pages/admin/AdminAnalytics';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminOrders } from './pages/admin/Orders';
+import { AdminTutorials } from './pages/admin/AdminTutorials';
 
 // Route Guards
 import { AdminRoute } from './components/guards/AdminRoute';
@@ -167,6 +168,7 @@ function App() {
                 <Route path="subscriptions" element={<Subscriptions />} />
                 <Route path="analytics" element={<AdminAnalytics />} />
                 <Route path="settings" element={<AdminSettings />} />
+                <Route path="tutorials" element={<AdminTutorials />} />
               </Route>
             </Routes>
           )}

@@ -275,5 +275,11 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
+    // Tutorials collection
+    match /tutorials/{tutorialId} {
+      // Admins can perform all operations, others (authenticated users) can only read
+      allow read: if isBusinessOwner(null) || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
   }
 }
