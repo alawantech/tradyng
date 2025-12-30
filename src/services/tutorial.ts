@@ -51,8 +51,9 @@ export class TutorialService {
                 order: data.order,
                 createdAt: data.createdAt,
                 updatedAt: data.updatedAt,
-                // videoUrl is specifically NOT included here
-                videoUrl: ''
+                videoUrl: data.videoUrl || '',
+                videoName: data.videoName || '',
+                videoType: data.videoType || ''
             } as Tutorial;
         });
 

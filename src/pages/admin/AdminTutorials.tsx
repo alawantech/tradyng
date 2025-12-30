@@ -292,7 +292,7 @@ const TutorialCard: React.FC<{ tutorial: Tutorial; onDelete: () => void }> = ({ 
                     <p className="text-xs text-gray-500 line-clamp-2 mt-1">{tutorial.description}</p>
                     <div className="flex items-center gap-3 mt-2">
                         <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                            {tutorial.videoType.split('/')[1]?.toUpperCase() || 'VIDEO'}
+                            {tutorial.videoType?.split('/')[1]?.toUpperCase() || 'VIDEO'}
                         </span>
                         <a
                             href={tutorial.videoUrl}
