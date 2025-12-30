@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Home, Star, ShoppingBag, DollarSign, LogIn, UserPlus, MessageCircle } from 'lucide-react';
+import { Menu, X, Home, Star, ShoppingBag, DollarSign, LogIn, MessageCircle, Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 export const Navbar: React.FC = () => {
@@ -83,33 +83,40 @@ export const Navbar: React.FC = () => {
               ))}
             </div>
 
-            {/* Desktop Auth Buttons */}
-            <div className="hidden md:flex items-center space-x-4">
-              <Link to="/auth/signin">
+            {/* Auth Buttons & Mobile Menu */}
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Desktop Only Sign In */}
+              <Link to="/auth/signin" className="hidden md:block">
                 <Button variant="ghost" className="font-medium">
                   Sign In
                 </Button>
               </Link>
+
+              {/* "Create Your Website" - Visible on mobile and desktop */}
               <Link to="/pricing">
-                <Button variant="primary" className="font-medium">
-                  Get Started
+                <Button
+                  variant="primary"
+                  className="btn-premium btn-shimmer btn-premium-glow font-bold whitespace-nowrap px-4 sm:px-6 text-sm sm:text-base group"
+                >
+                  <Sparkles className="h-4 w-4 mr-2 text-yellow-300 animate-pulse group-hover:rotate-12 transition-transform" />
+                  Create Your Website
                 </Button>
               </Link>
-            </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={toggleMobileMenu}
-              className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition-colors"
-              aria-expanded={isMobileMenuOpen}
-              aria-label="Toggle menu"
-            >
-              {isMobileMenuOpen ? (
-                <X className="block h-6 w-6" />
-              ) : (
-                <Menu className="block h-6 w-6" />
-              )}
-            </button>
+              {/* Mobile Menu Button */}
+              <button
+                onClick={toggleMobileMenu}
+                className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition-colors"
+                aria-expanded={isMobileMenuOpen}
+                aria-label="Toggle menu"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="block h-6 w-6" />
+                ) : (
+                  <Menu className="block h-6 w-6" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </nav>
@@ -164,15 +171,6 @@ export const Navbar: React.FC = () => {
               >
                 <LogIn className="h-5 w-5 mr-3" />
                 Sign In
-              </Button>
-            </Link>
-            <Link to="/pricing" className="block">
-              <Button
-                variant="primary"
-                className="w-full justify-start font-medium"
-              >
-                <UserPlus className="h-5 w-5 mr-3" />
-                Get Started
               </Button>
             </Link>
           </div>

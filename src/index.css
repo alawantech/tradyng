@@ -868,3 +868,68 @@ html {
     opacity: 0;
   }
 }
+
+/* Premium Button Styles */
+.btn-premium {
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+  background-size: 200% auto;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-premium:hover {
+  background-position: right center;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+  filter: brightness(1.1);
+}
+
+.btn-premium:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-shimmer::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 45%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0.1) 55%,
+    transparent 100%
+  );
+  transform: rotate(-45deg);
+  animation: shimmer-sweep 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    transform: translateX(-100%) rotate(-45deg);
+  }
+  20%, 100% {
+    transform: translateX(100%) rotate(-45deg);
+  }
+}
+
+.btn-premium-glow {
+  animation: premium-pulse 2s shadow-pulse infinite;
+}
+
+@keyframes premium-pulse {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 25px rgba(139, 92, 246, 0.6);
+  }
+}
