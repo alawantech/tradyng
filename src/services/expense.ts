@@ -18,9 +18,9 @@ export interface Expense {
     category: string;
     date: Timestamp;
     paymentMethod: string;
-    receiptUrl?: string;
-    receiptName?: string;
-    receiptType?: string;
+    receiptUrl?: string | null;
+    receiptName?: string | null;
+    receiptType?: string | null;
     createdAt: Timestamp;
     updatedAt: Timestamp;
 }

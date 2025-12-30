@@ -4,7 +4,7 @@ import {
     Trash2,
     Receipt,
     DollarSign,
-    Tag,
+    Pencil,
     X,
     Loader,
     Hash,
@@ -128,9 +128,9 @@ export const Expenses: React.FC = () => {
                 category: form.category.trim(),
                 date: Timestamp.fromDate(new Date(form.date)),
                 paymentMethod: form.paymentMethod,
-                receiptUrl: uploadedUrl,
-                receiptName: uploadedName,
-                receiptType: uploadedType
+                receiptUrl: uploadedUrl || null,
+                receiptName: uploadedName || null,
+                receiptType: uploadedType || null
             };
 
             if (editingExpense?.id) {
@@ -405,23 +405,29 @@ export const Expenses: React.FC = () => {
                                         )}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex justify-center gap-3">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-10 w-10 p-0 border border-gray-100 shadow-sm hover:border-gray-300"
-                                                onClick={() => handleEdit(expense)}
-                                            >
-                                                <Tag className="h-5 w-5 text-gray-400" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-10 w-10 p-0 hover:text-red-600 hover:bg-red-50 border border-gray-100 shadow-sm hover:border-red-200"
-                                                onClick={() => handleDelete(expense)}
-                                            >
-                                                <Trash2 className="h-5 w-5" />
-                                            </Button>
+                                        <div className="flex justify-center gap-4">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-10 w-10 p-0 border border-gray-100 shadow-sm hover:border-gray-300"
+                                                    onClick={() => handleEdit(expense)}
+                                                >
+                                                    <Pencil className="h-5 w-5 text-gray-400" />
+                                                </Button>
+                                                <span className="text-[10px] text-gray-400 font-medium">Edit</span>
+                                            </div>
+                                            <div className="flex flex-col items-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-10 w-10 p-0 hover:text-red-600 hover:bg-red-50 border border-gray-100 shadow-sm hover:border-red-200"
+                                                    onClick={() => handleDelete(expense)}
+                                                >
+                                                    <Trash2 className="h-5 w-5" />
+                                                </Button>
+                                                <span className="text-[10px] text-gray-400 font-medium">Delete</span>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>

@@ -115,6 +115,13 @@ service cloud.firestore {
         // Allow deletion by business owner, admin or if no auth context
         allow delete: if isBusinessOwner(businessId) || isAdmin() || request.auth == null;
       }
+
+      // Debts subcollection
+      match /debts/{debtId} {
+        // Only business owner or admin can read/write
+        allow read, create, update: if isBusinessOwner(businessId) || isAdmin();
+        allow delete: if isBusinessOwner(businessId) || isAdmin() || request.auth == null;
+      }
     }
     
     // Customer profiles (global collection) - OLD COLLECTION NAME
