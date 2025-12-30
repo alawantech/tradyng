@@ -21,7 +21,7 @@ import { ContactPage } from './pages/ContactPage';
 import { SignUp } from './pages/auth/SignUp';
 import { SignIn } from './pages/auth/SignIn';
 import { PaymentCallback } from './pages/auth/PaymentCallback';
-
+import { TutorialPage } from './pages/TutorialPage';
 import { TrialExpired } from './pages/TrialExpired';
 
 // Dashboard
@@ -131,6 +131,7 @@ function App() {
 
               <Route path="/features" element={<FeaturesPage />} />
               <Route path="/store-examples" element={<StoreExamples />} />
+              <Route path="/tutorials" element={<TutorialPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/demo/subdomains" element={<StoreSubdomainDemo />} />
               <Route path="/demo/test" element={<SubdomainTest />} />

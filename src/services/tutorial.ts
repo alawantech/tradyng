@@ -6,6 +6,7 @@ import {
     doc,
     updateDoc,
     deleteDoc,
+    getDoc,
     Timestamp
 } from 'firebase/firestore';
 import { FileUploadService } from './fileUpload';
@@ -38,10 +39,22 @@ export class TutorialService {
 
     static async getTutorials(language?: 'hausa' | 'english'): Promise<Tutorial[]> {
         const querySnapshot = await getDocs(this.tutorialsCollection);
-        let tutorials = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Tutorial));
+        let tutorials = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            // We omit the heavy videoUrl here to keep the initial fetch lightweight
+            // as per the requirement: "only fetch title and description"
+            return {
+                id: doc.id,
+                title: data.title,
+                description: data.description,
+                language: data.language,
+                order: data.order,
+                createdAt: data.createdAt,
+                updatedAt: data.updatedAt,
+                // videoUrl is specifically NOT included here
+                videoUrl: ''
+            } as Tutorial;
+        });
 
         if (language) {
             tutorials = tutorials.filter(t => t.language === language);
@@ -74,5 +87,14 @@ export class TutorialService {
         }
         const tutorialDoc = doc(db, 'tutorials', tutorialId);
         await deleteDoc(tutorialDoc);
+    }
+
+    static async getTutorialById(tutorialId: string): Promise<Tutorial> {
+        const tutorialDoc = doc(db, 'tutorials', tutorialId);
+        const snap = await getDoc(tutorialDoc);
+        return {
+            id: snap.id,
+            ...snap.data()
+        } as Tutorial;
     }
 }
