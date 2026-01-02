@@ -1231,7 +1231,7 @@ export const Settings: React.FC = () => {
                   { name: 'Moonstone', color: '#f9fafb', description: 'Mystical & Pure' },
                   { name: 'Coral Pink', color: '#fff2f1', description: 'Vibrant & Youthful' },
                   { name: 'Periwinkle', color: '#f0f4ff', description: 'Gentle & Peaceful' },
-                  { name: 'Soft Black', color: '#1c1c1e', description: 'Bold & Sophisticated' },
+
                   { name: 'Charcoal', color: '#2c2c2e', description: 'Modern & Sleek' },
                   { name: 'Deep Purple', color: '#1a1625', description: 'Mysterious & Elegant' },
                   { name: 'Navy Night', color: '#0f1419', description: 'Professional & Strong' },
