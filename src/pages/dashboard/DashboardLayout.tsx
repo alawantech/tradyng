@@ -12,37 +12,46 @@ export const DashboardLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { business, loading, user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+
+  // Determine current plan
+  const planId = business?.plan || 'business';
+  const paymentPlan = PRICING_PLANS.find(p => p.id === planId) || PRICING_PLANS.find(p => p.id === 'business');
 
   const handleCompletePayment = async () => {
     if (!business || !user) return;
 
     setIsProcessing(true);
     try {
-      // Find plan details - default to 'business' if currently set plan not found in pricing
-      // or assume business.plan matches a plan ID.
-      const paymentPlan = PRICING_PLANS.find(p => p.id === business.plan) || PRICING_PLANS.find(p => p.id === 'business');
-
       if (!paymentPlan) {
         throw new Error('Plan details not found');
       }
 
       const txRef = flutterwaveService.generateTxRef('PLAN_COMPLETION');
+      const amount = billingCycle === 'yearly' ? paymentPlan.yearlyPrice : paymentPlan.monthlyPrice;
 
       const paymentResult = await flutterwaveService.initializePayment({
-        amount: paymentPlan.yearlyPrice,
+        amount,
         currency: 'NGN',
         customerEmail: user.email || '',
         customerName: business.name,
         customerPhone: business.phone || '08000000000',
         txRef,
-        redirectUrl: `${window.location.origin}/payment/callback?upgrade=true`, // Using upgrade callback flow which handles status update now
+        redirectUrl: `${window.location.origin}/payment/callback?upgrade=true`,
         meta: {
           planId: paymentPlan.id,
           planName: paymentPlan.name,
           email: user.email || '',
           existingUser: true,
           userId: user.uid,
-          businessId: business.id
+          businessId: business.id,
+          billingCycle,
+          originalAmount: amount
+        },
+        customizations: {
+          title: 'Programmers College',
+          description: `Payment for ${paymentPlan.name} (${billingCycle})`,
+          logo: 'https://tradyng.com/logo.png'
         }
       });
 
@@ -92,6 +101,40 @@ export const DashboardLayout: React.FC = () => {
             <p className="text-gray-600 mb-6">
               Your account setup is incomplete. Please complete your payment to access your dashboard.
             </p>
+
+            {paymentPlan && (
+              <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+                <p className="font-semibold text-gray-900 mb-2">{paymentPlan.name} Plan</p>
+                <div className="flex bg-white p-1 rounded-lg border border-gray-200 mb-4">
+                  <button
+                    onClick={() => setBillingCycle('monthly')}
+                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${billingCycle === 'monthly'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900'
+                      }`}
+                  >
+                    Monthly (₦{paymentPlan.monthlyPrice.toLocaleString()})
+                  </button>
+                  <button
+                    onClick={() => setBillingCycle('yearly')}
+                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all relative ${billingCycle === 'yearly'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900'
+                      }`}
+                  >
+                    Yearly (₦{paymentPlan.yearlyPrice.toLocaleString()})
+                    <span className="absolute -top-2 -right-1 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm animate-pulse whitespace-nowrap z-10">
+                      Save ₦{(paymentPlan.monthlyPrice * 12 - paymentPlan.yearlyPrice).toLocaleString()}
+                    </span>
+                  </button>
+                </div>
+                <p className="text-sm text-gray-500 text-center">
+                  Total to pay: <span className="font-bold text-gray-900">
+                    ₦{(billingCycle === 'monthly' ? paymentPlan.monthlyPrice : paymentPlan.yearlyPrice).toLocaleString()}
+                  </span>
+                </p>
+              </div>
+            )}
 
             <button
               onClick={handleCompletePayment}

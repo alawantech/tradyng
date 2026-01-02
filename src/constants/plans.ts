@@ -65,18 +65,18 @@ export const validatePlanLimit = (
 ): { isValid: boolean; limit: number; message?: string } => {
   const limits = getPlanLimits(plan);
   const limit = limits[type] as number;
-  
+
   if (limit === -1) {
     return { isValid: true, limit: -1 }; // Unlimited
   }
-  
+
   const isValid = currentValue <= limit;
-  
+
   return {
     isValid,
     limit,
-    message: isValid 
-      ? undefined 
+    message: isValid
+      ? undefined
       : `Your ${plan} plan allows up to ${limit} ${type.replace(/([A-Z])/g, ' $1').toLowerCase()}`
   };
 };
@@ -97,8 +97,8 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'business',
     name: 'Business',
-    monthlyPrice: 0, // Not used for yearly plans
-    yearlyPrice: 16000,
+    monthlyPrice: 2900,
+    yearlyPrice: 29000,
     isPopular: true,
     description: 'Most popular for growing businesses',
     features: [
@@ -119,8 +119,8 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'pro',
     name: 'Pro',
-    monthlyPrice: 0, // Not used for yearly plans
-    yearlyPrice: 32000,
+    monthlyPrice: 5900,
+    yearlyPrice: 64900,
     isPopular: false,
     description: 'For established businesses',
     features: [

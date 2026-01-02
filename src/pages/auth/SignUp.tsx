@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ArrowLeft, Check, Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Eye, EyeOff, Mail, Lock, Sparkles } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -47,7 +47,7 @@ const steps = [
 
 export const SignUp: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [countries, setCountries] = useState<Country[]>([]);
@@ -93,6 +93,8 @@ export const SignUp: React.FC = () => {
 
   // Plan selection from URL params
   const selectedPlanId = searchParams.get('plan') || 'free';
+  const billingCycle = (searchParams.get('billing') as 'monthly' | 'yearly') || 'monthly';
+  // Removed local billingCycle state to use URL as source of truth
   const selectedPlan = PRICING_PLANS.find(p => p.id === selectedPlanId) || PRICING_PLANS[0];
 
   // Load countries on component mount
@@ -502,7 +504,7 @@ export const SignUp: React.FC = () => {
       }
 
       // Calculate final amount
-      const finalAmount = paymentPlan.yearlyPrice;
+      const finalAmount = billingCycle === 'yearly' ? paymentPlan.yearlyPrice : paymentPlan.monthlyPrice;
 
       // Check if Flutterwave is configured
       if (!flutterwaveService.isConfigured()) {
@@ -552,7 +554,8 @@ export const SignUp: React.FC = () => {
           businessId: business.id,
           customerName: customerName,
           customerPhone: customerPhone,
-          originalAmount: paymentPlan.yearlyPrice,
+          originalAmount: billingCycle === 'yearly' ? paymentPlan.yearlyPrice : paymentPlan.monthlyPrice,
+          billingCycle: billingCycle,
           discountAmount: 0,
           couponCode: null
         }
@@ -630,14 +633,16 @@ export const SignUp: React.FC = () => {
 
       // Default to business plan if no valid paid plan is selected
       let paymentPlan = selectedPlan;
-      if (!paymentPlan || !paymentPlan.yearlyPrice || paymentPlan.yearlyPrice === 0) {
+      // Trust the selected plan if it has an ID that isn't 'free' and exists in PRICING_PLANS
+      // This allows test plans with low prices to work correctly
+      if (!paymentPlan || paymentPlan.id === 'free') {
         paymentPlan = PRICING_PLANS.find(plan => plan.id === 'business')!;
       }
 
       console.log('📋 Payment plan:', paymentPlan.id, 'Price:', paymentPlan.yearlyPrice);
 
       // Calculate final amount
-      const finalAmount = paymentPlan.yearlyPrice;
+      const finalAmount = billingCycle === 'yearly' ? paymentPlan.yearlyPrice : paymentPlan.monthlyPrice;
       console.log('💰 Final amount:', finalAmount);
 
       // Check if Flutterwave is configured
@@ -697,7 +702,8 @@ export const SignUp: React.FC = () => {
           businessId: business.id,
           customerName: customerName,
           customerPhone: customerPhone,
-          originalAmount: paymentPlan.yearlyPrice,
+          originalAmount: billingCycle === 'yearly' ? paymentPlan.yearlyPrice : paymentPlan.monthlyPrice,
+          billingCycle: billingCycle,
           discountAmount: 0,
           couponCode: null
         }
@@ -1282,7 +1288,7 @@ export const SignUp: React.FC = () => {
         </div>
 
         {/* Progress Indicators */}
-        <div className="flex justify-center space-x-2 mb-8">
+        <div className="flex justify-center space-x-2 mb-6">
           {steps.map((step) => (
             <div
               key={step.id}
@@ -1291,6 +1297,72 @@ export const SignUp: React.FC = () => {
             />
           ))}
         </div>
+
+        {/* Selected Plan Summary */}
+        {selectedPlan && selectedPlan.id !== 'free' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 p-4 bg-blue-900/40 border border-blue-500/30 rounded-2xl backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500 rounded-lg">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold">{selectedPlan.name} Plan</h3>
+                  <p className="text-blue-300 text-xs">Selected billing cycle</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-white font-bold text-lg">
+                  ₦{(billingCycle === 'monthly' ? selectedPlan.monthlyPrice : selectedPlan.yearlyPrice).toLocaleString()}
+                </p>
+                <p className="text-blue-300 text-xs">per {billingCycle === 'monthly' ? 'month' : 'year'}</p>
+              </div>
+            </div>
+
+            <div className="flex p-1 bg-gray-900/50 rounded-xl">
+              <button
+                onClick={() => {
+                  setSearchParams(prev => {
+                    prev.set('billing', 'monthly');
+                    return prev;
+                  });
+                }}
+                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${billingCycle === 'monthly'
+                  ? 'bg-blue-500 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+                  }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => {
+                  setSearchParams(prev => {
+                    prev.set('billing', 'yearly');
+                    return prev;
+                  });
+                }}
+                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all relative ${billingCycle === 'yearly'
+                  ? 'bg-blue-500 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+                  }`}
+              >
+                Yearly
+                <span className="absolute -top-2 -right-1 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                  Save ₦{(selectedPlan.monthlyPrice * 12 - selectedPlan.yearlyPrice).toLocaleString()}
+                </span>
+              </button>
+            </div>
+            {billingCycle === 'monthly' && (
+              <p className="mt-3 text-[11px] text-center text-blue-200 font-medium">
+                🎁 Upgrade to yearly later to save big!
+              </p>
+            )}
+          </motion.div>
+        )}
 
         {/* Main Card */}
         <div className="bg-gray-800 rounded-2xl shadow-2xl p-6">

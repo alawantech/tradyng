@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Save, Upload, Globe, Palette, Bell, Store, ExternalLink, Check, AlertCircle, Loader } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -7,11 +8,16 @@ import { useAuth } from '../../hooks/useAuth';
 import { BusinessService } from '../../services/business';
 import { CustomDomainService } from '../../services/customDomain';
 import { CURRENCIES, DEFAULT_CURRENCY, getDefaultCurrencyForCountry } from '../../constants/currencies';
+import { PRICING_PLANS } from '../../constants/plans';
+import { flutterwaveService } from '../../services/flutterwaveService';
 import toast from 'react-hot-toast';
 
 export const Settings: React.FC = () => {
   const { user, business, loading: authLoading } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [selectedBillingCycle, setSelectedBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [checkingSubdomain, setCheckingSubdomain] = useState(false);
   const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null);
   const [originalSubdomain, setOriginalSubdomain] = useState('');
@@ -37,6 +43,22 @@ export const Settings: React.FC = () => {
     heroBannerImage: '' // Hero banner image
   });
   const [logoUpdated, setLogoUpdated] = useState(false); // Track if logo has been explicitly updated
+  const [searchParams] = useSearchParams();
+
+  // Check for upgrade params in URL
+  useEffect(() => {
+    const planParam = searchParams.get('plan');
+    const billingParam = searchParams.get('billing');
+
+    if (planParam && (billingParam === 'monthly' || billingParam === 'yearly')) {
+      setSelectedBillingCycle(billingParam as 'monthly' | 'yearly');
+      setShowUpgradeModal(true);
+
+      // Optional: Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
 
   // Check subdomain availability
   const checkSubdomainAvailability = async (subdomain: string) => {
@@ -118,7 +140,7 @@ export const Settings: React.FC = () => {
   useEffect(() => {
     console.log('🔍 Settings useEffect triggered');
     console.log('📊 Raw business object:', business);
-    
+
     if (business) {
       console.log('📊 Loading business data from Firebase:', {
         id: business.id,
@@ -129,9 +151,9 @@ export const Settings: React.FC = () => {
         country: business.country,
         state: business.state
       });
-      
+
       const defaultDescription = `Discover amazing products from ${business.name}. Quality guaranteed, fast shipping.`;
-      
+
       const newStoreData = {
         storeName: business.name || '',
         subdomain: business.subdomain || '', // ← Loading actual subdomain
@@ -146,7 +168,7 @@ export const Settings: React.FC = () => {
         accountName: business.bankDetails?.accountName || '',
         accountNumber: business.bankDetails?.accountNumber || ''
       };
-      
+
       console.log('📝 Setting store data:', newStoreData);
       setStoreData(newStoreData);
       setOriginalSubdomain(business.subdomain || ''); // Store original subdomain
@@ -158,10 +180,10 @@ export const Settings: React.FC = () => {
         heroStyle: business.branding?.heroStyle || 'modern', // Changed to modern (Modern Black)
         heroBannerImage: business.branding?.heroBannerImage || ''
       };
-      
+
       console.log('🎨 Setting branding data:', newBrandingSettings);
       setBrandingSettings(newBrandingSettings);
-      
+
       console.log('🌐 Store URL will be:', business.subdomain ? `${business.subdomain}.rady.ng` : 'No subdomain available');
     } else {
       console.log('❌ No business data available');
@@ -171,54 +193,54 @@ export const Settings: React.FC = () => {
   // Validate WhatsApp number format (same validation as signup)
   const validateWhatsAppNumber = (number: string) => {
     if (!number) return { isValid: true, error: '' };
-    
+
     const cleanNumber = number.replace(/[\s\-\(\)\+]/g, '');
-    
+
     if (!/^\d+$/.test(cleanNumber)) {
       return { isValid: false, error: 'Number should contain only digits' };
     }
-    
+
     if (cleanNumber.length < 8) {
       return { isValid: false, error: 'Number is too short. Include country code (e.g., 234)' };
     }
-    
+
     if (cleanNumber.length > 15) {
       return { isValid: false, error: 'Number is too long. Check the format' };
     }
-    
+
     if (number.startsWith('+')) {
       return { isValid: false, error: 'Remove the + sign. Just use the country code (e.g., 234)' };
     }
-    
+
     if (cleanNumber.startsWith('0') && cleanNumber.length <= 11) {
       return { isValid: false, error: 'Include country code. For Nigeria, use 234 instead of 0' };
     }
-    
+
     return { isValid: true, error: '' };
   };
 
   // Validate subdomain format
   const validateSubdomain = (subdomain: string) => {
     if (!subdomain) return { isValid: true, error: '' };
-    
+
     const subdomainRegex = /^[a-z0-9-]+$/;
-    
+
     if (!subdomainRegex.test(subdomain)) {
       return { isValid: false, error: 'Only lowercase letters, numbers, and hyphens allowed' };
     }
-    
+
     if (subdomain.length < 3) {
       return { isValid: false, error: 'Must be at least 3 characters long' };
     }
-    
+
     if (subdomain.length > 30) {
       return { isValid: false, error: 'Must be 30 characters or less' };
     }
-    
+
     if (subdomain.startsWith('-') || subdomain.endsWith('-')) {
       return { isValid: false, error: 'Cannot start or end with a hyphen' };
     }
-    
+
     return { isValid: true, error: '' };
   };
 
@@ -230,7 +252,7 @@ export const Settings: React.FC = () => {
 
     try {
       console.log('🆕 Creating missing business for user:', user.uid);
-      
+
       const businessId = await BusinessService.createBusiness({
         name: user.displayName || 'My Store',
         subdomain: user.displayName?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'my-store',
@@ -260,7 +282,7 @@ export const Settings: React.FC = () => {
 
       console.log('✅ Business created with ID:', businessId);
       toast.success('Business created! Refreshing page...');
-      
+
       // Refresh page to reload business data
       setTimeout(() => {
         window.location.reload();
@@ -269,6 +291,63 @@ export const Settings: React.FC = () => {
     } catch (error) {
       console.error('❌ Error creating business:', error);
       toast.error('Failed to create business. Please try again.');
+    }
+  };
+
+  const handlePlanUpgrade = async (planId: string) => {
+    if (!user || !business) return;
+
+    // Find plan details
+    const selectedPlan = PRICING_PLANS.find(p => p.id === planId);
+    if (!selectedPlan) {
+      toast.error('Invalid plan selected');
+      return;
+    }
+
+    setUpgrading(true);
+    try {
+      // Calculate amount based on billing cycle
+      const amount = selectedBillingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice;
+      const txRef = flutterwaveService.generateTxRef('UPGRADE');
+
+      console.log(`🚀 Initiating upgrade to ${selectedPlan.name} (${selectedBillingCycle})`);
+
+      const paymentResult = await flutterwaveService.initializePayment({
+        amount,
+        currency: 'NGN',
+        customerEmail: user.email || '',
+        customerName: business.name,
+        customerPhone: business.phone || '08000000000',
+        txRef,
+        redirectUrl: `${window.location.origin}/payment/callback?upgrade=true`,
+        meta: {
+          planId: selectedPlan.id,
+          planName: selectedPlan.name,
+          email: user.email || '',
+          existingUser: true,
+          userId: user.uid,
+          businessId: business.id,
+          billingCycle: selectedBillingCycle,
+          originalAmount: amount
+        },
+        customizations: {
+          title: 'Programmers College',
+          description: `Upgrade to ${selectedPlan.name} Plan`,
+          logo: 'https://tradyng.com/logo.png'
+        }
+      });
+
+      if (paymentResult.status === 'success' && paymentResult.data?.data?.link) {
+        window.location.href = paymentResult.data.data.link;
+      } else {
+        throw new Error('Failed to generate payment link');
+      }
+
+    } catch (error: any) {
+      console.error('❌ Upgrade failed:', error);
+      toast.error(error.message || 'Failed to initialize payment');
+    } finally {
+      setUpgrading(false);
     }
   };
 
@@ -293,11 +372,11 @@ export const Settings: React.FC = () => {
 
     try {
       setSaving(true);
-      
+
       // Check subdomain availability if it changed
       if (storeData.subdomain !== originalSubdomain) {
         console.log('🔍 Verifying subdomain availability before saving:', storeData.subdomain);
-        
+
         // Double-check availability before saving
         const existingBusiness = await BusinessService.getBusinessBySubdomain(storeData.subdomain);
         if (existingBusiness && existingBusiness.id !== business.id) {
@@ -305,11 +384,11 @@ export const Settings: React.FC = () => {
           setSubdomainAvailable(false);
           return;
         }
-        
+
         console.log('✅ Subdomain confirmed available');
         toast.success('Subdomain updated successfully!');
       }
-      
+
       console.log('💾 Saving business data:', {
         subdomain: storeData.subdomain,
         storeName: storeData.storeName,
@@ -318,13 +397,13 @@ export const Settings: React.FC = () => {
         logoSize: brandingSettings.logo ? brandingSettings.logo.length : 0,
         logoUpdated: logoUpdated
       });
-      
+
       // Check logo size (Firebase has document size limits)
       if (brandingSettings.logo && brandingSettings.logo.length > 1048576) { // 1MB limit
         toast.error('Logo file is too large. Please use an image smaller than 1MB.');
         return;
       }
-      
+
       // Prepare update data with proper validation
       const updateData: any = {
         name: storeData.storeName,
@@ -358,15 +437,15 @@ export const Settings: React.FC = () => {
       // Only include logo if it's been explicitly updated and valid
       if (logoUpdated && brandingSettings.logo) {
         // Strict validation for logo data
-        if (typeof brandingSettings.logo === 'string' && 
-            brandingSettings.logo.startsWith('data:image/') &&
-            brandingSettings.logo.length > 100) { // Must have actual data
-          
+        if (typeof brandingSettings.logo === 'string' &&
+          brandingSettings.logo.startsWith('data:image/') &&
+          brandingSettings.logo.length > 100) { // Must have actual data
+
           // Check size - Firebase has strict limits
           if (brandingSettings.logo.length > 800000) { // 800KB limit for safety
             throw new Error('Logo file is too large. Please compress the image further.');
           }
-          
+
           console.log('✅ Valid logo detected, including in update');
           updateData.logo = brandingSettings.logo;
         } else {
@@ -392,11 +471,11 @@ export const Settings: React.FC = () => {
       setOriginalSubdomain(storeData.subdomain);
       setSubdomainAvailable(null);
       setLogoUpdated(false); // Reset logo updated flag
-      
+
       toast.success('Settings saved successfully!');
     } catch (error: any) {
       console.error('❌ Error saving settings:', error);
-      
+
       // Provide specific error messages based on error type
       if (error.code === 'permission-denied') {
         toast.error('Permission denied. Please sign in again and try.');
@@ -433,13 +512,13 @@ export const Settings: React.FC = () => {
           toast.error('Please select an image file (PNG, JPG, GIF, etc.)');
           return;
         }
-        
+
         // Check file size (max 2MB)
         if (file.size > 2 * 1024 * 1024) {
           toast.error('Image size should be less than 2MB. Please compress your image.');
           return;
         }
-        
+
         // Create preview URL and compress
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -449,13 +528,13 @@ export const Settings: React.FC = () => {
             // Create canvas for compression
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            
+
             // Set max dimensions
             const MAX_WIDTH = 512;
             const MAX_HEIGHT = 512;
-            
+
             let { width, height } = img;
-            
+
             // Calculate new dimensions
             if (width > height) {
               if (width > MAX_WIDTH) {
@@ -468,36 +547,36 @@ export const Settings: React.FC = () => {
                 height = MAX_HEIGHT;
               }
             }
-            
+
             canvas.width = width;
             canvas.height = height;
-            
+
             // Draw and compress
             if (ctx) {
               ctx.drawImage(img, 0, 0, width, height);
-              
+
               // Convert to base64 with compression
               const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-              console.log('🗜️ Image compressed:', { 
-                originalSize: file.size, 
+              console.log('🗜️ Image compressed:', {
+                originalSize: file.size,
                 compressedSize: compressedDataUrl.length,
                 compression: ((file.size - compressedDataUrl.length) / file.size * 100).toFixed(1) + '%'
               });
-              
+
               // Check final size (Firebase limit is ~1MB per field)
               if (compressedDataUrl.length > 800000) { // 800KB limit
                 console.error('❌ Compressed image still too large:', compressedDataUrl.length);
                 toast.error('Image is still too large after compression. Please use a smaller image.');
                 return;
               }
-              
+
               console.log('✅ Setting new logo in branding settings');
               setBrandingSettings({
                 ...brandingSettings,
                 logo: compressedDataUrl
               });
               setLogoUpdated(true); // Mark logo as explicitly updated
-              
+
               toast.success('Logo uploaded and optimized successfully! Don\'t forget to save your settings.');
             }
           };
@@ -511,27 +590,27 @@ export const Settings: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    
+
     // Handle country change - suggest appropriate currency
     if (name === 'country') {
       const suggestedCurrency = getDefaultCurrencyForCountry(value);
       const currentCurrency = storeData.currency;
-      
+
       console.log(`🌍 Country changed to: ${value}`);
       console.log(`💰 Suggested currency: ${suggestedCurrency}`);
       console.log(`💰 Current currency: ${currentCurrency}`);
-      
+
       // Update the country
       setStoreData({
         ...storeData,
         [name]: value
       });
-      
+
       // Show currency suggestion if it's different from current
       if (suggestedCurrency !== currentCurrency) {
         const suggestedCurrencyInfo = CURRENCIES.find(c => c.code === suggestedCurrency);
         const currentCurrencyInfo = CURRENCIES.find(c => c.code === currentCurrency);
-        
+
         // Create a toast notification suggesting the currency change
         toast((t) => (
           <div className="flex flex-col space-y-2">
@@ -547,7 +626,7 @@ export const Settings: React.FC = () => {
             <div className="flex space-x-2 mt-2">
               <button
                 onClick={() => {
-                  setStoreData(prev => ({...prev, currency: suggestedCurrency}));
+                  setStoreData(prev => ({ ...prev, currency: suggestedCurrency }));
                   toast.dismiss(t.id);
                   toast.success(`Currency updated to ${suggestedCurrencyInfo?.name || suggestedCurrency}!`);
                 }}
@@ -601,22 +680,22 @@ export const Settings: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h1>
             <p className="text-gray-600 mb-6">Please sign in to access your store settings</p>
           </div>
-          
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-md mx-auto">
             <h3 className="text-lg font-semibold text-blue-900 mb-4">Sign In to Your Account</h3>
             <p className="text-blue-700 mb-4">
               It looks like you're not signed in. Please sign in with your email and password to access your store settings.
             </p>
-            
+
             <div className="space-y-3">
-              <Button 
+              <Button
                 onClick={() => window.location.href = '/auth/signin'}
                 className="w-full btn-primary"
               >
                 🔐 Sign In
               </Button>
-              
-              <Button 
+
+              <Button
                 onClick={() => window.location.href = '/auth/signup'}
                 variant="outline"
                 className="w-full"
@@ -624,7 +703,7 @@ export const Settings: React.FC = () => {
                 📝 Create Account
               </Button>
             </div>
-            
+
             <div className="mt-4 text-sm theme-primary-text">
               <p className="font-medium">Have an account but can't access it?</p>
               <p>Use the email: <code className="bg-blue-100 px-1 rounded">nn@gmail.com</code></p>
@@ -642,35 +721,35 @@ export const Settings: React.FC = () => {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Store Settings</h1>
           <p className="text-red-600">⚠️ No business data found.</p>
-          
+
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
             <h3 className="text-sm font-medium text-red-800">Troubleshooting Steps:</h3>
             <div className="text-sm text-red-700 mt-2 space-y-2">
               <div>1. Check browser console for detailed error messages</div>
               <div>2. Make sure you completed the full registration process</div>
               <div>3. Try refreshing the page or signing out and back in</div>
-              
+
               <div className="mt-4">
-                <Button 
-                  onClick={() => window.location.reload()} 
-                  variant="outline" 
+                <Button
+                  onClick={() => window.location.reload()}
+                  variant="outline"
                   className="mr-2"
                 >
                   🔄 Refresh Page
                 </Button>
-                <Button 
+                <Button
                   onClick={() => {
                     console.log('🔍 Current auth state:', { user, business, loading: authLoading });
                     // Force re-fetch business data
                     window.location.href = '/dashboard';
-                  }} 
+                  }}
                   variant="outline"
                   className="mr-2"
                 >
                   🏠 Go to Dashboard
                 </Button>
-                <Button 
-                  onClick={createMissingBusiness} 
+                <Button
+                  onClick={createMissingBusiness}
                   className="btn-primary"
                 >
                   🏪 Create Business Account
@@ -697,7 +776,7 @@ export const Settings: React.FC = () => {
             <Globe className="h-5 w-5 mr-2" />
             Store Information
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
               label="Store Name"
@@ -705,7 +784,7 @@ export const Settings: React.FC = () => {
               value={storeData.storeName}
               onChange={handleChange}
             />
-            
+
             <div>
               <Input
                 label="Subdomain"
@@ -713,17 +792,16 @@ export const Settings: React.FC = () => {
                 value={storeData.subdomain}
                 onChange={handleChange}
                 placeholder="your-store-name"
-                className={`${
-                  storeData.subdomain && !subdomainValidation.isValid
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : storeData.subdomain && subdomainAvailable === true
+                className={`${storeData.subdomain && !subdomainValidation.isValid
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                  : storeData.subdomain && subdomainAvailable === true
                     ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
                     : storeData.subdomain && subdomainAvailable === false
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                }`}
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                  }`}
               />
-              
+
               {/* Subdomain Status */}
               <div className="mt-2 space-y-2">
                 {/* Format Validation */}
@@ -733,7 +811,7 @@ export const Settings: React.FC = () => {
                     <p className="text-sm">{subdomainValidation.error}</p>
                   </div>
                 )}
-                
+
                 {/* Availability Check */}
                 {storeData.subdomain && subdomainValidation.isValid && storeData.subdomain !== originalSubdomain && (
                   <div className="flex items-center space-x-2">
@@ -755,7 +833,7 @@ export const Settings: React.FC = () => {
                     ) : null}
                   </div>
                 )}
-                
+
                 {/* Current subdomain message */}
                 {storeData.subdomain === originalSubdomain && originalSubdomain && (
                   <div className="flex items-center space-x-2 theme-primary-text">
@@ -763,7 +841,7 @@ export const Settings: React.FC = () => {
                     <p className="text-sm">This is your current subdomain</p>
                   </div>
                 )}
-                
+
                 {/* Format Help */}
                 {(!storeData.subdomain || subdomainValidation.isValid) && (
                   <p className="text-gray-500 text-xs">
@@ -771,7 +849,7 @@ export const Settings: React.FC = () => {
                   </p>
                 )}
               </div>
-              
+
               {/* Store URL Preview */}
               <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
                 <div className="flex items-center justify-between">
@@ -795,7 +873,7 @@ export const Settings: React.FC = () => {
                   </div>
                   <Globe className="h-8 w-8 text-blue-500" />
                 </div>
-                
+
                 {storeData.subdomain !== originalSubdomain && storeData.subdomain && subdomainAvailable === true && (
                   <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
                     <p className="text-sm text-green-700 font-medium">🎉 New URL Ready!</p>
@@ -806,7 +884,7 @@ export const Settings: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             <div>
               <Input
                 label="Custom Domain (Optional)"
@@ -826,9 +904,9 @@ export const Settings: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             <div></div> {/* Empty div for grid spacing */}
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 WhatsApp Number
@@ -839,11 +917,10 @@ export const Settings: React.FC = () => {
                 value={storeData.whatsappNumber}
                 onChange={handleChange}
                 placeholder="2348000000000"
-                className={`${
-                  storeData.whatsappNumber && !whatsappValidation.isValid
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                }`}
+                className={`${storeData.whatsappNumber && !whatsappValidation.isValid
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                  }`}
               />
               {storeData.whatsappNumber && !whatsappValidation.isValid ? (
                 <p className="text-red-500 text-xs mt-1">
@@ -860,9 +937,9 @@ export const Settings: React.FC = () => {
                 </p>
               )}
             </div>
-            
+
             <div></div> {/* Empty div for grid spacing */}
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Country
@@ -880,7 +957,7 @@ export const Settings: React.FC = () => {
                 ))}
               </select>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 State/Province
@@ -909,7 +986,7 @@ export const Settings: React.FC = () => {
               )}
             </div>
           </div>
-          
+
           {/* Currency Selection */}
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -931,14 +1008,14 @@ export const Settings: React.FC = () => {
                 );
               })}
             </select>
-            
+
             {/* Currency recommendation info */}
             {(() => {
               const recommendedCurrency = getDefaultCurrencyForCountry(storeData.country);
               const isUsingRecommended = storeData.currency === recommendedCurrency;
               const recommendedCurrencyInfo = CURRENCIES.find(c => c.code === recommendedCurrency);
               const currentCurrencyInfo = CURRENCIES.find(c => c.code === storeData.currency);
-              
+
               return (
                 <div className="mt-2">
                   {isUsingRecommended ? (
@@ -957,7 +1034,7 @@ export const Settings: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          setStoreData(prev => ({...prev, currency: recommendedCurrency}));
+                          setStoreData(prev => ({ ...prev, currency: recommendedCurrency }));
                           toast.success(`Currency updated to ${recommendedCurrencyInfo?.name || recommendedCurrency}!`);
                         }}
                         className="text-blue-600 hover:text-blue-800 text-sm underline"
@@ -969,20 +1046,20 @@ export const Settings: React.FC = () => {
                 </div>
               );
             })()}
-            
+
             <p className="text-xs text-gray-500 mt-2">
               This currency will be used for all product prices and transactions in your store.
               You can always change this later, but remember that currency and country can be different.
             </p>
           </div>
-          
+
           {/* Bank Details Section */}
           <div className="mt-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Account Details</h3>
             <p className="text-sm text-gray-600 mb-4">
               This is where customers will send payment for their orders. Make sure this information is correct.
             </p>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -997,7 +1074,7 @@ export const Settings: React.FC = () => {
                   className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Account Number *
@@ -1015,7 +1092,7 @@ export const Settings: React.FC = () => {
                   className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
-              
+
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Account Name *
@@ -1034,7 +1111,7 @@ export const Settings: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-4 p-4 bg-green-50 rounded-lg">
             <h3 className="text-sm font-medium text-green-900 mb-2">Customer Contact:</h3>
             <div className="text-sm text-green-700 space-y-1">
@@ -1045,7 +1122,7 @@ export const Settings: React.FC = () => {
               <p className="text-xs mt-1">Customers will use this information to contact you about orders and support</p>
             </div>
           </div>
-          
+
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Store Description
@@ -1065,7 +1142,7 @@ export const Settings: React.FC = () => {
               Recommended: Include your store name, product quality, and shipping information
             </p>
           </div>
-          
+
           <div className="mt-6">
             <Input
               label="Street Address (Optional)"
@@ -1091,7 +1168,7 @@ export const Settings: React.FC = () => {
               </span>
             )}
           </h2>
-          
+
           <div className="space-y-8">
             {/* Store Logo */}
             <div>
@@ -1126,7 +1203,7 @@ export const Settings: React.FC = () => {
               <p className="text-sm text-gray-600 mb-4">
                 Choose a professional background color for your entire storefront
               </p>
-              
+
               {/* Beautiful Color Palette */}
               <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 mb-4">
                 {[
@@ -1162,12 +1239,11 @@ export const Settings: React.FC = () => {
                 ].map((colorOption) => (
                   <div key={colorOption.color} className="text-center">
                     <button
-                      onClick={() => setBrandingSettings({...brandingSettings, storeBackgroundColor: colorOption.color})}
-                      className={`w-12 h-12 rounded-lg border-2 transition-all duration-200 hover:scale-110 ${
-                        brandingSettings.storeBackgroundColor === colorOption.color 
-                          ? 'border-blue-500 ring-2 ring-blue-200' 
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
+                      onClick={() => setBrandingSettings({ ...brandingSettings, storeBackgroundColor: colorOption.color })}
+                      className={`w-12 h-12 rounded-lg border-2 transition-all duration-200 hover:scale-110 ${brandingSettings.storeBackgroundColor === colorOption.color
+                        ? 'border-blue-500 ring-2 ring-blue-200'
+                        : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       style={{ backgroundColor: colorOption.color }}
                       title={`${colorOption.name} - ${colorOption.description}`}
                     />
@@ -1175,11 +1251,11 @@ export const Settings: React.FC = () => {
                   </div>
                 ))}
               </div>
-              
+
               {/* Current Selection Display */}
               <div className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center space-x-3">
-                  <div 
+                  <div
                     className="w-8 h-8 rounded-md border-2 border-white shadow-sm"
                     style={{ backgroundColor: brandingSettings.storeBackgroundColor }}
                   />
@@ -1199,7 +1275,7 @@ export const Settings: React.FC = () => {
               <p className="text-sm text-gray-600 mb-4">
                 Customize how your hero banner appears to customers
               </p>
-              
+
               {/* Hero Style Options */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
@@ -1278,26 +1354,25 @@ export const Settings: React.FC = () => {
                 ].map((style) => (
                   <div key={style.id} className="relative">
                     <button
-                      onClick={() => setBrandingSettings({...brandingSettings, heroStyle: style.id})}
-                      className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
-                        brandingSettings.heroStyle === style.id
-                          ? 'border-blue-500 ring-2 ring-blue-200'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      onClick={() => setBrandingSettings({ ...brandingSettings, heroStyle: style.id })}
+                      className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${brandingSettings.heroStyle === style.id
+                        ? 'border-blue-500 ring-2 ring-blue-200'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
                     >
                       {/* Mini Preview */}
-                      <div 
+                      <div
                         className="w-full h-20 rounded-md mb-3 flex items-center justify-center"
                         style={{ background: style.preview }}
                       >
                         <div className="text-white text-xs font-medium">Hero Preview</div>
                       </div>
-                      
+
                       <div className="text-left">
                         <h3 className="font-medium text-gray-900">{style.name}</h3>
                         <p className="text-sm text-gray-600">{style.description}</p>
                       </div>
-                      
+
                       {brandingSettings.heroStyle === style.id && (
                         <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-1">
                           <Check className="h-4 w-4" />
@@ -1307,7 +1382,7 @@ export const Settings: React.FC = () => {
                   </div>
                 ))}
               </div>
-              
+
               {/* Live Preview Button */}
               <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                 <div className="flex items-center justify-between">
@@ -1315,8 +1390,8 @@ export const Settings: React.FC = () => {
                     <h3 className="font-medium text-blue-900">Preview Your Changes</h3>
                     <p className="text-sm text-blue-700">See how your storefront will look with these settings</p>
                   </div>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       if (storeData.subdomain) {
                         window.open(`https://${storeData.subdomain}.rady.ng`, '_blank');
@@ -1341,15 +1416,15 @@ export const Settings: React.FC = () => {
               <p className="text-sm text-gray-600 mb-4">
                 Upload a custom banner image to replace the hero section text and gradient. Your image will be professionally styled and responsive.
               </p>
-              
+
               {/* Current Banner Preview */}
               {brandingSettings.heroBannerImage && (
                 <div className="mb-4 p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-start space-x-4">
                     <div className="w-32 h-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                      <img 
-                        src={brandingSettings.heroBannerImage} 
-                        alt="Hero banner preview" 
+                      <img
+                        src={brandingSettings.heroBannerImage}
+                        alt="Hero banner preview"
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -1358,10 +1433,10 @@ export const Settings: React.FC = () => {
                       <p className="text-sm text-gray-600 mb-2">
                         This image will replace the text content in your hero section
                       </p>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
-                        onClick={() => setBrandingSettings({...brandingSettings, heroBannerImage: ''})}
+                        onClick={() => setBrandingSettings({ ...brandingSettings, heroBannerImage: '' })}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         Remove Banner Image
@@ -1370,11 +1445,11 @@ export const Settings: React.FC = () => {
                   </div>
                 </div>
               )}
-              
+
               {/* Upload Button */}
               <div className="space-y-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
                     const input = document.createElement('input');
                     input.type = 'file';
@@ -1387,17 +1462,17 @@ export const Settings: React.FC = () => {
                           toast.error('Image size must be less than 5MB');
                           return;
                         }
-                        
+
                         // Validate file type
                         if (!file.type.startsWith('image/')) {
                           toast.error('Please select an image file');
                           return;
                         }
-                        
+
                         const reader = new FileReader();
                         reader.onload = (e) => {
                           const result = e.target?.result as string;
-                          setBrandingSettings({...brandingSettings, heroBannerImage: result});
+                          setBrandingSettings({ ...brandingSettings, heroBannerImage: result });
                           toast.success('Hero banner image uploaded successfully!');
                         };
                         reader.onerror = () => {
@@ -1413,7 +1488,7 @@ export const Settings: React.FC = () => {
                   <Upload className="h-4 w-4 mr-2" />
                   {brandingSettings.heroBannerImage ? 'Change Hero Banner' : 'Upload Hero Banner'}
                 </Button>
-                
+
                 <div className="text-xs text-gray-500 space-y-1">
                   <p>• Recommended size: 1920x600px or similar aspect ratio</p>
                   <p>• Supported formats: JPG, PNG, WebP</p>
@@ -1425,13 +1500,129 @@ export const Settings: React.FC = () => {
           </div>
         </Card>
 
+        {/* Plan & Subscription */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+              <Check className="h-5 w-5 mr-2" />
+              Plan & Subscription
+            </h2>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${business?.plan === 'free' ? 'bg-gray-100 text-gray-800' :
+              business?.plan === 'business' ? 'bg-blue-100 text-blue-800' :
+                'bg-purple-100 text-purple-800'
+              }`}>
+              Current: {business?.plan ? business.plan.charAt(0).toUpperCase() + business.plan.slice(1) : 'Free'}
+            </span>
+          </div>
+
+          <div className="mb-6">
+            <p className="text-gray-600 mb-4">
+              You are currently on the <span className="font-semibold">{business?.plan}</span> plan.
+              {business?.plan === 'free' && ' Upgrade to unlock more features and remove limits.'}
+            </p>
+
+            {business?.plan === 'free' && (
+              <Button
+                onClick={() => setShowUpgradeModal(true)}
+                className="btn-primary"
+              >
+                🚀 Upgrade Plan
+              </Button>
+            )}
+          </div>
+
+          {/* Upgrade Modal */}
+          {showUpgradeModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Choose Your Plan</h3>
+                  <button onClick={() => setShowUpgradeModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+                </div>
+
+                {/* Billing Cycle Toggle */}
+                <div className="flex justify-center mb-8">
+                  <div className="bg-gray-100 p-1 rounded-lg flex items-center relative">
+                    <button
+                      onClick={() => setSelectedBillingCycle('monthly')}
+                      className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${selectedBillingCycle === 'monthly' ? 'bg-white shadow text-gray-900' : 'text-gray-500'
+                        }`}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      onClick={() => setSelectedBillingCycle('yearly')}
+                      className={`px-6 py-2 rounded-md text-sm font-medium transition-all relative ${selectedBillingCycle === 'yearly' ? 'bg-white shadow text-gray-900' : 'text-gray-500'
+                        }`}
+                    >
+                      Yearly
+                      <span className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">
+                        SAVE ~20%
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  {PRICING_PLANS.filter(p => p.id !== 'free' && p.id !== 'test').map((plan) => (
+                    <div key={plan.id} className={`border rounded-xl p-6 ${plan.isPopular ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/50' : 'border-gray-200'}`}>
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h4 className="text-xl font-bold text-gray-900">{plan.name}</h4>
+                          <p className="text-gray-500 text-sm mt-1">{plan.description}</p>
+                        </div>
+                        {plan.isPopular && (
+                          <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-medium">
+                            Popular
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mb-6">
+                        <div className="flex items-baseline">
+                          <span className="text-3xl font-bold text-gray-900">
+                            ₦{(selectedBillingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice).toLocaleString()}
+                          </span>
+                          <span className="text-gray-500 ml-2">/{selectedBillingCycle === 'yearly' ? 'year' : 'month'}</span>
+                        </div>
+                        {selectedBillingCycle === 'yearly' && (
+                          <p className="text-green-600 text-xs mt-1 font-medium">
+                            Save ₦{(plan.monthlyPrice * 12 - plan.yearlyPrice).toLocaleString()} yearly
+                          </p>
+                        )}
+                      </div>
+
+                      <ul className="space-y-3 mb-8">
+                        {plan.features.slice(0, 6).map((feature, i) => (
+                          <li key={i} className="flex items-start text-sm text-gray-600">
+                            <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5 shrink-0" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <Button
+                        onClick={() => handlePlanUpgrade(plan.id)}
+                        disabled={upgrading}
+                        className={`w-full ${plan.isPopular ? 'btn-primary' : 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50'}`}
+                      >
+                        {upgrading ? 'Processing...' : `Upgrade to ${plan.name}`}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+
         {/* Notifications */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <Bell className="h-5 w-5 mr-2" />
             Notifications
           </h2>
-          
+
           <div className="space-y-4">
             {[
               { id: 'new_orders', label: 'New Orders', description: 'Get notified when you receive new orders' },
