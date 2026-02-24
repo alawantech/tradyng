@@ -291,7 +291,7 @@ tradyng/
 |---|---|
 | 📱 WhatsApp | [+234 815 685 3636](https://wa.me/2348156853636) |
 | 📧 Email | [support@rady.ng](mailto:support@rady.ng) |
-| 📍 Location | Abuja, Nigeria |
+| 📍 Location | Lagos, Nigeria |
 | 🌐 Website | [rady.ng](https://rady.ng) |
 
 ---
