@@ -70,6 +70,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   // FAQ toggle state
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [showUpsellModal, setShowUpsellModal] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<typeof PRICING_PLANS[0] | null>(null);
 
   const toggleFAQ = (id: number) => {
     setOpenFAQ(openFAQ === id ? null : id);
@@ -86,23 +89,51 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         return;
       }
 
-      // For paid plans, check if user is authenticated
-      const currentUser = await AuthService.getCurrentUser();
-
-      if (currentUser) {
-        // User is authenticated - redirect to dashboard settings for upgrade (temporary) or signup
-        console.log('✅ Authenticated user selecting paid plan:', plan.id);
-        navigate(`/dashboard/settings`);
-      } else {
-        // User not authenticated - redirect to signup with plan
-        console.log('🔐 Non-authenticated user - redirecting to signup with plan:', plan.id);
-        navigate(`/auth/signup?plan=${plan.id}`);
+      // If monthly plan selected, show upsell modal
+      if (billingCycle === 'monthly' && (plan.id === 'business' || plan.id === 'pro')) {
+        setPendingPlan(plan);
+        setShowUpsellModal(true);
+        return;
       }
+
+      executeSelection(plan, billingCycle);
     } catch (error) {
       console.error('❌ Error in handlePlanSelection:', error);
       // Fallback to signup if there's an error
       console.log('⚠️ Fallback - redirecting to signup');
-      navigate(`/auth/signup?plan=${plan.id}`);
+      navigate(`/auth/signup?plan=${plan.id}&billing=${billingCycle}`);
+    }
+  };
+
+  const executeSelection = async (plan: typeof PRICING_PLANS[0], cycle: 'monthly' | 'yearly') => {
+    // For paid plans, check if user is authenticated
+    const currentUser = await AuthService.getCurrentUser();
+
+    if (currentUser) {
+      // User is authenticated - redirect to dashboard settings for upgrade (temporary) or signup
+      console.log('✅ Authenticated user selecting paid plan:', plan.id);
+      navigate(`/dashboard/settings?plan=${plan.id}&billing=${cycle}`);
+    } else {
+      // User not authenticated - redirect to signup with plan
+      console.log('🔐 Non-authenticated user - redirecting to signup with plan:', plan.id);
+      navigate(`/auth/signup?plan=${plan.id}&billing=${cycle}`);
+    }
+  };
+
+  const handleSwitchToYearly = () => {
+    if (pendingPlan) {
+      setBillingCycle('yearly');
+      setShowUpsellModal(false);
+      executeSelection(pendingPlan, 'yearly');
+      setPendingPlan(null);
+    }
+  };
+
+  const handleContinueMonthly = () => {
+    if (pendingPlan) {
+      setShowUpsellModal(false);
+      executeSelection(pendingPlan, 'monthly');
+      setPendingPlan(null);
     }
   };
 
@@ -259,12 +290,37 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.8 }}
-              className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl shadow-lg"
+              className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl shadow-lg mb-8"
             >
               <div className="text-3xl">🎉</div>
               <div className="text-left">
                 <div className="text-sm font-bold text-gray-900">Special Launch Offer</div>
-                <div className="text-xs text-gray-600">Pay yearly and save 20% - That's just ₦1,333/month!</div>
+                <div className="text-xs text-gray-600">Pay yearly and save up to ₦5,900!</div>
+              </div>
+            </motion.div>
+
+            {/* Billing Cycle Toggle */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.9 }}
+              className="flex items-center justify-center gap-4 mt-4"
+            >
+              <span className={`text-sm font-bold ${billingCycle === 'monthly' ? 'text-blue-600' : 'text-gray-500'}`}>Monthly</span>
+              <button
+                onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'yearly' : 'monthly')}
+                className="relative w-16 h-8 bg-gray-200 rounded-full p-1 transition-colors duration-300 focus:outline-none ring-2 ring-blue-100"
+              >
+                <div
+                  className={`w-6 h-6 bg-blue-600 rounded-full shadow-md transform transition-transform duration-300 ${billingCycle === 'yearly' ? 'translate-x-8' : 'translate-x-0'
+                    }`}
+                />
+              </button>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-bold ${billingCycle === 'yearly' ? 'text-blue-600' : 'text-gray-500'}`}>Yearly</span>
+                <span className="bg-green-100 text-green-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-bounce">
+                  Save up to ₦5,900
+                </span>
               </div>
             </motion.div>
           </motion.div>
@@ -308,8 +364,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
 
                 <motion.div
                   className={`relative h-full transition-all duration-500 ${plan.isPopular
-                      ? `transform scale-105 ${colors.ring} ring-4 ${colors.glow} shadow-2xl`
-                      : `hover:scale-105 hover:shadow-2xl hover:${colors.glow}`
+                    ? `transform scale-105 ${colors.ring} ring-4 ${colors.glow} shadow-2xl`
+                    : `hover:scale-105 hover:shadow-2xl hover:${colors.glow}`
                     }`}
                   animate={isHovered ? {
                     y: -10,
@@ -350,10 +406,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                           transition={{ duration: 0.3 }}
                         >
                           <span className={`text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
-                            {plan.id === 'free' ? 'Free' : `₦${plan.yearlyPrice.toLocaleString()}`}
+                            {plan.id === 'free' ? 'Free' : `₦${(billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice).toLocaleString()}`}
                           </span>
                           {plan.id !== 'free' && (
-                            <span className="text-gray-500 ml-2 sm:ml-3 text-lg sm:text-xl font-medium">/year</span>
+                            <span className="text-gray-500 ml-2 sm:ml-3 text-lg sm:text-xl font-medium">/{billingCycle === 'monthly' ? 'month' : 'year'}</span>
                           )}
                         </motion.div>
 
@@ -364,11 +420,20 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                           </div>
                         )}
 
-                        {plan.id !== 'free' && (
+                        {plan.id !== 'free' && billingCycle === 'yearly' && (
                           <div className="text-center">
                             <div className="inline-flex items-center space-x-1 text-sm text-green-600 font-medium">
                               <TrendingUp className="w-4 h-4" />
-                              <span>Save 20% vs monthly</span>
+                              <span>Save ₦{(plan.monthlyPrice * 12 - plan.yearlyPrice).toLocaleString()} vs monthly</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {plan.id !== 'free' && billingCycle === 'monthly' && (
+                          <div className="text-center">
+                            <div className="inline-flex items-center space-x-1 text-sm text-blue-600 font-medium">
+                              <Sparkles className="w-4 h-4" />
+                              <span>Get 1 month free if you pay yearly</span>
                             </div>
                           </div>
                         )}
@@ -572,6 +637,77 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           </div>
         </motion.div>
       </div>
+
+      {/* Upsell Modal */}
+      <AnimatePresence>
+        {showUpsellModal && pendingPlan && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowUpsellModal(false)}
+              className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white rounded-3xl shadow-2xl overflow-hidden max-w-lg w-full"
+            >
+              {/* Decorative Header */}
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-center text-white">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                  className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-white/30"
+                >
+                  <Sparkles className="w-10 h-10 text-white" />
+                </motion.div>
+                <h3 className="text-2xl font-bold mb-2">Upgrade Your Experience 🎁</h3>
+                <p className="text-blue-100">Choose the best plan for your business growth.</p>
+              </div>
+
+              <div className="p-8">
+                <div className="bg-blue-50 rounded-2xl p-6 mb-8 flex items-center justify-between border border-blue-100">
+                  <div>
+                    <h4 className="text-lg font-bold text-gray-900 mb-1">{pendingPlan.name} Monthly</h4>
+                    <p className="text-blue-600 font-bold text-lg">₦{pendingPlan.monthlyPrice.toLocaleString()} / month</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-blue-500 font-medium mb-1">Or save ₦{(pendingPlan.monthlyPrice * 12 - pendingPlan.yearlyPrice).toLocaleString()} with</p>
+                    <div className="bg-green-600 text-white px-2 py-0.5 rounded text-[10px] font-bold inline-block">
+                      YEARLY OPTION
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Button
+                    onClick={handleContinueMonthly}
+                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-lg font-bold rounded-xl shadow-lg transform hover:scale-[1.02] transition-all"
+                  >
+                    Continue with Monthly Plan
+                  </Button>
+
+                  <button
+                    onClick={handleSwitchToYearly}
+                    className="w-full flex items-center justify-center gap-2 py-3 text-blue-600 hover:text-blue-700 font-bold transition-all group"
+                  >
+                    <span>Switch to Yearly & Save ₦{(pendingPlan.monthlyPrice * 12 - pendingPlan.yearlyPrice).toLocaleString()}</span>
+                    <TrendingUp className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+
+                <p className="text-center text-xs text-gray-400 mt-6">
+                  You can change your billing cycle at any time from your dashboard settings.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };
